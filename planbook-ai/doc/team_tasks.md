@@ -1,143 +1,128 @@
-# PlanbookAI – Phân công Task Nhóm
+# PlanbookAI – Phân công Task Nhóm (6 Người)
 
-## Nguyên tắc
-- Mỗi người = 1 service BE + 1 page FE tương ứng
-- Làm song song, không chờ nhau
-- JWT secret phải GIỐNG NHAU ở tất cả service
-
----
-
-## NGƯỜI 1 – Lead (Mày) XONG
-
-### BE: auth-service + user-service
-- [x] auth-service: Login, Register, JWT, Refresh token
-- [x] user-service: CRUD profile, activate/deactivate
-
-### FE
-- [ ] /login, /register
-- [ ] /profile – xem + sửa thông tin cá nhân
+## Nguyên tắc Chung
+- Mỗi người = 1 service BE (Backend) + 1 page FE (Frontend) tương ứng.
+- Phải làm rõ Role (Quyền) nào được gọi API nào. Các Role chuẩn của hệ thống: `ADMIN`, `MANAGER`, `STAFF`, `TEACHER`.
+- Làm song song, không chờ nhau. Test bằng Postman trước khi ráp thẻ FE.
+- Cực kỳ lưu ý: **JWT secret phải GIỐNG NHAU** ở tất cả các service.
 
 ---
 
-## NGƯỜI 2 – curriculum-service (port 8083)
+## 👨‍💻 NGƯỜI 1 – Lead (Mày) [XONG]
 
-### BE
-File cần tạo:
-- entity/ Subject, Chapter, Topic, LessonPlan, LessonPlanTemplate
-- repository/ SubjectRepo, ChapterRepo, TopicRepo, LessonPlanRepo
-- dto/ SubjectResponse, ChapterResponse, LessonPlanResponse, CreateLessonPlanRequest
-- service/ CurriculumService, LessonPlanService
-- controller/ SubjectController, LessonPlanController
-- config/ SecurityConfig (copy từ user-service, đổi package)
-- exception/ GlobalExceptionHandler (copy)
+### Backend: `auth-service` (8081) + `user-service` (8082)
+- [x] **auth-service**: Đăng ký (mặc định Role TEACHER), Đăng nhập lấy JWT, Refresh token. (Public API)
+- [x] **user-service**: CRUD profile. Chỉ user (TEACHER, STAFF...) tự xem/sửa profile của mình. ADMIN có quyền xem tất cả và block (deactivate) tài khoản.
 
-| Method | Endpoint | Chức năng |
-|--------|----------|-----------|
-| GET | /api/subjects | Danh sách môn học |
-| GET | /api/subjects/{id}/chapters | Chương theo môn |
-| GET | /api/chapters/{id}/topics | Bài theo chương |
-| GET | /api/lesson-plans | DS giáo án |
-| POST | /api/lesson-plans | Tạo giáo án |
-| PUT | /api/lesson-plans/{id} | Sửa giáo án |
-
-### FE
-- [ ] /teacher/lesson-plans – Danh sách giáo án
-- [ ] /teacher/lesson-plans/create – Tạo giáo án (gọi AI)
-- [ ] /teacher/lesson-plans/{id} – Chi tiết + sửa
+### Frontend
+- [ ] Màn hình `/login`, `/register` (Public).
+- [ ] Màn hình `/profile` – Teacher tự vào xem và sửa thông tin cá nhân.
 
 ---
 
-## NGƯỜI 3 – question-bank-service (port 8084)
+## 👨‍💻 NGƯỜI 2 – `curriculum-service` (port 8083)
 
-### BE
-File cần tạo:
-- entity/ Question, QuestionOption
-- repository/ QuestionRepository, QuestionOptionRepository
-- dto/ QuestionResponse, CreateQuestionRequest, UpdateQuestionRequest
-- service/ QuestionService
-- controller/ QuestionController
-- config/ SecurityConfig + exception/
+**Mục tiêu**: Quản lý khung chương trình học và Giáo án của Giáo viên.
 
-| Method | Endpoint | Role | Chức năng |
-|--------|----------|------|-----------|
-| GET | /api/questions | Teacher+ | DS câu hỏi |
-| POST | /api/questions | Staff/Teacher | Tạo câu hỏi |
-| PUT | /api/questions/{id} | Owner | Sửa |
-| DELETE | /api/questions/{id} | Owner/Admin | Xóa |
-| POST | /api/questions/{id}/approve | Manager | Duyệt |
+### Backend
+| Method | Endpoint | Role Yêu Cầu | Chức năng (Business Logic) |
+|--------|----------|--------------|----------------------------|
+| GET | `/api/subjects` | TEACHER, STAFF | Xem danh sách Môn học. |
+| GET | `/api/subjects/{id}/chapters`| TEACHER, STAFF | Xem các Chương theo Môn. |
+| GET | `/api/chapters/{id}/topics` | TEACHER, STAFF | Xem các Bài (Topic) theo Chương. |
+| GET | `/api/lesson-plans` | TEACHER | Liệt kê các giáo án do *chính Teacher đó* tạo. |
+| POST | `/api/lesson-plans` | TEACHER | Tạo giáo án mới. Lưu DB trạng thái "Draft" hoặc "Done". |
+| PUT | `/api/lesson-plans/{id}`| TEACHER | Sửa giáo án (chỉ người tạo mới được sửa). |
 
-### FE
-- [ ] /teacher/questions – Xem + lọc
-- [ ] /teacher/questions/create – Tạo câu hỏi MCQ
-- [ ] /manager/approval – Duyệt câu hỏi
-- [ ] /staff/questions – Quản lý ngân hàng
+### Frontend
+- [ ] Màn hình `/teacher/lesson-plans`: Bảng danh sách giáo án của Giáo viên.
+- [ ] Màn hình `/teacher/lesson-plans/create`: Form tạo giáo án (Có thể có nút "Gọi AI gợi ý").
+- [ ] Màn hình `/teacher/lesson-plans/{id}`: Xem chi tiết và edit giáo án.
 
 ---
 
-## NGƯỜI 4 – exam-service (port 8085)
+## 👨‍💻 NGƯỜI 3 – `question-bank-service` (port 8084)
 
-### BE
-File cần tạo:
-- entity/ Exam, ExamQuestion, StudentSubmission, SubmissionResult
-- repository/ ExamRepository, SubmissionRepository
-- dto/ ExamResponse, CreateExamRequest, GradeResult
-- service/ ExamService, GradingService
-- controller/ ExamController
-- client/ AiServiceClient (Feign gọi ai-service để OCR)
-- config/ SecurityConfig, FeignConfig + exception/
+**Mục tiêu**: Quản lý kho câu hỏi trắc nghiệm dùng chung cho hệ thống.
 
-| Method | Endpoint | Chức năng |
-|--------|----------|-----------|
-| POST | /api/exams | Tạo đề thi |
-| GET | /api/exams | DS đề của Teacher |
-| POST | /api/exams/{id}/submissions | Nộp bài (upload ảnh) |
-| GET | /api/exams/{id}/results | Kết quả chấm |
+### Backend
+| Method | Endpoint | Role Yêu Cầu | Chức năng |
+|--------|----------|--------------|-----------|
+| GET | `/api/questions` | TEACHER, STAFF, ADMIN| Xem DS câu hỏi (có phân trang, filter theo môn/chương/độ khó). |
+| POST | `/api/questions` | STAFF, TEACHER | Tạo câu hỏi MCQ mới. Trạng thái mặc định: "PENDING" (chờ duyệt). |
+| PUT | `/api/questions/{id}` | Tác giả (Tạo ra CH)| Sửa câu hỏi (chỉ khi chưa được duyệt). |
+| DELETE | `/api/questions/{id}` | ADMIN | Xóa hẳn câu hỏi. |
+| POST | `/api/questions/{id}/approve`| MANAGER | Quản lý duyệt câu hỏi ("PENDING" -> "APPROVED" để Teacher lấy ra xài). |
 
-### FE
-- [ ] /teacher/exams/create – Tạo đề (chọn câu từ bank)
-- [ ] /teacher/exams/grade – Upload ảnh, xem kết quả OCR
-- [ ] /teacher/results – Bảng điểm học sinh
+### Frontend
+- [ ] Màn hình `/teacher/questions`: Trang để Teacher tìm kiếm, lọc câu hỏi từ Ngân hàng.
+- [ ] Màn hình `/teacher/questions/create`: Form cho Teacher/Staff soạn câu hỏi đóng góp.
+- [ ] Màn hình `/manager/approval`: Trang đặc quyền cho Manager vô xem các câu hỏi đang "Pending" để bấm nút [Duyệt] hoặc [Từ chối].
 
 ---
 
-## NGƯỜI 5 – ai-service + package-service
+## 👨‍💻 NGƯỜI 4 – `exam-service` (port 8085)
 
-### BE: ai-service (port 8086, stateless)
-File cần tạo:
-- service/ GeminiService, ExerciseGenService, ExamGenService, LessonPlanGenService, OcrGradingService
-- controller/ AiController
-- config/ GeminiConfig (API Key)
+**Mục tiêu**: Cho Giáo viên tạo Đề thi từ Ngân hàng câu hỏi và Chấm điểm học sinh.
 
-| Method | Endpoint | Chức năng |
-|--------|----------|-----------|
-| POST | /api/ai/generate-exercise | Sinh bài tập |
-| POST | /api/ai/generate-exam | Sinh đề thi MCQ |
-| POST | /api/ai/generate-lesson-plan | Sinh giáo án |
-| POST | /api/ai/ocr-grade | Upload ảnh, chấm điểm |
+### Backend
+| Method | Endpoint | Role Yêu Cầu | Chức năng |
+|--------|----------|--------------|-----------|
+| POST | `/api/exams` | TEACHER | Tạo đề thi (lưu danh sách List ID Câu hỏi kéo từ question-bank sang). |
+| GET | `/api/exams` | TEACHER | Xem danh sách các đề thi *của mình*. |
+| POST | `/api/exams/{id}/submissions`| TEACHER | Nộp bài kiểm tra (Upload ảnh bài làm của học sinh). Gọi Feign sang AI để lấy điểm. |
+| GET | `/api/exams/{id}/results` | TEACHER | Xem bảng kết quả điểm số lớp học. |
 
-### BE: package-service (port 8087)
-- entity/ Package, Order, Subscription
-- service/ PackageService, OrderService
-- controller/ PackageController, OrderController
-
-### FE
-- [ ] /admin/users – Quản lý tài khoản
-- [ ] /admin/dashboard – Thống kê
-- [ ] /manager/packages – Gói dịch vụ
-- [ ] /manager/orders – Đơn hàng
+### Frontend
+- [ ] Màn hình `/teacher/exams/create`: Giao diện chọn/kéo thả câu hỏi từ Bank để ghép thành tờ Đề thi.
+- [ ] Màn hình `/teacher/exams/grade`: Chỗ để Teacher bấm [Upload File Ảnh] -> Hiện ra ảnh bài làm và Số điểm máy chấm.
+- [ ] Màn hình `/teacher/results`: Xem bảng điểm tổng quát của kỳ thi đó.
 
 ---
 
-## CHUNG: api-gateway (Làm sau cùng)
-- config/ RouteConfig, SecurityConfig
-- filter/ RateLimitFilter
+## 👨‍💻 NGƯỜI 5 – `ai-service` (port 8086)
+
+**Mục tiêu**: Tập trung toàn bộ logic tích hợp LLM (Gemini/ChatGPT) và Xử lý Ảnh (OCR), không dính líu DB nghiệp vụ.
+
+### Backend (Stateless - Không cần DB riêng)
+| Method | Endpoint | Tiêu thụ bởi Service nào? | Chức năng chi tiết |
+|--------|----------|---------------------------|--------------------|
+| POST | `/api/ai/generate-exercise` | `question-bank-service` | Nhận prompt -> Trả về JSON chứa mảng câu hỏi trắc nghiệm. |
+| POST | `/api/ai/generate-lesson-plan`| `curriculum-service` | Nhận chủ đề -> Trả về JSON dàn ý giáo án. |
+| POST | `/api/ai/ocr-grade` | `exam-service` | Nhận MultipartFile (Ảnh) + Đáp án -> Gọi AI Vision đọc ảnh, so sánh đáp án -> Trả về JSON: ID câu sai, Tổng điểm. |
+
+### Frontend
+- Thằng này chỉ code thuần thuật toán Model AI và API BE, không cần làm màn hình FE riêng. Sẽ hỗ trợ Người 2 và Người 4 ráp API AI vào FE nếu khó.
 
 ---
 
-## Lưu ý quan trọng
+## 👨‍💻 NGƯỜI 6 – `package-service` (port 8087) + `api-gateway` (port 8080)
 
-1. JWT secret phải GIỐNG NHAU ở tất cả service (copy từ env)
-2. SecurityConfig: copy từ user-service, đổi package là xong
-3. Không JOIN DB chéo – gọi REST API của service kia nếu cần data
-4. Swagger: http://localhost:PORT/swagger-ui.html
-5. Test flow: đăng nhập auth-service lấy token → test service khác
+**Mục tiêu**: Quản lý gói cước (Doanh thu) và Quản lý tài khoản Admin nội bộ + Cổng Gateway.
+
+### Backend 1: `package-service`
+| Method | Endpoint | Role Yêu Cầu | Chức năng |
+|--------|----------|--------------|-----------|
+| GET | `/api/packages` | Public, TEACHER | Xem các gói tài khoản (Gói Free, Gói Pro AI...). |
+| POST | `/api/packages` | MANAGER | Tạo mới hoặc Sửa giá bán Gói cước. |
+| POST | `/api/subscriptions` | TEACHER | Bấm mua gói -> Sinh ra đơn hàng/Subscription. |
+| GET | `/api/internal/users/create`| ADMIN | (Đi qua API Gateway) - API nội bộ để Admin cấp account cho MANAGER / STAFF. |
+
+### Backend 2: `api-gateway`
+- Cấu hình Route đẩy request tới các port 8081->8087.
+- Gắn Global JWT Filter (Kiểm tra token hợp lệ trước khi cho lọt xuống Service nhánh).
+
+### Frontend
+- [ ] Màn hình `/admin/users`: Giao diện siêu quyền lực của ADMIN để Mời (Invite)/Tạo tài khoản giao quyền `MANAGER` hoặc `STAFF`.
+- [ ] Màn hình `/manager/packages`: Trang cho Manager sửa giá, cấu hình các Gói cước bán lấy tiền.
+- [ ] Màn hình `/teacher/billing`: Nơi Teacher xem mình đang xài Gói nào, sắp hết hạn chưa.
+
+---
+
+## 📌 Các bước test tích hợp (Integration Flow)
+1. **NGƯỜI 6** chạy Seeder, tạo ra acc ADMIN mật khẩu `123456`. Dùng acc này login, lấy token. Dùng token đó lên web tạo acc `MANAGER`.
+2. Dùng acc `MANAGER` login, gọi API `/api/packages` tạo gói bán "PlanbookAI Pro".
+3. **Người ngoài** vào web, đăng ký tk `TEACHER`. Đăng nhập lấy Bearer Token.
+4. `TEACHER` gọi API mua gói Pro của NGƯỜI 6.
+5. Sau đó `TEACHER` lên màn hình của **NGƯỜI 3**, xài tool Auto Sinh Câu Hỏi, FE sẽ gọi `question-bank-service`, BE của NG3 dùng Feign call sang `ai-service` của **NGƯỜI 5**.
+6. Cuối tháng, hệ thống trừ tiền, hết hạn token, gọi refresh lại từ auth-service của **NGƯỜI 1**.
