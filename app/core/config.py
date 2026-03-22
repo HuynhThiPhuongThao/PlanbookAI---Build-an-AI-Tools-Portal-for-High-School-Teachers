@@ -1,0 +1,25 @@
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ENV_FILE = PROJECT_ROOT / ".env"
+
+class Settings(BaseSettings):
+    app_name: str = "AI Service"
+    version: str = "1.0.0"
+    port: int = Field(default=8086, alias="PORT")
+    environment: str = Field(default="development", alias="ENVIRONMENT")
+    log_level: str = Field(default="info", alias="LOG_LEVEL")
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE,
+        env_file_encoding="utf-8",
+        populate_by_name=True,
+        extra="ignore"
+    )
+
+settings = Settings()

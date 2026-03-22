@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.local
+dist/
+logs/
+.idea/
+
+# Do not include markdown docs from the ai-service folder in this branch push.
+ai-service/**/*.md
