@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: curriculum-service
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/db_curriculum?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USER:planbook}
+    password: ${DB_PASS:planbook123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+server:
+  port: ${SERVER_PORT:8083}
+
+# =====================================================================
+# Actuator - Health check endpoint
+# =====================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# =====================================================================
+# Swagger / OpenAPI
+# =====================================================================
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+logging:
+  level:
+    com.planbook.curriculum: DEBUG
