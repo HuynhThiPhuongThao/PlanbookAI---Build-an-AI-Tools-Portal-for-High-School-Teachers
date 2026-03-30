@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.env
+.env.local
+dist/
+logs/
+.idea/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+
+# Do not push markdown documentation files
+*.md
+
