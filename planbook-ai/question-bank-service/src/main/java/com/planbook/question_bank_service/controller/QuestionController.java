@@ -1,7 +1,13 @@
 package com.planbook.question_bank_service.controller;
 
-import org.springframework.web.bind.annotation.*;
 import java.util.List;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.planbook.question_bank_service.entity.Question;
 import com.planbook.question_bank_service.service.QuestionService;
 
@@ -15,13 +21,15 @@ public class QuestionController {
         this.questionService = questionService;
     }
 
+    // GET
     @GetMapping
-    public List<Question> getAllQuestions() {
+    public List<Question> getAll() {
         return questionService.getAllQuestions();
     }
 
+    // POST
     @PostMapping
-    public Question createQuestion(@RequestBody Question question) {
+    public Question create(@RequestBody Question question) {
         return questionService.saveQuestion(question);
     }
 }
