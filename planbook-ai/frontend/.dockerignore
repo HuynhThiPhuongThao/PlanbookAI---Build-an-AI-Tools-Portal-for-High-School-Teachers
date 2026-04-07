@@ -1,0 +1,5 @@
+# Đống rác này nặng chà bá méo thèm copy đem đốt nén phí dung lượng:
+node_modules
+dist
+.git
+.env
