@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/ai", tags=["AI"])
     "/generate-exercise",
     response_model=ExerciseResponse,
     summary="Generate exercise using Gemini AI",
-    description="Sinh bài tập dựa trên topic và độ khó"
+    description="Sinh bài tập dựa trên chủ đề và độ khó"
 )
 async def generate(request: ExerciseRequest):
     try:
@@ -44,7 +44,3 @@ async def generate_lesson_plan_api(request: LessonPlanRequest):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception:
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
-
-
-

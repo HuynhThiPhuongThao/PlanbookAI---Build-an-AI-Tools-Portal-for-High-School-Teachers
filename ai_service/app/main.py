@@ -7,8 +7,8 @@ app = FastAPI(
     title=settings.app_name,
     description="API sinh nội dung AI cho PlanbookAI",
     version=settings.version,
-    docs_url="/docs",        # Swagger UI
-    redoc_url="/redoc",      # ReDoc
+    docs_url="/docs",
+    redoc_url="/redoc",
     openapi_url="/openapi.json"
 )
 
