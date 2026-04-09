@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// Thay vì gọi trực tiếp sang cỗng 8081 (auth) hay 8082 (user),
-// ta sẽ gọi qua API GATEWAY ở cổng 8080!
+// Gọi qua API GATEWAY (port 8080)
+// Gateway sẽ route đến services (auth: 8081, user: 8082, ...)
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // Trỏ thẳng vào Gateway
+  baseURL: 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,12 +30,11 @@ axiosClient.interceptors.response.use((response) => {
   }
   return response;
 }, (error) => {
-  // Xử lý lỗi tập trung ở đây (VD: Token hết hạn -> Bắt đăng nhập lại)
+  // Xử lý lỗi tập trung ở đây
   if (error.response && error.response.status === 401) {
-    console.error("Hết hạn Token hoặc chưa đăng nhập!");
-    // Có thể tự động xóa token và đá về trang login:
-    // localStorage.removeItem('access_token');
-    // window.location.href = '/';
+    console.error("Token expired or unauthorized!");
+    localStorage.removeItem('access_token');
+    window.location.href = '/';
   }
   return Promise.reject(error);
 });
