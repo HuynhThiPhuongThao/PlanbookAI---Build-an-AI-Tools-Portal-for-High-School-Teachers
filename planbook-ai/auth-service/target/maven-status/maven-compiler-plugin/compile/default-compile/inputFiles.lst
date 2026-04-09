@@ -1,4 +1,5 @@
 D:\XDOPP\planbook-ai\auth-service\src\main\java\com\planbook\auth\AuthServiceApplication.java
+D:\XDOPP\planbook-ai\auth-service\src\main\java\com\planbook\auth\dto\ChangePasswordRequest.java
 D:\XDOPP\planbook-ai\auth-service\src\main\java\com\planbook\auth\exception\GlobalExceptionHandler.java
 D:\XDOPP\planbook-ai\auth-service\src\main\java\com\planbook\auth\entity\User.java
 D:\XDOPP\planbook-ai\auth-service\src\main\java\com\planbook\auth\dto\LoginRequest.java

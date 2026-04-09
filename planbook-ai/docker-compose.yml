@@ -9,7 +9,7 @@
 services:
 
   # -------------------------------------------------------------------
-  # DATABASE: MySQL duy nhất, nhưng NHIỀU SCHEMA (db per service)
+  # DATABASE: MySQL duy nhất, hệ xương sống dữ liệu
   # -------------------------------------------------------------------
   mysql:
     image: mysql:8.0
@@ -23,18 +23,28 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./db/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+
     networks:
       - planbook-network
 
   # -------------------------------------------------------------------
-  # API GATEWAY - Entry point duy nhất (port 8080)
-  # Mọi request từ frontend đều đi qua đây
+  # REDIS - Bộ nhớ đệm thần tốc (Token Blacklist)
+  # -------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: planbook-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+    networks:
+      - planbook-network
+
+  # -------------------------------------------------------------------
+  # API GATEWAY - Cổng thu phí vô nhà
   # -------------------------------------------------------------------
   api-gateway:
     build: ./api-gateway
@@ -44,20 +54,21 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - JWT_SECRET=planbook-super-secret-key-change-in-production
     depends_on:
       - auth-service
       - user-service
-      - curriculum-service
-      - question-bank-service
-      - exam-service
-      - ai-service
-      - packageservice
+      # ---- OSIN ĐÃ KHÓA CÁC RÂU RIÊNG Ở DƯỚI ----
+      # - curriculum-service
+      # - question-bank-service
+      # - exam-service
+      # - ai-service
+      # - packageservice
     networks:
       - planbook-network
 
   # -------------------------------------------------------------------
-  # AUTH SERVICE - :8081
-  # Xử lý: Login, Register, JWT issue, token refresh
+  # AUTH SERVICE - Bảo vệ gác cổng
   # -------------------------------------------------------------------
   auth-service:
     build: ./auth-service
@@ -74,13 +85,13 @@ services:
       - JWT_EXPIRATION=86400000
     depends_on:
       mysql:
-        condition: service_healthy
+        condition: service_started
+
     networks:
       - planbook-network
 
   # -------------------------------------------------------------------
-  # USER SERVICE - :8082
-  # Xử lý: CRUD users, roles, permissions
+  # USER SERVICE - Sổ hộ khẩu
   # -------------------------------------------------------------------
   user-service:
     build: ./user-service
@@ -94,126 +105,42 @@ services:
       - DB_USER=planbook
       - DB_PASS=planbook123
       - JWT_SECRET=planbook-super-secret-key-change-in-production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       mysql:
-        condition: service_healthy
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - planbook-network
 
-  # -------------------------------------------------------------------
-  # CURRICULUM SERVICE - :8083
-  # Xử lý: Subject, Chapter, Topic, Lesson Plan Templates
-  # -------------------------------------------------------------------
-  curriculum-service:
-    build: ./curriculum-service
-    container_name: planbook-curriculum
-    restart: unless-stopped
-    ports:
-      - "8083:8083"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - DB_URL=jdbc:mysql://mysql:3306/db_curriculum
-      - DB_USER=planbook
-      - DB_PASS=planbook123
-      - JWT_SECRET=planbook-super-secret-key-change-in-production
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - planbook-network
+  # ===================================================================
+  # ======== CÁC DỊCH VỤ RÁC BỊ OSIN PHONG ẤN TẠM THỜI ================
+  # ===================================================================
+  
+  # curriculum-service:
+  #   build: ./curriculum-service
+  #   ... (ẩn đi vì chưa xài tới lúc này để web lên lẹ)
+
+  # question-bank-service:
+  #   build: ./question-bank-service
+  #   ... (ẩn vì tàng hình)
+
+  # exam-service:
+  #   build: ./exam-service
+  #   ... (ẩn vì nguy cơ lỗi nổ hầm)
+
+  # ai-service:
+  #   build: ./ai_service 
+  #   ... (ẩn chừng nào nạp api làm trí tuệ nhân tạo nha)
+
+  # packageservice:
+  #   build: ./packageservice
+  #   ... (ẩn vì cha nội này chôn mẹ nó file Dockerfile)
 
   # -------------------------------------------------------------------
-  # QUESTION BANK SERVICE - :8084
-  # Xử lý: CRUD questions, options, approval workflow
-  # -------------------------------------------------------------------
-  question-bank-service:
-    build: ./question-bank-service
-    container_name: planbook-question
-    restart: unless-stopped
-    ports:
-      - "8084:8084"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - DB_URL=jdbc:mysql://mysql:3306/db_question
-      - DB_USER=planbook
-      - DB_PASS=planbook123
-      - JWT_SECRET=planbook-super-secret-key-change-in-production
-      - CURRICULUM_SERVICE_URL=http://curriculum-service:8083
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - planbook-network
-
-  # -------------------------------------------------------------------
-  # EXAM SERVICE - :8085
-  # Xử lý: Tạo đề thi, random version, submit bài, kết quả chấm
-  # Gọi question-bank-service qua Feign để lấy câu hỏi
-  # Gọi ai-service để OCR chấm bài
-  # -------------------------------------------------------------------
-  exam-service:
-    build: ./exam-service
-    container_name: planbook-exam
-    restart: unless-stopped
-    ports:
-      - "8085:8085"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - DB_URL=jdbc:mysql://mysql:3306/db_exam
-      - DB_USER=planbook
-      - DB_PASS=planbook123
-      - JWT_SECRET=planbook-super-secret-key-change-in-production
-      - QUESTION_SERVICE_URL=http://question-bank-service:8084
-      - AI_SERVICE_URL=http://ai-service:8086
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - planbook-network
-
-  # -------------------------------------------------------------------
-  # AI SERVICE - :8086 (STATELESS - không có DB)
-  # Xử lý: Gọi Gemini AI để sinh bài tập, đề thi, giáo án, OCR chấm bài
-  # -------------------------------------------------------------------
-  ai-service:
-    build: ./ai-service
-    container_name: planbook-ai
-    restart: unless-stopped
-    ports:
-      - "8086:8086"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
-      - JWT_SECRET=planbook-super-secret-key-change-in-production
-    networks:
-      - planbook-network
-
-  # -------------------------------------------------------------------
-  # PACKAGE SERVICE - :8087
-  # Xử lý: Subscription packages, orders
-  # -------------------------------------------------------------------
-  packageservice:
-    build: ./packageservice
-    container_name: planbook-package
-    restart: unless-stopped
-    ports:
-      - "8087:8087"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - DB_URL=jdbc:mysql://mysql:3306/db_package
-      - DB_USER=planbook
-      - DB_PASS=planbook123
-      - JWT_SECRET=planbook-super-secret-key-change-in-production
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - planbook-network
-
-  # -------------------------------------------------------------------
-  # FRONTEND - ReactJS (port 3000)
+  # FRONTEND - Mặt tiền dát vàng chói lóa
   # -------------------------------------------------------------------
   frontend:
     build: ./frontend
@@ -233,6 +160,8 @@ services:
 # =====================================================================
 volumes:
   mysql_data:
+    driver: local
+  redis_data:
     driver: local
 
 networks:

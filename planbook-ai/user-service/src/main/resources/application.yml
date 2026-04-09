@@ -19,6 +19,11 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
 server:
   port: ${SERVER_PORT:8082}   # auth-service: 8081, user-service: 8082
 
@@ -52,3 +57,4 @@ logging:
   level:
     com.planbook.user: DEBUG
     org.springframework.security: INFO
+

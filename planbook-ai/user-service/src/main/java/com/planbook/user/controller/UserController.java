@@ -6,7 +6,7 @@ import com.planbook.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 
 // @RestController = @Controller + tự convert return value thành JSON
@@ -50,6 +50,7 @@ public class UserController {
 
     // PUT /api/users/{userId}/deactivate → Admin khóa tài khoản
     @PutMapping("/{userId}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deactivateUser(@PathVariable Long userId) {
         userService.deactivateUser(userId);
         return ResponseEntity.ok("Đã khóa tài khoản " + userId);
@@ -57,6 +58,7 @@ public class UserController {
 
     // PUT /api/users/{userId}/activate → Admin mở lại tài khoản
     @PutMapping("/{userId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> activateUser(@PathVariable Long userId) {
         userService.activateUser(userId);
         return ResponseEntity.ok("Đã mở tài khoản " + userId);

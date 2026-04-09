@@ -3,6 +3,7 @@ package com.planbookai.apigateway.filter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -14,12 +15,13 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
-    private static final String JWT_SECRET = "planbookai-very-secure-jwt-secret-key-2025-32chars-minimum!!!";
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -41,17 +43,21 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String token = authHeader.substring(7);
 
         try {
-            SecretKey key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes());
+            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
             Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
 
-            // Forward thông tin user/role cho downstream services (tùy chọn)
+            // FIX: auth-service lưu "role" (không phải "roles")
+            String role = claims.get("role", String.class);
+            String userId = String.valueOf(claims.get("userId"));
+
+            // Forward thông tin xuống downstream services qua header
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                    .header("X-User-Id", claims.getSubject())
-                    .header("X-Roles", String.join(",", claims.get("roles", List.class)))
+                    .header("X-User-Id", userId)
+                    .header("X-Role", role != null ? role : "")
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());

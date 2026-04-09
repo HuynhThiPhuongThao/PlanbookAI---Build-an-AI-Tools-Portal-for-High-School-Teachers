@@ -1,0 +1,30 @@
+import axiosClient from './axiosClient';
+
+// Gom tất cả những hàm liên quan đến ĐĂNG NHẬP, ĐĂNG KÝ vào một file này
+export const authApi = {
+  // 1. Đăng ký tài khoản mới (Mặc định là Teacher)
+  register: (data: any) => {
+    return axiosClient.post('/auth/register', data);
+  },
+
+  // 2. Đăng nhập lấy Token
+  login: (data: { email: string; password: string }) => {
+    // Gateway (8080) -> Auth Service (8081)
+    return axiosClient.post('/auth/login', data);
+  },
+
+  // 3. Xin cấp lại Token mới (khi Access Token hết hạn)
+  refreshToken: (refreshToken: string) => {
+    return axiosClient.post('/auth/refresh', { refreshToken });
+  },
+
+  // 4. Đăng xuất (Vô hiệu hóa token)
+  logout: () => {
+    return axiosClient.post('/auth/logout');
+  },
+
+  // 5. Lấy thông tin cơ bản của User đang đăng nhập dựa vào Token
+  getMe: () => {
+    return axiosClient.get('/auth/me');
+  }
+};

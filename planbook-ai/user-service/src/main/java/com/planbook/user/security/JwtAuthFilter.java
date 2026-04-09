@@ -21,13 +21,13 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         // Đọc header "Authorization: Bearer <token>"
         String authHeader = request.getHeader("Authorization");
@@ -42,20 +42,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             // Cắt bỏ "Bearer " lấy token thật
             String jwt = authHeader.substring(7);
 
+            if (tokenBlacklistService.isTokenBlacklisted(jwt)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+                response.getWriter().write("{\"error\": \"Token đã bị thu hồi\"}");
+                return; // Dừng lại, không cho đi tiếp!
+            }
+
             if (jwtUtil.isTokenValid(jwt)) {
                 Long userId = jwtUtil.extractUserId(jwt);
                 String role = jwtUtil.extractRole(jwt);
 
+                if (tokenBlacklistService.isUserBlacklisted(userId)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("{\"error\": \"Tài khoản đã bị khóa\"}");
+                    return;
+                }
                 // Lưu userId vào request → Controller đọc bằng @RequestAttribute
                 request.setAttribute("userId", userId);
 
                 // Báo cho Spring Security biết: "user này đã xác thực, role là gì"
-                UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userId,
                         null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                    );
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role)));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
@@ -65,4 +74,5 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-// Chức năng: "Bảo vệ cổng" – chặn TỪNG request, kiểm tra token trước khi cho vào Controller.
+// Chức năng: "Bảo vệ cổng" – chặn TỪNG request, kiểm tra token trước khi cho
+// vào Controller.

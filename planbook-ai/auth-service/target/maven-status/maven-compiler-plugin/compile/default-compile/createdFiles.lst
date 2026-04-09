@@ -5,6 +5,7 @@ com\planbook\auth\entity\User.class
 com\planbook\auth\entity\RefreshToken$RefreshTokenBuilder.class
 com\planbook\auth\dto\AuthResponse.class
 com\planbook\auth\dto\AuthResponse$AuthResponseBuilder.class
+com\planbook\auth\dto\ChangePasswordRequest.class
 com\planbook\auth\security\JwtAuthFilter.class
 com\planbook\auth\AuthServiceApplication.class
 com\planbook\auth\dto\RegisterRequest.class

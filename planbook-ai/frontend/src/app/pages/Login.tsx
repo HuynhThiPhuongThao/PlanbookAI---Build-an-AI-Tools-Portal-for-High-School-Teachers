@@ -14,10 +14,42 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+import { authApi } from '../api/authApi';
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login - redirect based on selected role
-    navigate(`/${role}`);
+    setIsLoading(true);
+    setErrorMsg('');
+
+    try {
+      // 1. Gọi API Gateway (cổng 8080) -> Gateway sẽ route xuống auth-service (8081)
+      // Dùng authApi cực kỳ gọn nhẹ!
+      const response = await authApi.login({
+        email: email,
+        password: password,
+      });
+
+      // 2. Nhận token từ BE và lưu vào LocalStorage
+      const token = (response as any).token || (response as any).accessToken;
+      if (token) {
+        localStorage.setItem('access_token', token);
+        
+        // 3. Đá sang trang Dashboard tương ứng
+        // (Sau này BE trả về role chuẩn thì lấy role của BE, giờ xài tạm dropdown)
+        navigate(`/${role}`);
+      } else {
+        setErrorMsg('Đăng nhập thành công nhưng không tìm thấy token!');
+      }
+
+    } catch (error: any) {
+      console.error('Lỗi đăng nhập:', error);
+      setErrorMsg(error.response?.data?.message || 'Sai email hoặc mật khẩu!');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -96,9 +128,20 @@ export default function Login() {
                   </a>
                 </div>
 
-                <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  Sign In
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
+                >
+                  {isLoading ? 'Đang kiểm tra...' : 'Sign In'}
                 </Button>
+
+                {/* Hiển thị lỗi nếu có */}
+                {errorMsg && (
+                  <div className="text-sm font-medium text-red-500 text-center mt-2">
+                    {errorMsg}
+                  </div>
+                )}
               </form>
 
               <div className="mt-6 text-center text-sm text-gray-600">

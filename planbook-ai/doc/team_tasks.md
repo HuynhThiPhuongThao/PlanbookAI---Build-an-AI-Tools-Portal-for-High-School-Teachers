@@ -33,11 +33,13 @@
 | GET | `/api/lesson-plans` | TEACHER | Liệt kê các giáo án do *chính Teacher đó* tạo. |
 | POST | `/api/lesson-plans` | TEACHER | Tạo giáo án mới. Lưu DB trạng thái "Draft" hoặc "Done". |
 | PUT | `/api/lesson-plans/{id}`| TEACHER | Sửa giáo án (chỉ người tạo mới được sửa). |
+| GET/POST/PUT/DELETE | `/api/lesson-templates` | ADMIN | **[THÊM MỚI]** Quản lý Khung giáo án chuẩn (Curriculum Framework) để làm mẫu gốc hệ thống. |
 
 ### Frontend
 - [ ] Màn hình `/teacher/lesson-plans`: Bảng danh sách giáo án của Giáo viên.
 - [ ] Màn hình `/teacher/lesson-plans/create`: Form tạo giáo án (Có thể có nút "Gọi AI gợi ý").
 - [ ] Màn hình `/teacher/lesson-plans/{id}`: Xem chi tiết và edit giáo án.
+- [ ] Màn hình `/admin/curriculum`: **[THÊM MỚI]** Giao diện cho Admin thiết kế khung giáo án mẫu cho toàn trường.
 
 ---
 
@@ -84,15 +86,17 @@
 
 **Mục tiêu**: Tập trung toàn bộ logic tích hợp LLM (Gemini/ChatGPT) và Xử lý Ảnh (OCR), không dính líu DB nghiệp vụ.
 
-### Backend (Stateless - Không cần DB riêng)
-| Method | Endpoint | Tiêu thụ bởi Service nào? | Chức năng chi tiết |
-|--------|----------|---------------------------|--------------------|
+### Backend (Cần gắn thêm DB nhỏ lưu template Prompt)
+| Method | Endpoint | Tiêu thụ bởi Service nào? / Yêu cầu | Chức năng chi tiết |
+|--------|----------|-----------------------------------------|--------------------|
 | POST | `/api/ai/generate-exercise` | `question-bank-service` | Nhận prompt -> Trả về JSON chứa mảng câu hỏi trắc nghiệm. |
 | POST | `/api/ai/generate-lesson-plan`| `curriculum-service` | Nhận chủ đề -> Trả về JSON dàn ý giáo án. |
 | POST | `/api/ai/ocr-grade` | `exam-service` | Nhận MultipartFile (Ảnh) + Đáp án -> Gọi AI Vision đọc ảnh, so sánh đáp án -> Trả về JSON: ID câu sai, Tổng điểm. |
+| GET/POST/PUT | `/api/ai/prompts` | STAFF, ADMIN | **[THÊM MỚI]** CRUD các câu lệnh Prompt mẫu cho AI thay vì code cứng, để có thể cấu hình động. |
 
 ### Frontend
-- Thằng này chỉ code thuần thuật toán Model AI và API BE, không cần làm màn hình FE riêng. Sẽ hỗ trợ Người 2 và Người 4 ráp API AI vào FE nếu khó.
+- [ ] Màn hình `/staff/prompts`: **[THÊM MỚI]** Trang cho Staff vào chỉnh sửa, quản lý các mẫu câu lệnh (Prompting Templates) gọi AI.
+- Hỗ trợ ráp API AI vào FE nếu khó.
 
 ---
 
@@ -107,6 +111,7 @@
 | POST | `/api/packages` | MANAGER | Tạo mới hoặc Sửa giá bán Gói cước. |
 | POST | `/api/subscriptions` | TEACHER | Bấm mua gói -> Sinh ra đơn hàng/Subscription. |
 | GET | `/api/internal/users/create`| ADMIN | (Đi qua API Gateway) - API nội bộ để Admin cấp account cho MANAGER / STAFF. |
+| GET | `/api/revenue/stats` | ADMIN, MANAGER | **[THÊM MỚI]** Thống kê và báo cáo doanh thu tài chính từ việc bán các gói (Revenue Tracking). |
 
 ### Backend 2: `api-gateway`
 - Cấu hình Route đẩy request tới các port 8081->8087.
@@ -116,6 +121,7 @@
 - [ ] Màn hình `/admin/users`: Giao diện siêu quyền lực của ADMIN để Mời (Invite)/Tạo tài khoản giao quyền `MANAGER` hoặc `STAFF`.
 - [ ] Màn hình `/manager/packages`: Trang cho Manager sửa giá, cấu hình các Gói cước bán lấy tiền.
 - [ ] Màn hình `/teacher/billing`: Nơi Teacher xem mình đang xài Gói nào, sắp hết hạn chưa.
+- [ ] Màn hình `/admin/revenue`: **[THÊM MỚI]** Bảng điều khiển xem Dashboard/Biểu đồ doanh thu dành cho Admin.
 
 ---
 
