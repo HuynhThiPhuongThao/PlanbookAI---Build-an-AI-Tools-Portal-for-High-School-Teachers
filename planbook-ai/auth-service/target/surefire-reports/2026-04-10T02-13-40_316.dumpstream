@@ -1,4 +1,4 @@
-# Created at 2026-04-10T00:01:39.725
+# Created at 2026-04-10T02:13:40.498
 Boot Manifest-JAR contains absolute paths in classpath 'D:\XDOPP\planbook-ai\auth-service\target\test-classes'
 Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
 'other' has different root
