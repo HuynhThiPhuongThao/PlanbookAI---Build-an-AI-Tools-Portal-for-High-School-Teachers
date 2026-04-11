@@ -23,7 +23,9 @@ public class UserProfile {
     @Column(nullable = false)
     @Builder.Default
     private Role role = Role.TEACHER;
-    @Column(name = "avatar_url")
+    // MEDIUMTEXT = chứa được tối đa 16MB → đủ để lưu ảnh Base64 (~50-200KB)
+    // VARCHAR(255) cũ chỉ chứa được 255 ký tự → không thể lưu Base64
+    @Column(name = "avatar_url", columnDefinition = "MEDIUMTEXT")
     private String avatarUrl;
     @Column(name = "phone_number")
     private String phoneNumber;

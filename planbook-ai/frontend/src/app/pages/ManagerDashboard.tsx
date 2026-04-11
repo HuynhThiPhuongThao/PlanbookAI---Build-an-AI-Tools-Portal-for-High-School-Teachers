@@ -1,4 +1,4 @@
-import DashboardLayout from '../components/DashboardLayout';
+﻿import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -12,7 +12,29 @@ import {
   FileCheck,
 } from 'lucide-react';
 
+import React from 'react';
+
+function getNameFromToken(): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.fullName || '';
+  } catch { return ''; }
+}
+
+function useRealUserName() {
+  const [name, setName] = React.useState(getNameFromToken());
+  React.useEffect(() => {
+    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
+    window.addEventListener('profileUpdated', h);
+    return () => window.removeEventListener('profileUpdated', h);
+  }, []);
+  return name;
+}
+
 export default function ManagerDashboard() {
+  const realName = useRealUserName();
   const managerStats = [
     { label: 'Active Packages', value: '8', icon: Package, change: '2 pending approval' },
     { label: 'Total Orders', value: '156', icon: ShoppingCart, change: '+12 this week' },
@@ -41,7 +63,7 @@ export default function ManagerDashboard() {
   ];
 
   return (
-    <DashboardLayout role="manager" userName="Manager Phạm Đức">
+    <DashboardLayout role="manager" userName={realName}>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -180,3 +202,5 @@ export default function ManagerDashboard() {
     </DashboardLayout>
   );
 }
+
+

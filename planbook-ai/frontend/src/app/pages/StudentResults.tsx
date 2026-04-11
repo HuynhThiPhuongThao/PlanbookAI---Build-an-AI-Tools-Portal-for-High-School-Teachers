@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -15,7 +15,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Download, Eye } from 'lucide-react';
 import { mockStudentResults } from '../mockData';
 
+import React from 'react';
+
+function getNameFromToken(): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.fullName || '';
+  } catch { return ''; }
+}
+
+function useRealUserName() {
+  const [name, setName] = React.useState(getNameFromToken());
+  React.useEffect(() => {
+    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
+    window.addEventListener('profileUpdated', h);
+    return () => window.removeEventListener('profileUpdated', h);
+  }, []);
+  return name;
+}
+
 export default function StudentResults() {
+  const realName = useRealUserName();
   const [selectedExam, setSelectedExam] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
@@ -45,7 +67,7 @@ export default function StudentResults() {
   };
 
   return (
-    <DashboardLayout role="teacher" userName="Dr. Nguyễn Minh Hà">
+    <DashboardLayout role="teacher" userName={realName}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -350,3 +372,5 @@ export default function StudentResults() {
     </DashboardLayout>
   );
 }
+
+

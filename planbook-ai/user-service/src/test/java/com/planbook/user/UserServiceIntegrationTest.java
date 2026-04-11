@@ -47,8 +47,8 @@ public class UserServiceIntegrationTest {
         .build();
     userProfileRepository.save(testUser);
 
-    // When: lấy profile
-    UserResponse response = userService.getProfile(1L);
+    // When
+    UserResponse response = userService.getProfile(1L, "teacher1@gmail.com", "khoivan", "TEACHER");
 
     // Then: verify
     assertThat(response).isNotNull();
@@ -79,7 +79,7 @@ public class UserServiceIntegrationTest {
     request.setPhoneNumber("9876543210");
     request.setSchoolName("New School");
 
-    UserResponse response = userService.updateProfile(2L, request);
+    UserResponse response = userService.updateProfile(2L, request, "update-test@test.com", "Old Name", "TEACHER");
 
     // Then: verify updated
     assertThat(response.getFullName()).isEqualTo("New Name");
@@ -167,9 +167,9 @@ public class UserServiceIntegrationTest {
    */
   @Test
   void testGetProfileNotFound() {
-    // When & Then: should throw exception
-    assertThatThrownBy(() -> userService.getProfile(999L))
+    // Act & Assert
+    assertThatThrownBy(() -> userService.getProfile(999L, null, null, null))
         .isInstanceOf(RuntimeException.class)
-        .hasMessageContaining("User not found");
+        .hasMessageContaining("User profile not initialized");
   }
 }

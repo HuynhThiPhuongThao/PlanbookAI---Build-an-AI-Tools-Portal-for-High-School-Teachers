@@ -1,0 +1,76 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # =================== AUTH SERVICE (port 8081) ===================
+        - id: auth-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Origin
+                value: http://localhost:5173
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Credentials
+                value: "true"
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Methods
+                value: GET,POST,PUT,DELETE,OPTIONS,PATCH
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Headers
+                value: Content-Type,Authorization
+
+        # =================== USER SERVICE (port 8082) ===================
+        - id: user-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Origin
+                value: http://localhost:5173
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Credentials
+                value: "true"
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Methods
+                value: GET,POST,PUT,DELETE,OPTIONS,PATCH
+            - name: AddResponseHeader
+              args:
+                name: Access-Control-Allow-Headers
+                value: Content-Type,Authorization
+
+      default-filters:
+        # Deduplicate CORS headers
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# Eureka disabled
+eureka:
+  client:
+    enabled: false
+
+# JWT configuration
+jwt:
+  secret: your-secret-key-here-change-in-production

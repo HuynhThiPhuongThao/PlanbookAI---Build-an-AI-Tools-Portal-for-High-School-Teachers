@@ -71,6 +71,18 @@ public class AuthController {
     }
 
     /**
+     * GET /api/auth/check-email?email=xxx
+     * Real-time email validation - kiểm tra email đã tồn tại chưa
+     * Return: 200 { "exists": true } hoặc { "exists": false }
+     */
+    @GetMapping("/check-email")
+    @Operation(summary = "Kiểm tra email tồn tại", description = "Real-time validation cho registration form")
+    public ResponseEntity<Map<String, Boolean>> checkEmailExists(@RequestParam String email) {
+        boolean exists = authService.checkEmailExists(email);
+        return ResponseEntity.ok(Map.of("exists", exists));
+    }
+
+    /**
      * POST /api/auth/logout
      * Xóa refresh token – yêu cầu JWT trong header
      */
@@ -92,7 +104,25 @@ public class AuthController {
                 "userId", user.getId(),
                 "email", user.getEmail(),
                 "fullName", user.getFullName(),
-                "role", user.getRole().name()
-        ));
+                "role", user.getRole().name()));
+    }
+
+    /**
+     * POST /api/auth/change-password
+     * Đổi mật khẩu — yêu cầu JWT trong header
+     * Body: { "currentPassword": "...", "newPassword": "..." }
+     */
+    @PostMapping("/change-password")
+    @Operation(summary = "Đổi mật khẩu")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @AuthenticationPrincipal User user,
+            @RequestBody Map<String, String> body) {
+        String currentPassword = body.get("currentPassword");
+        String newPassword = body.get("newPassword");
+        if (currentPassword == null || newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Dữ liệu không hợp lệ"));
+        }
+        authService.changePassword(user.getId(), currentPassword, newPassword);
+        return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
     }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -7,7 +7,29 @@ import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { ArrowLeft, Upload, ScanLine, CheckCircle, AlertCircle, Loader2, Download, Eye } from 'lucide-react';
 
+import React from 'react';
+
+function getNameFromToken(): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.fullName || '';
+  } catch { return ''; }
+}
+
+function useRealUserName() {
+  const [name, setName] = React.useState(getNameFromToken());
+  React.useEffect(() => {
+    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
+    window.addEventListener('profileUpdated', h);
+    return () => window.removeEventListener('profileUpdated', h);
+  }, []);
+  return name;
+}
+
 export default function OCRGrading() {
+  const realName = useRealUserName();
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [gradingResults, setGradingResults] = useState<any>(null);
@@ -106,7 +128,7 @@ export default function OCRGrading() {
   };
 
   return (
-    <DashboardLayout role="teacher" userName="Dr. Nguyễn Minh Hà">
+    <DashboardLayout role="teacher" userName={realName}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -427,3 +449,5 @@ export default function OCRGrading() {
     </DashboardLayout>
   );
 }
+
+

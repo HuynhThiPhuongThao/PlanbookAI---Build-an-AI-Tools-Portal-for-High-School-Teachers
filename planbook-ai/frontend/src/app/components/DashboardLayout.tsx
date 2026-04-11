@@ -1,7 +1,9 @@
+import React from 'react';
 import { Link, useNavigate } from 'react-router';
 import { UserRole } from '../types';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import axiosClient from '../api/axiosClient';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,15 +20,63 @@ interface DashboardLayoutProps {
   userName: string;
 }
 
-export default function DashboardLayout({ children, role, userName }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, role, userName: defaultUserName }: DashboardLayoutProps) {
   const navigate = useNavigate();
+  const [realName, setRealName] = React.useState(defaultUserName);
+  const [realRole, setRealRole] = React.useState(role);
+  const [realAvatar, setRealAvatar] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    // 1. Phân tích token để lấy tên mặc định lúc mới đăng nhập
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        // Tách phần payload của JWT (nằm giữa 2 dấu chấm)
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const decoded = JSON.parse(jsonPayload);
+        if (decoded.fullName) setRealName(decoded.fullName);
+        if (decoded.role) setRealRole(decoded.role.toLowerCase() as any);
+      }
+    } catch (e) {
+      console.warn("Could not parse JWT token for user info", e);
+    }
+    
+    // 2. Tự động kéo avatar từ DB ngay khi header mount
+    //    → tránh trường hợp user đã đổi ảnh từ session trước mà header vẫn hiện chữ initials
+    const fetchAvatar = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        // axiosClient interceptor đã unwrap response.data rồi → res chính là data object luôn
+        const res: any = await axiosClient.get('/users/me');
+        if (res?.avatarUrl) setRealAvatar(res.avatarUrl);
+        if (res?.fullName) setRealName(res.fullName);
+      } catch (_) { /* silent fail — không ảnh hưởng UI */ }
+    };
+    fetchAvatar();
+
+    // 3. Lắng nghe tín hiệu cập nhật realtime từ trang UserProfile (khi user vừa bấm Lưu)
+    const handleProfileUpdate = (e: any) => {
+      if (e.detail?.fullName) setRealName(e.detail.fullName);
+      if (e.detail?.avatarUrl !== undefined) setRealAvatar(e.detail.avatarUrl);
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+  }, []);
 
   const handleLogout = () => {
     navigate('/');
   };
 
-  const getRoleDisplay = (role: UserRole) => {
-    return role.charAt(0).toUpperCase() + role.slice(1);
+  const getRoleDisplay = (roleOutput: string) => {
+    if (!roleOutput) return '';
+    return roleOutput.charAt(0).toUpperCase() + roleOutput.slice(1);
   };
 
   return (
@@ -36,13 +86,13 @@ export default function DashboardLayout({ children, role, userName }: DashboardL
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo and Title */}
-            <Link to={`/${role}`} className="flex items-center gap-3">
+            <Link to={`/${realRole}`} className="flex items-center gap-3">
               <div className="bg-gradient-to-br from-blue-600 to-purple-600 p-2 rounded-lg">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h1 className="font-bold text-gray-900">PlanbookAI</h1>
-                <p className="text-xs text-gray-500">{getRoleDisplay(role)} Portal</p>
+                <p className="text-xs text-gray-500">{getRoleDisplay(realRole)} Portal</p>
               </div>
             </Link>
 
@@ -52,20 +102,26 @@ export default function DashboardLayout({ children, role, userName }: DashboardL
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarFallback className="bg-blue-100 text-blue-700">
-                        {userName.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
+                      {realAvatar ? (
+                         <div className="w-full h-full rounded-full overflow-hidden bg-gray-100">
+                           <img src={realAvatar} alt={realName} className="w-full h-full object-cover" />
+                         </div>
+                      ) : (
+                         <AvatarFallback className="bg-blue-100 text-blue-700">
+                           {realName && realName.trim() !== '' ? realName.split(' ').map(n => n[0]).join('') : 'U'}
+                         </AvatarFallback>
+                      )}
                     </Avatar>
                     <div className="text-left hidden sm:block">
-                      <p className="text-sm font-medium">{userName}</p>
-                      <p className="text-xs text-gray-500">{getRoleDisplay(role)}</p>
+                      <p className="text-sm font-medium">{realName}</p>
+                      <p className="text-xs text-gray-500">{getRoleDisplay(realRole)}</p>
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>

@@ -22,8 +22,11 @@ public class UserController {
     // @RequestAttribute("userId") → lấy userId đã được JwtAuthFilter set vào request
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getMyProfile(
-            @RequestAttribute("userId") Long userId) {
-        return ResponseEntity.ok(userService.getProfile(userId));
+            @RequestAttribute("userId") Long userId,
+            @RequestAttribute("email") String email,
+            @RequestAttribute("fullName") String fullName,
+            @RequestAttribute("role") String role) {
+        return ResponseEntity.ok(userService.getProfile(userId, email, fullName, role));
     }
 
     // PUT /api/users/me → user tự cập nhật profile
@@ -31,12 +34,16 @@ public class UserController {
     @PutMapping("/me")
     public ResponseEntity<UserResponse> updateMyProfile(
             @RequestAttribute("userId") Long userId,
+            @RequestAttribute("email") String email,
+            @RequestAttribute("fullName") String fullName,
+            @RequestAttribute("role") String role,
             @RequestBody UpdateProfileRequest request) {
-        return ResponseEntity.ok(userService.updateProfile(userId, request));
+        return ResponseEntity.ok(userService.updateProfile(userId, request, email, fullName, role));
     }
 
     // GET /api/users → Admin lấy danh sách tất cả user
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllProfiles());
     }
@@ -44,8 +51,10 @@ public class UserController {
     // GET /api/users/{userId} → Admin xem profile của bất kỳ user nào
     // @PathVariable → lấy userId từ URL path
     @GetMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long userId) {
-        return ResponseEntity.ok(userService.getProfile(userId));
+        // Gọi bằng tham số mặc định null vì Admin không có email/fullname của user lúc gọi API này
+        return ResponseEntity.ok(userService.getProfile(userId, null, null, null));
     }
 
     // PUT /api/users/{userId}/deactivate → Admin khóa tài khoản

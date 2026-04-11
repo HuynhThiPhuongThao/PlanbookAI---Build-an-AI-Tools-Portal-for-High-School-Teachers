@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -19,7 +19,29 @@ import { mockQuestions } from '../mockData';
 import { Question } from '../types';
 import { ArrowLeft, Plus, Search, Filter, Edit, Trash2, Eye } from 'lucide-react';
 
+import React from 'react';
+
+function getNameFromToken(): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.fullName || '';
+  } catch { return ''; }
+}
+
+function useRealUserName() {
+  const [name, setName] = React.useState(getNameFromToken());
+  React.useEffect(() => {
+    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
+    window.addEventListener('profileUpdated', h);
+    return () => window.removeEventListener('profileUpdated', h);
+  }, []);
+  return name;
+}
+
 export default function QuestionBank() {
+  const realName = useRealUserName();
   const [questions, setQuestions] = useState<Question[]>(mockQuestions);
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
@@ -44,7 +66,7 @@ export default function QuestionBank() {
   };
 
   return (
-    <DashboardLayout role="teacher" userName="Dr. Nguyễn Minh Hà">
+    <DashboardLayout role="teacher" userName={realName}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -350,3 +372,5 @@ export default function QuestionBank() {
     </DashboardLayout>
   );
 }
+
+

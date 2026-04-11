@@ -13,9 +13,9 @@
 --   staff1@gmail.com    → STAFF
 -- =====================================================================
 
--- BCrypt hash của "Planbook@2026" (strength 10)
--- Nếu muốn đổi pass, dùng: https://bcrypt-generator.com/
-SET @default_pass = '$2a$10$8K1p/a0dclxE6oMRiMbmTuJ0KL5c8X5VFkn8vEPdpJMWixqnCIxq2';
+-- BCrypt hash của "admin@123" (strength 10)
+-- Dùng chung cho TẤT CẢ TÀI KHOẢN test dưới đây để dễ nhớ
+SET @default_pass = '$2a$10$BzGYuj2C.L3eSs7RXA9fJ..vYrntVoHXxgDjRXwdCghwUJDn2qxWS';
 
 -- =====================================================================
 -- 1. db_auth.users (Tài khoản đăng nhập)

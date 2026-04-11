@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import React from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -15,7 +16,23 @@ import {
   Users,
 } from 'lucide-react';
 
+function getNameFromToken(): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return 'Teacher';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.fullName || 'Teacher';
+  } catch { return 'Teacher'; }
+}
+
 export default function TeacherDashboard() {
+  const [userName, setUserName] = React.useState(getNameFromToken());
+
+  React.useEffect(() => {
+    const handler = (e: any) => { if (e.detail?.fullName) setUserName(e.detail.fullName); };
+    window.addEventListener('profileUpdated', handler);
+    return () => window.removeEventListener('profileUpdated', handler);
+  }, []);
   const quickStats = [
     { label: 'Questions Created', value: '156', icon: Database, change: '+12 this week' },
     { label: 'Exams Generated', value: '23', icon: FileText, change: '+3 this week' },
@@ -76,12 +93,12 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <DashboardLayout role="teacher" userName="Dr. Nguyễn Minh Hà">
+    <DashboardLayout role="teacher" userName={userName}>
       <div className="space-y-8">
         {/* Welcome Section */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, Dr. Hà! 👋
+            Chào mừng trở lại, {userName}! 👋
           </h1>
           <p className="text-gray-600">
             Here's what's happening with your classes today

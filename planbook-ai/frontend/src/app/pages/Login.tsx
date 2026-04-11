@@ -4,17 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { GraduationCap, Sparkles } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { authApi } from '../api/authApi';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [role, setRole] = useState<string>('teacher');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-import { authApi } from '../api/authApi';
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -25,23 +22,28 @@ import { authApi } from '../api/authApi';
     setErrorMsg('');
 
     try {
-      // 1. Gọi API Gateway (cổng 8080) -> Gateway sẽ route xuống auth-service (8081)
-      // Dùng authApi cực kỳ gọn nhẹ!
-      const response = await authApi.login({
-        email: email,
-        password: password,
-      });
+      const response = await authApi.login({ email, password });
 
-      // 2. Nhận token từ BE và lưu vào LocalStorage
       const token = (response as any).token || (response as any).accessToken;
-      if (token) {
-        localStorage.setItem('access_token', token);
-        
-        // 3. Đá sang trang Dashboard tương ứng
-        // (Sau này BE trả về role chuẩn thì lấy role của BE, giờ xài tạm dropdown)
-        navigate(`/${role}`);
-      } else {
+      if (!token) {
         setErrorMsg('Đăng nhập thành công nhưng không tìm thấy token!');
+        return;
+      }
+
+      localStorage.setItem('access_token', token);
+
+      // Decode JWT để lấy role THẬT từ backend, không dựa vào dropdown nữa
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(decodeURIComponent(
+          atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+        ));
+        const role = (payload.role || 'teacher').toLowerCase();
+        navigate(`/${role}`);
+      } catch {
+        // Nếu decode thất bại thì về teacher làm mặc định
+        navigate('/teacher');
       }
 
     } catch (error: any) {
@@ -78,21 +80,7 @@ import { authApi } from '../api/authApi';
               <CardDescription>Sign in to access your dashboard</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="role">Login as</Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger id="role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -102,6 +90,7 @@ import { authApi } from '../api/authApi';
                     placeholder="your.email@school.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -128,8 +117,8 @@ import { authApi } from '../api/authApi';
                   </a>
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isLoading}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
                 >
@@ -146,6 +135,17 @@ import { authApi } from '../api/authApi';
 
               <div className="mt-6 text-center text-sm text-gray-600">
                 Demo Mode: No credentials required
+              </div>
+
+              <div className="mt-4 text-center text-sm">
+                Chưa có tài khoản?{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate('/register')}
+                  className="text-blue-600 hover:underline font-semibold"
+                >
+                  Đăng ký ngay
+                </button>
               </div>
             </CardContent>
           </Card>

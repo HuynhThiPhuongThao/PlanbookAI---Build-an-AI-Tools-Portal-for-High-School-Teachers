@@ -39,6 +39,8 @@ public class SecurityConfig {
                                 "/api-docs/**", // custom path từ application.yml
                                 "/webjars/**")
                         .permitAll()
+                        // Cho phép CORS Preflight Requests đi qua mà không cần token
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // Còn lại đều phải có token hợp lệ
                         .anyRequest().authenticated())
 

@@ -10,10 +10,10 @@ FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
 
 # Source thật nằm trong thư mục con api-gateway/
-COPY api-gateway/pom.xml .
+COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-COPY api-gateway/src ./src
+COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # ===== STAGE 2: RUNTIME =====

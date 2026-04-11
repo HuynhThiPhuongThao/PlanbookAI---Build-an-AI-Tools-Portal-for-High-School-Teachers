@@ -29,11 +29,26 @@ public class UserService {
     private final TokenBlacklistService tokenBlacklistService;
 
     // lấy profile
-    public UserResponse getProfile(Long userId) {
-        // Tìm trong DB, nếu không có => lỗi
-        UserProfile profile = userProfileRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found" + userId));
+    public UserResponse getProfile(Long userId, String email, String fullName, String role) {
+        UserProfile profile = getOrCreateProfileEntity(userId, email, fullName, role);
         return toResponse(profile); // // convert Entity → DTO rồi trả về
+    }
+
+    private UserProfile getOrCreateProfileEntity(Long userId, String email, String fullName, String role) {
+        return userProfileRepository.findById(userId)
+                .orElseGet(() -> {
+                    if (email == null) {
+                        throw new RuntimeException("User profile not initialized and cannot be lazy-created via Admin API. User must login first.");
+                    }
+                    log.info("Lazy creating profile for new user: {}", email);
+                    UserProfile newProfile = new UserProfile();
+                    newProfile.setUserId(userId);
+                    newProfile.setEmail(email);
+                    newProfile.setFullName(fullName);
+                    newProfile.setRole(com.planbook.user.entity.Role.valueOf(role));
+                    newProfile.setActive(true);
+                    return userProfileRepository.save(newProfile);
+                });
     }
 
     // === LẤY TẤT CẢ ===
@@ -46,9 +61,8 @@ public class UserService {
 
     // === CẬP NHẬT PROFILE ===
     @Transactional // nếu có lỗi giữa chừng → rollback, không lưu nửa vời
-    public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
-        UserProfile profile = userProfileRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found" + userId));
+    public UserResponse updateProfile(Long userId, UpdateProfileRequest request, String email, String fullName, String role) {
+        UserProfile profile = getOrCreateProfileEntity(userId, email, fullName, role);
         // Chỉ update field nào client có gửi lên (không null)
         // Nếu client không gửi fullName thì giữ nguyên giá trị cũ
         if (request.getFullName() != null)

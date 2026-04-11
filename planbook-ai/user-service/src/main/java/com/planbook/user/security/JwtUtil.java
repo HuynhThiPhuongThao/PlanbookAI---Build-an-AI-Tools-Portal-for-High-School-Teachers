@@ -42,6 +42,11 @@ public class JwtUtil {
         return extractAllClaims(token).get("role", String.class);
     }
 
+    // Lấy fullName từ token
+    public String extractFullName(String token) {
+        return extractAllClaims(token).get("fullName", String.class);
+    }
+
     // Kiểm tra token có hợp lệ không (chữ ký đúng + chưa hết hạn)
     public boolean isTokenValid(String token) {
         try {

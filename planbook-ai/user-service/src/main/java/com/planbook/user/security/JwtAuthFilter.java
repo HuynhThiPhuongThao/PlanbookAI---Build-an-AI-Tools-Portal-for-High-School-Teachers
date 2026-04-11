@@ -51,14 +51,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (jwtUtil.isTokenValid(jwt)) {
                 Long userId = jwtUtil.extractUserId(jwt);
                 String role = jwtUtil.extractRole(jwt);
+                String email = jwtUtil.extractEmail(jwt);
+                String fullName = jwtUtil.extractFullName(jwt);
 
                 if (tokenBlacklistService.isUserBlacklisted(userId)) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.getWriter().write("{\"error\": \"Tài khoản đã bị khóa\"}");
                     return;
                 }
-                // Lưu userId vào request → Controller đọc bằng @RequestAttribute
+                // Lưu metadata vào request → Controller/Service dùng để Lazy Create Profile
                 request.setAttribute("userId", userId);
+                request.setAttribute("role", role);
+                request.setAttribute("email", email);
+                request.setAttribute("fullName", fullName);
 
                 // Báo cho Spring Security biết: "user này đã xác thực, role là gì"
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

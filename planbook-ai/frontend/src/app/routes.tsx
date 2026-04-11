@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 import Root from "./pages/Root";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import QuestionBank from "./pages/QuestionBank";
 import ExerciseCreator from "./pages/ExerciseCreator";
@@ -12,6 +13,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
 import NotFound from "./pages/NotFound";
+import AdminUsers from "./pages/AdminUsers";
+import UserProfile from "./pages/UserProfile";
 
 export const router = createBrowserRouter([
   {
@@ -19,8 +22,10 @@ export const router = createBrowserRouter([
     Component: Root,
     children: [
       { index: true, Component: Login },
+      { path: "register", Component: Register },
       { path: "teacher", Component: TeacherDashboard },
       { path: "admin", Component: AdminDashboard },
+      { path: "admin/users", Component: AdminUsers },
       { path: "manager", Component: ManagerDashboard },
       { path: "staff", Component: StaffDashboard },
       { path: "question-bank", Component: QuestionBank },
@@ -29,6 +34,7 @@ export const router = createBrowserRouter([
       { path: "ocr-grading", Component: OCRGrading },
       { path: "lesson-planner", Component: LessonPlanner },
       { path: "student-results", Component: StudentResults },
+      { path: "profile", Component: UserProfile },
       { path: "*", Component: NotFound },
     ],
   },
