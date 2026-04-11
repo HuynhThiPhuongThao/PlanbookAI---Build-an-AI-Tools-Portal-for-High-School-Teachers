@@ -26,5 +26,15 @@ export const authApi = {
   // 5. Lấy thông tin cơ bản của User đang đăng nhập dựa vào Token
   getMe: () => {
     return axiosClient.get('/auth/me');
+  },
+
+  // 6. Kiểm tra email đã đăng ký chưa (real-time validation)
+  checkEmailExists: (email: string) => {
+    return axiosClient.get(`/auth/check-email?email=${encodeURIComponent(email)}`);
+  },
+
+  // 7. Đổi mật khẩu (cần đăng nhập, gửi kèm mật khẩu cũ để xác thực)
+  changePassword: (data: { currentPassword: string; newPassword: string }) => {
+    return axiosClient.post('/auth/change-password', data);
   }
 };

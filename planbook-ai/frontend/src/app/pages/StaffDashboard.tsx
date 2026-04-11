@@ -1,4 +1,4 @@
-import DashboardLayout from '../components/DashboardLayout';
+﻿import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -12,7 +12,29 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import React from 'react';
+
+function getNameFromToken(): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.fullName || '';
+  } catch { return ''; }
+}
+
+function useRealUserName() {
+  const [name, setName] = React.useState(getNameFromToken());
+  React.useEffect(() => {
+    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
+    window.addEventListener('profileUpdated', h);
+    return () => window.removeEventListener('profileUpdated', h);
+  }, []);
+  return name;
+}
+
 export default function StaffDashboard() {
+  const realName = useRealUserName();
   const staffStats = [
     { label: 'Lesson Plans Created', value: '34', icon: FileText, change: '+8 this week' },
     { label: 'Questions Added', value: '256', icon: Database, change: '+45 this week' },
@@ -60,7 +82,7 @@ export default function StaffDashboard() {
   ];
 
   return (
-    <DashboardLayout role="staff" userName="Staff Nguyễn Lan">
+    <DashboardLayout role="staff" userName={realName}>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -198,3 +220,5 @@ export default function StaffDashboard() {
     </DashboardLayout>
   );
 }
+
+

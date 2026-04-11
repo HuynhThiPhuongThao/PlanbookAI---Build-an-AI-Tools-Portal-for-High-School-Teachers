@@ -25,10 +25,10 @@ import java.util.UUID;
  * AuthService - Business logic cho authentication.
  *
  * Các method:
- *  - register(): tạo user mới (role TEACHER mặc định)
- *  - login():    authenticate + issue JWT pair (access + refresh)
- *  - refresh():  dùng refresh token để lấy access token mới
- *  - logout():   xóa refresh token khỏi DB
+ * - register(): tạo user mới (role TEACHER mặc định)
+ * - login(): authenticate + issue JWT pair (access + refresh)
+ * - refresh(): dùng refresh token để lấy access token mới
+ * - logout(): xóa refresh token khỏi DB
  */
 @Service
 @RequiredArgsConstructor
@@ -59,7 +59,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(Role.TEACHER)    // Mặc định tất cả user tự đăng ký là TEACHER
+                .role(Role.TEACHER) // Mặc định tất cả user tự đăng ký là TEACHER
                 .build();
 
         user = userRepository.save(user);
@@ -74,8 +74,7 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         // Spring Security authenticate: kiểm tra email + password, throw nếu sai
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
@@ -102,6 +101,12 @@ public class AuthService {
         refreshTokenRepository.delete(refreshToken);
 
         return generateAuthResponse(user);
+    }
+
+    // ===== CHECK EMAIL EXISTS (for real-time validation) =====
+
+    public boolean checkEmailExists(String email) {
+        return userRepository.existsByEmail(email);
     }
 
     // ===== LOGOUT =====
@@ -136,10 +141,27 @@ public class AuthService {
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .userId(userId)
-                .token(UUID.randomUUID().toString())   // Random UUID làm refresh token
+                .token(UUID.randomUUID().toString()) // Random UUID làm refresh token
                 .expiresAt(LocalDateTime.now().plusSeconds(refreshExpiration / 1000))
                 .build();
 
         return refreshTokenRepository.save(refreshToken).getToken();
+    }
+
+    // ===== ĐỔI MẬT KHẨU =====
+    @Transactional
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+
+        // Kiểm tra mật khẩu cũ có đúng không
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Mật khẩu hiện tại không đúng");
+        }
+
+        // Encode mật khẩu mới và lưu
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("User {} đã đổi mật khẩu thành công", userId);
     }
 }

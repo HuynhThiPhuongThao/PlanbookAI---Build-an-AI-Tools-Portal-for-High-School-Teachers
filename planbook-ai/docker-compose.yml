@@ -55,6 +55,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - JWT_SECRET=planbook-super-secret-key-change-in-production
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - USER_SERVICE_URL=http://user-service:8082
     depends_on:
       - auth-service
       - user-service

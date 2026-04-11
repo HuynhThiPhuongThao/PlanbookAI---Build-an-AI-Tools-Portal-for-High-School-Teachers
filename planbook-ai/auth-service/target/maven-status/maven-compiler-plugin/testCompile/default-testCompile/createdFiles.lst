@@ -1,2 +1,3 @@
 com\planbook\auth\AuthServiceIntegrationTest.class
 com\planbook\auth\AuthServiceTest.class
+com\planbook\auth\RegistrationIntegrationTest.class

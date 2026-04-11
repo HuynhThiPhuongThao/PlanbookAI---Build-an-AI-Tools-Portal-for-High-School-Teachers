@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -17,7 +17,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import { ArrowLeft, Sparkles, Download, Eye, Loader2 } from 'lucide-react';
 
+import React from 'react';
+
+function getNameFromToken(): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.fullName || '';
+  } catch { return ''; }
+}
+
+function useRealUserName() {
+  const [name, setName] = React.useState(getNameFromToken());
+  React.useEffect(() => {
+    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
+    window.addEventListener('profileUpdated', h);
+    return () => window.removeEventListener('profileUpdated', h);
+  }, []);
+  return name;
+}
+
 export default function ExerciseCreator() {
+  const realName = useRealUserName();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedExercise, setGeneratedExercise] = useState<any>(null);
   const [subject, setSubject] = useState('Chemistry');
@@ -77,7 +99,7 @@ export default function ExerciseCreator() {
   };
 
   return (
-    <DashboardLayout role="teacher" userName="Dr. Nguyễn Minh Hà">
+    <DashboardLayout role="teacher" userName={realName}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -319,3 +341,5 @@ export default function ExerciseCreator() {
     </DashboardLayout>
   );
 }
+
+

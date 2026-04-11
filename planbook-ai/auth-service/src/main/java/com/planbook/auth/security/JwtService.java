@@ -58,6 +58,9 @@ public class JwtService {
         Map<String, Object> extraClaims = new HashMap<>();
         extraClaims.put("role", role);       // "TEACHER", "ADMIN", v.v.
         extraClaims.put("userId", userId);   // để frontend biết đang login là ai
+        if (userDetails instanceof com.planbook.auth.entity.User) {
+            extraClaims.put("fullName", ((com.planbook.auth.entity.User) userDetails).getFullName());
+        }
 
         return buildToken(extraClaims, userDetails, jwtExpiration);
     }

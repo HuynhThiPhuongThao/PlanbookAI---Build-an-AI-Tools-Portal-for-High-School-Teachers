@@ -61,11 +61,12 @@ public class SecurityConfig {
     // → Vì nhiều endpoint public, dùng array để truyền vào requestMatchers()
     // → Dễ thêm bớt endpoint public sau này mà không động vào logic
     private static final String[] PUBLIC_ENDPOINTS = {
-            "/api/auth/login",      // đăng nhập → không cần token (hiển nhiên)
-            "/api/auth/register",   // đăng ký → chưa có token (người mới)
-            "/api/auth/refresh",    // refresh token → dùng refresh token thay vì JWT
-            "/actuator/**",         // health check endpoint (Docker dùng)
-            "/swagger-ui/**",       // giao diện test API (dev dùng)
+            "/api/auth/login", // đăng nhập → không cần token (hiển nhiên)
+            "/api/auth/register", // đăng ký → chưa có token (người mới)
+            "/api/auth/check-email", // check email tồn tại chưa → public để form check
+            "/api/auth/refresh", // refresh token → dùng refresh token thay vì JWT
+            "/actuator/**", // health check endpoint (Docker dùng)
+            "/swagger-ui/**", // giao diện test API (dev dùng)
             "/swagger-ui.html",
             "/api-docs/**",
             "/v3/api-docs/**"
@@ -78,7 +79,7 @@ public class SecurityConfig {
     // → @Bean là cách nói với Spring: "Tao tạo ra object này, mày quản lý đi"
     // → Ai cần object đó chỉ cần khai báo trong constructor, Spring tự inject
     // → Giống đặt hàng trước với kho: "Tao cần cái passwordEncoder,
-    //   kho (Spring) có sẵn rồi, lấy xuống dùng thôi"
+    // kho (Spring) có sẵn rồi, lấy xuống dùng thôi"
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -88,47 +89,41 @@ public class SecurityConfig {
         // → Builder pattern đọc dễ hơn khi có nhiều config liên quan nhau
 
         http
-            // BẮT BUỘC TẮT CSRF vì dùng REST API + JWT
-            // TẠI SAO TẮT CSRF?
-            // → CSRF bảo vệ cho web app dùng session/cookie
-            // → JWT không dùng cookie → không cần CSRF
-            // → Giống bảo vệ theo phòng thẻ từ thay vì khóa cửa thông thường
-            .csrf(AbstractHttpConfigurer::disable)
+                // BẮT BUỘC TẮT CSRF vì dùng REST API + JWT
+                .csrf(csrf -> csrf.disable())
 
-            // CORS – cho phép frontend domain nào gọi API
-            // TẠI SAO CẦN CORS?
-            // → Trình duyệt chặn JS của trang A gọi API của trang B (same-origin policy)
-            // → CORS = "tao (server) cho phép những domain này gọi tao"
-            // → Ví dụ: frontend chạy localhost:3000, backend :8081 → khác origin → cần CORS
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // CORS – cho phép frontend domain nào gọi API
+                // TẠI SAO CẦN CORS?
+                // → Trình duyệt chặn JS của trang A gọi API của trang B (same-origin policy)
+                // → CORS = "tao (server) cho phép những domain này gọi tao"
+                // → Ví dụ: frontend chạy localhost:3000, backend :8081 → khác origin → cần CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // Quy tắc endpoint nào cần auth
-            .authorizeHttpRequests(auth -> auth
-                // PUBLIC_ENDPOINTS → ai cũng vào được, không cần token
-                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                // Tất cả endpoint còn lại → BẮT BUỘC phải có JWT hợp lệ
-                .anyRequest().authenticated()
-            )
+                // Quy tắc endpoint nào cần auth
+                .authorizeHttpRequests(auth -> auth
+                        // PUBLIC_ENDPOINTS → ai cũng vào được, không cần token
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        // Tất cả endpoint còn lại → BẮT BUỘC phải có JWT hợp lệ
+                        .anyRequest().authenticated())
 
-            // STATELESS = Không tạo session trên server
-            // TẠI SAO STATELESS?
-            // → Microservice: nhiều instance server chạy song song
-            //   → nếu dùng session, user login instance 1, request 2 đến instance 2 → lạc session
-            // → JWT: mỗi request tự mang thông tin → không cần server nhớ trạng thái
-            // → Giống thẻ nhân viên: mày tự mang thẻ, đến cổng nào cũng vào được
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+                // STATELESS = Không tạo session trên server
+                // TẠI SAO STATELESS?
+                // → Microservice: nhiều instance server chạy song song
+                // → nếu dùng session, user login instance 1, request 2 đến instance 2 → lạc
+                // session
+                // → JWT: mỗi request tự mang thông tin → không cần server nhớ trạng thái
+                // → Giống thẻ nhân viên: mày tự mang thẻ, đến cổng nào cũng vào được
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // Kết nối authenticationProvider (cách xác thực)
-            .authenticationProvider(authenticationProvider())
+                // Kết nối authenticationProvider (cách xác thực)
+                .authenticationProvider(authenticationProvider())
 
-            // Thêm JwtAuthFilter VÀO TRƯỚC UsernamePasswordAuthenticationFilter
-            // TẠI SAO "BEFORE"?
-            // → Vì mày muốn JWT được check trước khi Spring Security làm bất cứ thứ gì
-            // → Filter chain hoạt động theo thứ tự, addFilterBefore = chèn vào trước
-            // → Giống: bảo vệ của mày (JwtFilter) đứng trước bảo vệ mặc định của Spring
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                // Thêm JwtAuthFilter VÀO TRƯỚC UsernamePasswordAuthenticationFilter
+                // TẠI SAO "BEFORE"?
+                // → Vì mày muốn JWT được check trước khi Spring Security làm bất cứ thứ gì
+                // → Filter chain hoạt động theo thứ tự, addFilterBefore = chèn vào trước
+                // → Giống: bảo vệ của mày (JwtFilter) đứng trước bảo vệ mặc định của Spring
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -137,12 +132,13 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider() {
         // DaoAuthenticationProvider = cách xác thực bằng DB (Dao = Data Access Object)
         // TẠI SAO CẦN CÁI NÀY?
-        // → Spring Security cần biết: "Khi xác thực, lấy user từ đâu và so sánh password thế nào?"
+        // → Spring Security cần biết: "Khi xác thực, lấy user từ đâu và so sánh
+        // password thế nào?"
         // → DaoAuthenticationProvider trả lời: "Lấy từ DB qua userDetailsService,
-        //   so sánh bằng passwordEncoder"
+        // so sánh bằng passwordEncoder"
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);   // lấy user từ DB
-        provider.setPasswordEncoder(passwordEncoder());       // so sánh password bằng BCrypt
+        provider.setUserDetailsService(userDetailsService); // lấy user từ DB
+        provider.setPasswordEncoder(passwordEncoder()); // so sánh password bằng BCrypt
         return provider;
     }
 
@@ -151,9 +147,9 @@ public class SecurityConfig {
             throws Exception {
         // AuthenticationManager = người điều phối việc xác thực
         // AuthService.login() gọi authenticationManager.authenticate()
-        //   → authManager gọi authenticationProvider
-        //   → provider load user từ DB + compare password
-        //   → Thành công: trả UserDetails | Thất bại: throw BadCredentialsException
+        // → authManager gọi authenticationProvider
+        // → provider load user từ DB + compare password
+        // → Thành công: trả UserDetails | Thất bại: throw BadCredentialsException
         return config.getAuthenticationManager();
     }
 
@@ -163,7 +159,8 @@ public class SecurityConfig {
         // TẠI SAO BCRYPT mà không phải MD5 hay SHA?
         // → BCrypt tự thêm "salt" ngẫu nhiên → cùng password hash ra khác nhau mỗi lần
         // → MD5/SHA: "abc123" luôn hash thành cùng 1 chuỗi → dễ bị rainbow table attack
-        // → BCrypt: "abc123" lần 1: $2a$10$abc..., lần 2: $2a$10$xyz... → không crack được
+        // → BCrypt: "abc123" lần 1: $2a$10$abc..., lần 2: $2a$10$xyz... → không crack
+        // được
         return new BCryptPasswordEncoder();
     }
 
@@ -178,10 +175,10 @@ public class SecurityConfig {
         // Cho phép các HTTP method này
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         // OPTIONS → browser tự gửi "preflight request" để hỏi server trước
-        //           phải allow OPTIONS nếu không CORS sẽ fail
+        // phải allow OPTIONS nếu không CORS sẽ fail
 
         config.setAllowedHeaders(List.of("*")); // Cho phép mọi header
-        config.setAllowCredentials(true);       // Cho phép gửi cookie/auth header
+        config.setAllowCredentials(true); // Cho phép gửi cookie/auth header
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config); // Áp dụng cho TẤT CẢ URL
