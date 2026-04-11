@@ -1,0 +1,54 @@
+# ============================================================
+# PlanbookAI - .gitignore
+# ============================================================
+
+# ======= JAVA / MAVEN =======
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+
+# ======= SPRING BOOT =======
+application-local.properties
+application-local.yml
+
+# ======= NODE / REACT =======
+node_modules/
+dist/
+build/
+.vite/
+*.local
+
+# ======= ENVIRONMENT & SECRET =======
+.env
+.env.*
+!.env.example
+firebase-service-account.json
+*.pem
+*.key.json
+
+# ======= IDE =======
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+
+# ======= DOCKER =======
+# Không ignore docker-compose.yml vì cần commit
+# Chỉ ignore file override local
+docker-compose.override.yml
+
+# ======= LOGS =======
+logs/
+*.log
+
+# ======= TMP FILES =======
+fix_admin_pass.sql
+fix_passwords.sql
+*.tmp
