@@ -31,3 +31,26 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Database files
+data/
+*.mv.db
+*.lock.db
+*.trace.db
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Log files
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Build files
+target/
+*.jar
