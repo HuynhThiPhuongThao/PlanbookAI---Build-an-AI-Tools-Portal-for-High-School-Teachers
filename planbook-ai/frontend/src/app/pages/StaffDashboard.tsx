@@ -11,6 +11,7 @@ import {
   Clock,
   TrendingUp,
 } from 'lucide-react';
+import { Link } from 'react-router';
 
 import React from 'react';
 
@@ -49,6 +50,7 @@ export default function StaffDashboard() {
       icon: FileText,
       color: 'bg-blue-500',
       action: 'Create Lesson Plan',
+      href: '/lesson-planner',
     },
     {
       title: 'Build Question Bank',
@@ -56,6 +58,7 @@ export default function StaffDashboard() {
       icon: Database,
       color: 'bg-green-500',
       action: 'Add Questions',
+      href: '/question-bank',
     },
     {
       title: 'Manage AI Prompts',
@@ -63,6 +66,7 @@ export default function StaffDashboard() {
       icon: Sparkles,
       color: 'bg-purple-500',
       action: 'Manage Prompts',
+      href: '/staff/prompts',
     },
   ];
 
@@ -126,9 +130,11 @@ export default function StaffDashboard() {
                   <CardDescription>{item.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full">
-                    <PlusCircle className="w-4 h-4 mr-2" />
-                    {item.action}
+                  <Button asChild className="w-full">
+                    <Link to={item.href}>
+                      <PlusCircle className="w-4 h-4 mr-2" />
+                      {item.action}
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -161,8 +167,8 @@ export default function StaffDashboard() {
                     </div>
                     <Badge className={
                       item.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                      item.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-blue-100 text-blue-700'
+                        item.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-blue-100 text-blue-700'
                     }>
                       {item.status}
                     </Badge>

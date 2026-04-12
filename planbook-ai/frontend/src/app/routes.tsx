@@ -12,6 +12,7 @@ import StudentResults from "./pages/StudentResults";
 import AdminDashboard from "./pages/AdminDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
+import StaffPrompts from "./pages/StaffPrompts";
 import NotFound from "./pages/NotFound";
 import AdminUsers from "./pages/AdminUsers";
 import UserProfile from "./pages/UserProfile";
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: "admin/users", Component: AdminUsers },
       { path: "manager", Component: ManagerDashboard },
       { path: "staff", Component: StaffDashboard },
+      { path: "staff/prompts", Component: StaffPrompts },
       { path: "question-bank", Component: QuestionBank },
       { path: "exercise-creator", Component: ExerciseCreator },
       { path: "exam-generator", Component: ExamGenerator },
