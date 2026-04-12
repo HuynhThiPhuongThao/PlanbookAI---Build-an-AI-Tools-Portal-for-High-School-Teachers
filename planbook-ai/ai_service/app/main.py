@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from ai_service.app.api.endpoints import ai
+from ai_service.app.api.endpoints import ocr
 from ai_service.app.core.config import settings
 from ai_service.app.database import Base, engine
 from ai_service.app.models.prompt_model import Prompt
@@ -8,10 +9,10 @@ from ai_service.app.routes import prompt_routes
 
 app = FastAPI(
     title=settings.app_name,
-    description="API sinh nội dung AI cho PlanbookAI",
+    description="AI Service for PlanbookAI",
     version=settings.version,
-    docs_url="/docs",        # Swagger UI
-    redoc_url="/redoc",      # ReDoc
+    docs_url="/docs",
+    redoc_url="/redoc",
     openapi_url="/openapi.json"
 )
 
@@ -26,6 +27,7 @@ app.add_middleware(
 
 # Versioning
 app.include_router(ai.router, prefix="/v1")
+app.include_router(ocr.router, prefix="/v1")
 app.include_router(prompt_routes.router)
 
 
@@ -33,6 +35,7 @@ app.include_router(prompt_routes.router)
 def create_database_tables() -> None:
     # Equivalent to: Base.metadata.create_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+
 
 @app.get("/")
 def root():

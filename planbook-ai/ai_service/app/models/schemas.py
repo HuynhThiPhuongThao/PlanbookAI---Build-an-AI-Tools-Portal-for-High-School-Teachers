@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field
 class ExerciseRequest(BaseModel):
     topic: str
     difficulty: str = Field(default="medium")
-    number_of_questions: int = Field(default=5, alias="numberOfQuestions", ge=1, le=20)
+    number_of_questions: int = Field(
+        default=5, alias="numberOfQuestions", ge=1, le=20)
     grade: str = Field(default="10")
 
 
@@ -25,7 +26,8 @@ class ExerciseResponse(BaseModel):
 class LessonPlanRequest(BaseModel):
     topic: str
     grade: str = Field(default="10")
-    duration_minutes: int = Field(default=45, alias="durationMinutes", ge=15, le=180)
+    duration_minutes: int = Field(
+        default=45, alias="durationMinutes", ge=15, le=180)
 
 
 class LessonActivity(BaseModel):
@@ -43,3 +45,9 @@ class LessonPlanResponse(BaseModel):
     assessment: str
 
 
+class OcrGradeResponse(BaseModel):
+    total_questions: int = Field(alias="totalQuestions")
+    correct_count: int = Field(alias="correctCount")
+    wrong_question_ids: List[int] = Field(alias="wrongQuestionIds")
+    score: float
+    message: str
