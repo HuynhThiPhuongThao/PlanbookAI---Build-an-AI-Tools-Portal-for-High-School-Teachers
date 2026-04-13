@@ -1,4 +1,6 @@
-package com.planbook.entity;
+package com.planbook.entity.teacher;
+
+import com.planbook.entity.staff.Topic;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -24,7 +26,7 @@ public class LessonPlan {
     private Topic topic;
 
     @Column(name = "teacher_id")
-    private Long teacherId;
+    private Long teacherId;//dùng để kiểm tra quyền
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

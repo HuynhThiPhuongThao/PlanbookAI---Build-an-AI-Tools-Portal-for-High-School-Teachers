@@ -46,3 +46,5 @@ logging:
   level:
     com.planbook.curriculum: DEBUG
 
+jwt:
+  secret: ${JWT_SECRET:planbook-super-secret-key-change-in-production-min-32-chars}

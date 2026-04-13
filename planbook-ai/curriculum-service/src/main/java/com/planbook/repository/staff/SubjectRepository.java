@@ -1,6 +1,6 @@
-package com.planbook.repository;
+package com.planbook.repository.staff;
 
-import com.planbook.entity.Subject;
+import com.planbook.entity.staff.Subject;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

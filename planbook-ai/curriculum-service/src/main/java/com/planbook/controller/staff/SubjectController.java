@@ -1,9 +1,9 @@
-package com.planbook.controller;
+package com.planbook.controller.staff;
 
-import com.planbook.dto.SubjectResponse;
-import com.planbook.service.SubjectService;
-import com.planbook.dto.ChapterResponse;
-import com.planbook.service.ChapterService;
+import com.planbook.dto.staff.SubjectResponse;
+import com.planbook.service.staff.SubjectService;
+import com.planbook.dto.staff.ChapterResponse;
+import com.planbook.service.staff.ChapterService;
 
 
 import org.springframework.web.bind.annotation.*;

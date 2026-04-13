@@ -1,4 +1,6 @@
-package com.planbook.entity;
+package com.planbook.entity.staff;
+
+import com.planbook.entity.teacher.LessonPlan;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

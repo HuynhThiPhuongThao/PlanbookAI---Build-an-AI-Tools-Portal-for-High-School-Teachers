@@ -1,10 +1,10 @@
-package com.planbook.service;
+package com.planbook.service.staff;
 
-import com.planbook.dto.ChapterResponse;
-import com.planbook.dto.SubjectResponse;
-import com.planbook.entity.Chapter;
-import com.planbook.entity.Subject;
-import com.planbook.repository.ChapterRepository;
+import com.planbook.dto.staff.ChapterResponse;
+import com.planbook.dto.staff.SubjectResponse;
+import com.planbook.entity.staff.Chapter;
+import com.planbook.entity.staff.Subject;
+import com.planbook.repository.staff.ChapterRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

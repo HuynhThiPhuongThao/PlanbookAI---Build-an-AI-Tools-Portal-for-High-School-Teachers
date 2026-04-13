@@ -1,4 +1,4 @@
-package com.planbook.dto;
+package com.planbook.dto.staff;
 
 public class TopicResponse {
     private Long id;

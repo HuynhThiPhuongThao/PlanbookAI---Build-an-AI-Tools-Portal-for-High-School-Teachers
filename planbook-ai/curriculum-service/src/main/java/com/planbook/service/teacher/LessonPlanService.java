@@ -1,14 +1,14 @@
-package com.planbook.service;
+package com.planbook.service.teacher;
 
-import com.planbook.dto.LessonPlanResponse;
-import com.planbook.dto.TopicResponse;
-import com.planbook.dto.ChapterResponse;
-import com.planbook.dto.SubjectResponse;
+import com.planbook.dto.teacher.LessonPlanResponse;
+import com.planbook.dto.staff.TopicResponse;
+import com.planbook.dto.staff.ChapterResponse;
+import com.planbook.dto.staff.SubjectResponse;
 
-import com.planbook.entity.LessonPlan;
-import com.planbook.repository.LessonPlanRepository;
-import com.planbook.entity.Topic;
-import com.planbook.repository.TopicRepository;
+import com.planbook.entity.teacher.LessonPlan;
+import com.planbook.repository.teacher.LessonPlanRepository;
+import com.planbook.entity.staff.Topic;
+import com.planbook.repository.staff.TopicRepository;
 import org.springframework.stereotype.Service;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
@@ -52,7 +52,7 @@ public class LessonPlanService {
         return toResponse(saved);
     }
 
-    public LessonPlanResponse updateLessonPlan(Long id, LessonPlan details, Long teacherId) {
+    public LessonPlanResponse updateLessonPlan(Long id, LessonPlan lessonPlan, Long teacherId) {
     LessonPlan existing = lessonPlanRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("LessonPlan not found with id " + id));
 
@@ -60,12 +60,12 @@ public class LessonPlanService {
         throw new AccessDeniedException("You can only update your own lesson plans");
     }
 
-    existing.setTitle(details.getTitle());
-    existing.setContent(details.getContent());
-    existing.setStatus(details.getStatus());
+    existing.setTitle(lessonPlan.getTitle());
+    existing.setContent(lessonPlan.getContent());
+    existing.setStatus(lessonPlan.getStatus());
 
-    if (details.getTopic() != null && details.getTopic().getId() != null) {
-        Long topicId = details.getTopic().getId();
+    if (lessonPlan.getTopic() != null && lessonPlan.getTopic().getId() != null) {
+        Long topicId = lessonPlan.getTopic().getId();
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new EntityNotFoundException("Topic not found with id " + topicId));
         existing.setTopic(topic);

@@ -1,8 +1,8 @@
-package com.planbook.service;
+package com.planbook.service.staff;
 
-import com.planbook.dto.SubjectResponse;
-import com.planbook.entity.Subject;
-import com.planbook.repository.SubjectRepository;
+import com.planbook.dto.staff.SubjectResponse;
+import com.planbook.entity.staff.Subject;
+import com.planbook.repository.staff.SubjectRepository;
 import org.springframework.stereotype.Service;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;

@@ -1,9 +1,9 @@
-package com.planbook.controller;
+package com.planbook.controller.staff;
 
-import com.planbook.dto.TopicResponse;
-import com.planbook.dto.LessonPlanResponse;
-import com.planbook.service.TopicService;
-import com.planbook.service.LessonPlanService;
+import com.planbook.dto.staff.TopicResponse;
+import com.planbook.dto.teacher.LessonPlanResponse;
+import com.planbook.service.staff.TopicService;
+import com.planbook.service.teacher.LessonPlanService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -1,4 +1,4 @@
-package com.planbook.entity;
+package com.planbook.entity.staff;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

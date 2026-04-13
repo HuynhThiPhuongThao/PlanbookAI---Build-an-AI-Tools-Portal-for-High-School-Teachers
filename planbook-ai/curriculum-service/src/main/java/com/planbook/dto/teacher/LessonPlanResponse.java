@@ -1,5 +1,6 @@
-package com.planbook.dto;
+package com.planbook.dto.teacher;
 
+import com.planbook.dto.staff.TopicResponse;
 import java.time.LocalDateTime;
 
 public class LessonPlanResponse {

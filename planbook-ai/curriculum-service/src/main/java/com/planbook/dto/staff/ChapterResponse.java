@@ -1,4 +1,4 @@
-package com.planbook.dto;
+package com.planbook.dto.staff;
 
 public class ChapterResponse {
     private Long id;

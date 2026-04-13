@@ -1,6 +1,6 @@
-package com.planbook.repository;
+package com.planbook.repository.teacher;
 
-import com.planbook.entity.LessonPlan;
+import com.planbook.entity.teacher.LessonPlan;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
