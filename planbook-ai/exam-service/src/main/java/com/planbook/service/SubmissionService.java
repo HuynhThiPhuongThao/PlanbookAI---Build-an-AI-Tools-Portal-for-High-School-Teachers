@@ -30,19 +30,20 @@ public class SubmissionService {
         this.examRepository = examRepository;
     }
 
-    public SubmissionResponse submitExam(Long examId, String studentName, MultipartFile image) throws IOException {
-        System.out.println("examId = " + examId);
-        System.out.println("studentName = " + studentName);
-        System.out.println("original file name = " + image.getOriginalFilename());
+    public SubmissionResponse submitExam(Long examId,
+                                         Long teacherId,
+                                         String studentName,
+                                         MultipartFile image) throws IOException {
 
-        Exam exam = examRepository.findById(examId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đề thi với id = " + examId));
+        Exam exam = examRepository.findByIdAndTeacherId(examId, teacherId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Không tìm thấy đề thi hoặc bạn không có quyền truy cập đề thi này"
+                ));
 
         String uploadDir = System.getProperty("user.dir") + File.separator + "uploads";
         File folder = new File(uploadDir);
         if (!folder.exists()) {
-            boolean created = folder.mkdirs();
-            System.out.println("Tạo thư mục uploads: " + created);
+            folder.mkdirs();
         }
 
         String originalName = image.getOriginalFilename();
@@ -53,7 +54,6 @@ public class SubmissionService {
         String fileName = UUID.randomUUID() + "_" + originalName;
         String filePath = uploadDir + File.separator + fileName;
 
-        System.out.println("Saving file to: " + filePath);
         image.transferTo(new File(filePath));
 
         Submission submission = new Submission();
