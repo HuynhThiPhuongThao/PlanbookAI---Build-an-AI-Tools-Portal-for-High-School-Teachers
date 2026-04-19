@@ -41,8 +41,11 @@ public class SecurityConfig {
 
                         // curriculum-service
                         .requestMatchers("/api/subjects/**").hasAnyRole("TEACHER", "STAFF")
+                        //.requestMatchers("/api/subjects/**").permitAll() // tạm thời mở cho dễ test, sau này sẽ sửa lại
                         .requestMatchers("/api/chapters/**").hasAnyRole("TEACHER", "STAFF")
+                        //.requestMatchers("/api/chapters/**").permitAll() // tạm thời mở cho dễ test, sau này sẽ sửa lại
                         .requestMatchers("/api/topics/**").hasAnyRole("TEACHER", "STAFF")
+                        //.requestMatchers("/api/topics/**").permitAll() // tạm thời mở cho dễ test, sau này sẽ sửa lại
 
                         
                         // admin CRUD curriculum templates
@@ -50,11 +53,19 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/curriculum-templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/curriculum-templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/curriculum-templates/**").hasAnyRole("ADMIN", "STAFF", "TEACHER")
-                        
- 
+                        .requestMatchers("/api/curriculum-templates/**").permitAll()// tạm thời mở cho dễ test, sau này sẽ sửa lại
+
+                        // staff CRUD sample lesson plans
+                        .requestMatchers("/api/sample-lesson-plans/**").hasAnyRole("STAFF")
+                        //.requestMatchers("/api/sample-lesson-plans/**").permitAll() // tạm thời mở cho dễ test, sau này sẽ sửa lại
+
+                        // manager review sample lesson plans
+                        .requestMatchers("/api/sample-lesson-plans/review/**").hasAnyRole("MANAGER")
+                        //.requestMatchers("/api/sample-lesson-plans/review/**").permitAll() // tạm thời mở cho dễ test, sau này sẽ sửa lại   
 
                         // lesson plan chỉ teacher mới dùng
                         .requestMatchers("/api/lesson-plans/**").hasRole("TEACHER")
+                        //.requestMatchers("/api/lesson-plans/**").permitAll() // tạm thời mở cho dễ test, sau này sẽ sửa lại
 
                         // các request còn lại phải login
                         .anyRequest().authenticated()
