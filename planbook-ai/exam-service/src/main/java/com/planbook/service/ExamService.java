@@ -18,37 +18,40 @@ public class ExamService {
         this.examRepository = examRepository;
     }
 
-    public ExamResponse createExam(CreateExamRequest request) {
+    public ExamResponse createExam(CreateExamRequest request, Long teacherId) {
         Exam exam = new Exam();
         exam.setTitle(request.getTitle());
-        exam.setTeacherId(request.getTeacherId());
+        exam.setTeacherId(teacherId); // lấy từ JWT, không dùng request.getTeacherId()
         exam.setQuestionIds(request.getQuestionIds());
         exam.setAnswerKey(request.getAnswerKey());
         exam.setCreatedAt(LocalDateTime.now());
 
-        exam = examRepository.save(exam);
-
-        return new ExamResponse(
-                exam.getId(),
-                exam.getTitle(),
-                exam.getTeacherId(),
-                exam.getQuestionIds(),
-                exam.getAnswerKey(),
-                exam.getCreatedAt()
-        );
+        Exam savedExam = examRepository.save(exam);
+        return mapToResponse(savedExam);
     }
 
     public List<ExamResponse> getExamsByTeacher(Long teacherId) {
         return examRepository.findByTeacherId(teacherId)
                 .stream()
-                .map(exam -> new ExamResponse(
-                        exam.getId(),
-                        exam.getTitle(),
-                        exam.getTeacherId(),
-                        exam.getQuestionIds(),
-                        exam.getAnswerKey(),
-                        exam.getCreatedAt()
-                ))
+                .map(this::mapToResponse)
                 .toList();
+    }
+
+    public Exam getOwnedExamOrThrow(Long examId, Long teacherId) {
+        return examRepository.findByIdAndTeacherId(examId, teacherId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Không tìm thấy đề thi hoặc bạn không có quyền truy cập"
+                ));
+    }
+
+    private ExamResponse mapToResponse(Exam exam) {
+        ExamResponse response = new ExamResponse();
+        response.setId(exam.getId());
+        response.setTitle(exam.getTitle());
+        response.setTeacherId(exam.getTeacherId());
+        response.setQuestionIds(exam.getQuestionIds());
+        response.setAnswerKey(exam.getAnswerKey());
+        response.setCreatedAt(exam.getCreatedAt());
+        return response;
     }
 }

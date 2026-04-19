@@ -3,7 +3,6 @@ package com.planbook.dto;
 public class CreateExamRequest {
 
     private String title;
-    private Long teacherId;
     private String questionIds;
     private String answerKey;
 
@@ -14,9 +13,6 @@ public class CreateExamRequest {
         return title;
     }
 
-    public Long getTeacherId() {
-        return teacherId;
-    }
 
     public String getQuestionIds() {
         return questionIds;
@@ -28,10 +24,6 @@ public class CreateExamRequest {
 
     public void setTitle(String title) {
         this.title = title;
-    }
-
-    public void setTeacherId(Long teacherId) {
-        this.teacherId = teacherId;
     }
 
     public void setQuestionIds(String questionIds) {
