@@ -68,6 +68,26 @@ public class AuthService {
         return generateAuthResponse(user);
     }
 
+    // ===== ĐỂ ADMIN TAO ACCOUNT =====
+    @Transactional
+    public AuthResponse createInternalAccount(RegisterRequest request, Role assignedRole) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email đã tồn tại hoặc bị giang hồ lụm: " + request.getEmail());
+        }
+
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName())
+                .role(assignedRole)
+                .build();
+
+        user = userRepository.save(user);
+        log.info("Admin created new internal account: {} with role: {}", user.getEmail(), assignedRole);
+
+        return generateAuthResponse(user);
+    }
+
     // ===== LOGIN =====
 
     @Transactional
