@@ -2,8 +2,10 @@ package com.planbook.controller.admin;
 
 import com.planbook.dto.admin.CurriculumTemplateRequest;
 import com.planbook.dto.admin.CurriculumTemplateResponse;
+import com.planbook.security.AuthUtil;
 import com.planbook.service.admin.CurriculumTemplateService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,18 +15,19 @@ import java.util.List;
 public class CurriculumTemplateController {
 
     private final CurriculumTemplateService curriculumTemplateService;
+    private final AuthUtil authUtil;
 
-    public CurriculumTemplateController(CurriculumTemplateService curriculumTemplateService) {
+    public CurriculumTemplateController(CurriculumTemplateService curriculumTemplateService, AuthUtil authUtil) {
         this.curriculumTemplateService = curriculumTemplateService;
+        this.authUtil = authUtil;
     }
 
     @PostMapping
     public ResponseEntity<CurriculumTemplateResponse> createTemplate(
-            @RequestBody CurriculumTemplateRequest request
+            @RequestBody CurriculumTemplateRequest request,
+            Authentication authentication
     ) {
-        // Tạm fix cứng adminId = 1 để test trước
-        // Sau này lấy từ security context
-        Long adminId = 1L;
+        Long adminId = authUtil.extractAdminId(authentication);
         return ResponseEntity.ok(curriculumTemplateService.createTemplate(request, adminId));
     }
 
@@ -41,9 +44,10 @@ public class CurriculumTemplateController {
     @PutMapping("/{id}")
     public ResponseEntity<CurriculumTemplateResponse> updateTemplate(
             @PathVariable Long id,
-            @RequestBody CurriculumTemplateRequest request
+            @RequestBody CurriculumTemplateRequest request,
+            Authentication authentication
     ) {
-        Long adminId = 1L;
+        Long adminId = authUtil.extractAdminId(authentication);
         return ResponseEntity.ok(curriculumTemplateService.updateTemplate(id, request, adminId));
     }
 

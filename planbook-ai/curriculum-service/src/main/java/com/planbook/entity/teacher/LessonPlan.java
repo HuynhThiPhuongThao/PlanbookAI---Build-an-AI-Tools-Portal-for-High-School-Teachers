@@ -1,6 +1,8 @@
 package com.planbook.entity.teacher;
 
 import com.planbook.entity.staff.Topic;
+import com.planbook.entity.admin.CurriculumTemplate;
+import com.planbook.entity.staff.SampleLessonPlan;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -24,6 +26,14 @@ public class LessonPlan {
     @ManyToOne
     @JoinColumn(name = "topic_id", nullable = false)
     private Topic topic;
+
+    @ManyToOne
+    @JoinColumn(name = "curriculum_template_id")
+    private CurriculumTemplate curriculumTemplate;
+
+    @ManyToOne
+    @JoinColumn(name = "sample_lesson_plan_id")
+    private SampleLessonPlan sampleLessonPlan;
 
     @Column(name = "teacher_id")
     private Long teacherId;//dùng để kiểm tra quyền
@@ -63,6 +73,12 @@ public class LessonPlan {
 
     public Topic getTopic() { return topic; }
     public void setTopic(Topic topic) { this.topic = topic; }
+
+    public CurriculumTemplate getCurriculumTemplate() { return curriculumTemplate; }
+    public void setCurriculumTemplate(CurriculumTemplate curriculumTemplate) { this.curriculumTemplate = curriculumTemplate; }
+
+    public SampleLessonPlan getSampleLessonPlan() { return sampleLessonPlan; }
+    public void setSampleLessonPlan(SampleLessonPlan sampleLessonPlan) { this.sampleLessonPlan = sampleLessonPlan; }
 
     public Long getTeacherId() { return teacherId; }
     public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }

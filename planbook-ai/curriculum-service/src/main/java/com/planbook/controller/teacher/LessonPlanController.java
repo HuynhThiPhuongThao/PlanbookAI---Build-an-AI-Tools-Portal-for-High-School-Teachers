@@ -1,7 +1,7 @@
 package com.planbook.controller.teacher;
 
-import com.planbook.entity.teacher.LessonPlan;
 import com.planbook.service.teacher.LessonPlanService;
+import com.planbook.dto.teacher.LessonPlanRequest;
 import com.planbook.dto.teacher.LessonPlanResponse;
 import com.planbook.security.AuthUtil;
 
@@ -35,20 +35,28 @@ public class LessonPlanController {
 
     // POST /api/lesson-plans
     @PostMapping
-    public ResponseEntity<LessonPlanResponse> addLessonPlan(@RequestBody @Valid LessonPlan lessonPlan,
+    public ResponseEntity<LessonPlanResponse> addLessonPlan(@RequestBody @Valid LessonPlanRequest request,
                                                             Authentication authentication) {
         Long teacherId = authUtil.extractTeacherId(authentication);
-                   LessonPlanResponse saved = lessonPlanService.addLessonPlan(lessonPlan, teacherId);
+        LessonPlanResponse saved = lessonPlanService.addLessonPlan(request, teacherId);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     // PUT /api/lesson-plans/{id}
     @PutMapping("/{id}")
     public ResponseEntity<LessonPlanResponse> updateLessonPlan(@PathVariable Long id,
-                                                               @RequestBody @Valid LessonPlan lessonPlan,
+                                                               @RequestBody @Valid LessonPlanRequest request,
                                                                Authentication authentication) {
         Long teacherId = authUtil.extractTeacherId(authentication);
-        LessonPlanResponse updated = lessonPlanService.updateLessonPlan(id, lessonPlan, teacherId);
+        LessonPlanResponse updated = lessonPlanService.updateLessonPlan(id, request, teacherId);
         return ResponseEntity.ok(updated);
+    }
+
+    // DELETE /api/lesson-plans/{id}
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteLessonPlan(@PathVariable Long id, Authentication authentication) {
+        Long teacherId = authUtil.extractTeacherId(authentication);
+        lessonPlanService.deleteLessonPlan(id, teacherId);
+        return ResponseEntity.ok("Lesson plan deleted successfully");
     }
 }

@@ -2,8 +2,10 @@ package com.planbook.controller.manager;
 
 import com.planbook.dto.manager.SampleLessonPlanReviewRequest;
 import com.planbook.dto.staff.SampleLessonPlanResponse;
+import com.planbook.security.AuthUtil;
 import com.planbook.service.manager.SampleLessonPlanReviewService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,9 +15,11 @@ import java.util.List;
 public class SampleLessonPlanReviewController {
 
     private final SampleLessonPlanReviewService sampleLessonPlanReviewService;
+    private final AuthUtil authUtil;
 
-    public SampleLessonPlanReviewController(SampleLessonPlanReviewService sampleLessonPlanReviewService) {
+    public SampleLessonPlanReviewController(SampleLessonPlanReviewService sampleLessonPlanReviewService, AuthUtil authUtil) {
         this.sampleLessonPlanReviewService = sampleLessonPlanReviewService;
+        this.authUtil = authUtil;
     }
 
     @GetMapping("/pending")
@@ -26,18 +30,20 @@ public class SampleLessonPlanReviewController {
     @PostMapping("/{id}/approve")
     public ResponseEntity<SampleLessonPlanResponse> approveSample(
             @PathVariable Long id,
-            @RequestBody SampleLessonPlanReviewRequest request
+            @RequestBody SampleLessonPlanReviewRequest request,
+            Authentication authentication
     ) {
-        Long managerId = 3L; // TODO: replace with authenticated manager user id from JWT
+        Long managerId = authUtil.extractManagerId(authentication);
         return ResponseEntity.ok(sampleLessonPlanReviewService.approveSample(id, request, managerId));
     }
 
     @PostMapping("/{id}/reject")
     public ResponseEntity<SampleLessonPlanResponse> rejectSample(
             @PathVariable Long id,
-            @RequestBody SampleLessonPlanReviewRequest request
+            @RequestBody SampleLessonPlanReviewRequest request,
+            Authentication authentication
     ) {
-        Long managerId = 3L; // TODO: replace with authenticated manager user id from JWT
+        Long managerId = authUtil.extractManagerId(authentication);
         return ResponseEntity.ok(sampleLessonPlanReviewService.rejectSample(id, request, managerId));
     }
 }
