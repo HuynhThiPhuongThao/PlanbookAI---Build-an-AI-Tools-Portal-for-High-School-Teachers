@@ -4,6 +4,7 @@ import com.planbook.auth.dto.AuthResponse;
 import com.planbook.auth.dto.LoginRequest;
 import com.planbook.auth.dto.RegisterRequest;
 import com.planbook.auth.entity.User;
+import com.planbook.auth.entity.Role;
 import com.planbook.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -41,6 +43,20 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         log.info("Register request for email: {}", request.getEmail());
         return ResponseEntity.ok(authService.register(request));
+    }
+
+    /**
+     * POST /api/auth/internal/create-account
+     * Dành riêng cho ADMIN tạo tài khoản
+     */
+    @PostMapping("/internal/create-account")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin tạo tài khoản nội bộ", description = "Tạo account cho Manager hoặc Staff")
+    public ResponseEntity<AuthResponse> createInternalAccount(
+            @RequestParam Role role,
+            @Valid @RequestBody RegisterRequest request) {
+        log.info("Admin creating account for email: {} with role: {}", request.getEmail(), role);
+        return ResponseEntity.ok(authService.createInternalAccount(request, role));
     }
 
     /**
