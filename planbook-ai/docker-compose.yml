@@ -23,7 +23,9 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./db/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+      - ./db/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
+      # seed-data.sql KHÔNG mount ở đây vì nó cần chạy SAU khi Hibernate tạo bảng
+      # Chạy: .\seed.ps1 (Windows) hoặc bash seed.sh (Linux/Mac) sau khi docker compose up
 
     networks:
       - planbook-network
@@ -121,9 +123,26 @@ services:
   # ======== CÁC DỊCH VỤ RÁC BỊ OSIN PHONG ẤN TẠM THỜI ================
   # ===================================================================
   
-  # curriculum-service:
-  #   build: ./curriculum-service
-  #   ... (ẩn đi vì chưa xài tới lúc này để web lên lẹ)
+  # -------------------------------------------------------------------
+  # CURRICULUM SERVICE - Xương sống chương trình học
+  # -------------------------------------------------------------------
+  curriculum-service:
+    build: ./curriculum-service
+    container_name: planbook-curriculum
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_URL=jdbc:mysql://mysql:3306/db_curriculum
+      - DB_USER=planbook
+      - DB_PASS=planbook123
+      - JWT_SECRET=planbook-super-secret-key-change-in-production
+    depends_on:
+      mysql:
+        condition: service_started
+    networks:
+      - planbook-network
 
   # question-bank-service:
   #   build: ./question-bank-service
@@ -133,9 +152,30 @@ services:
   #   build: ./exam-service
   #   ... (ẩn vì nguy cơ lỗi nổ hầm)
 
-  # ai-service:
-  #   build: ./ai_service 
-  #   ... (ẩn chừng nào nạp api làm trí tuệ nhân tạo nha)
+  # -------------------------------------------------------------------
+  # AI SERVICE - Não bộ Gemini của hệ thống
+  # -------------------------------------------------------------------
+  ai-service:
+    build: ./ai_service
+    container_name: planbook-ai
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=gemini-2.5-flash
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DB=db_ai
+      - MYSQL_USER=planbook
+      - MYSQL_PASSWORD=planbook123
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+    depends_on:
+      mysql:
+        condition: service_started
+    networks:
+      - planbook-network
 
   # packageservice:
   #   build: ./packageservice

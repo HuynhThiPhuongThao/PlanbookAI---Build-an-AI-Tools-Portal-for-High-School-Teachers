@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { GraduationCap, Sparkles } from 'lucide-react';
+import { GraduationCap, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { authApi } from '../api/authApi';
 
@@ -15,6 +15,7 @@ export default function Login() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,14 +98,27 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      tabIndex={-1}
+                    >
+                      {showPassword
+                        ? <EyeOff className="w-4 h-4" />
+                        : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -133,9 +147,6 @@ export default function Login() {
                 )}
               </form>
 
-              <div className="mt-6 text-center text-sm text-gray-600">
-                Demo Mode: No credentials required
-              </div>
 
               <div className="mt-4 text-center text-sm">
                 Chưa có tài khoản?{' '}

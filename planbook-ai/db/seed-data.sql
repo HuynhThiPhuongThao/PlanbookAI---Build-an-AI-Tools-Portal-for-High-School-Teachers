@@ -3,7 +3,7 @@
 -- Chạy sau khi đã chạy init-databases.sql
 -- Usage: mysql -u root -P 3307 -proot123 < planbook-ai/seed-data.sql
 --
--- Tài khoản mặc định (tất cả dùng pass: Planbook@2026):
+-- Tài khoản mặc định (tất cả dùng pass: admin@123):
 --   admin@planbook.ai   → ADMIN
 --   teacher1@gmail.com  → TEACHER  (khoivan)
 --   manager@gmail.com   → MANAGER
