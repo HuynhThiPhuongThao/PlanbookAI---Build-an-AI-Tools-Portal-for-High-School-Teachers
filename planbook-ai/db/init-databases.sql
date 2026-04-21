@@ -6,6 +6,7 @@ CREATE DATABASE IF NOT EXISTS db_question;
 CREATE DATABASE IF NOT EXISTS db_exam;
 CREATE DATABASE IF NOT EXISTS db_package;
 
--- Grant privileges (optional but good for dev)
--- GRANT ALL PRIVILEGES ON *.* TO 'planbook'@'%';
--- FLUSH PRIVILEGES;
+-- Grant full privileges cho user planbook vào tất cả DB
+GRANT ALL PRIVILEGES ON *.* TO 'planbook'@'%';
+FLUSH PRIVILEGES;
+

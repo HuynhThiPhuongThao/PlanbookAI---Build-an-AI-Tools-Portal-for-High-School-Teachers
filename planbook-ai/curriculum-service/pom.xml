@@ -25,9 +25,8 @@
     <properties>
         <java.version>21</java.version>
         <jjwt.version>0.12.3</jjwt.version>
-        <!-- Override Lombok version – Spring Boot 3.2.3 mặc định 1.18.30
-        nhưng cần 1.18.36+ để hỗ trợ Java 21+ -->
-        <lombok.version>1.18.36</lombok.version>
+        <!-- Lombok 1.18.38 support Java 21 -->
+        <lombok.version>1.18.38</lombok.version>
     </properties>
 
     <dependencies>
