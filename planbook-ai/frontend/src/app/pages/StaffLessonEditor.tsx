@@ -42,7 +42,7 @@ function useRealUserName() {
 // ---- types ----
 interface Subject { id: number; name: string; }
 interface Chapter { id: number; name: string; }
-interface Topic   { id: number; name: string; }
+interface Topic   { id: number; title: string; name?: string; }
 interface SamplePlan {
   id: number; title: string; status: string; topic?: { name: string };
 }
@@ -126,7 +126,7 @@ export default function StaffLessonEditor() {
     setIsGenerating(true);
     try {
       const res: any = await aiGenerateLessonPlan({
-        topic: topicObj.name,
+        topic: topicObj.title || topicObj.name || '',
         subject: subjectObj?.name || '',
         grade: 'Trung học phổ thông',
       });
@@ -134,7 +134,7 @@ export default function StaffLessonEditor() {
       const aiContent = res?.content || res?.lesson_plan ||
         JSON.stringify(res, null, 2);
       setContent(aiContent);
-      if (!title) setTitle(`Giáo án mẫu: ${topicObj.name}`);
+      if (!title) setTitle(`Giáo án mẫu: ${topicObj.title || topicObj.name}`);
       showToast('AI đã sinh nội dung! Kiểm tra và chỉnh sửa trước khi lưu.', 'ok');
     } catch (e: any) {
       showToast('AI đang bận — thử lại sau hoặc nhập tay nha!', 'err');
@@ -286,7 +286,7 @@ export default function StaffLessonEditor() {
                         {topics.length === 0
                           ? <SelectItem value="__none" disabled>Đang tải...</SelectItem>
                           : topics.map(t => (
-                            <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                            <SelectItem key={t.id} value={String(t.id)}>{t.title || t.name}</SelectItem>
                           ))
                         }
                       </SelectContent>

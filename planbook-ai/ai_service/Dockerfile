@@ -21,12 +21,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Giữ nguyên cấu trúc để import "from ai_service.app.xxx" hoạt động
 COPY . ./ai_service
 
-# Copy alembic.ini ra ngoài để chạy migration từ /workspace
+# Copy alembic.ini + alembic/ ra /workspace để chạy migration đúng vị trí
 COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
 
 # Expose port 8086 (theo config.py)
 EXPOSE 8086
 
 # Chạy migration trước rồi mới start server
-# Dùng sh -c để chạy 2 lệnh tuần tự
 CMD ["sh", "-c", "alembic upgrade head && uvicorn ai_service.app.main:app --host 0.0.0.0 --port 8086"]
+

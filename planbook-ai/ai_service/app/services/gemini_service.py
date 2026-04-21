@@ -195,7 +195,7 @@ async def generate_lesson_plan(request: LessonPlanRequest, db: Session):
         {
             "topic": request.topic,
             "grade": request.grade,
-            "duration_minutes": request.durationMinutes,
+            "duration_minutes": request.duration_minutes,
         },
     )
 

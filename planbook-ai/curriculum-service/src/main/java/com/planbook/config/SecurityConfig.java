@@ -36,13 +36,13 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // cho swagger mở
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // cho swagger mở và docker healthcheck
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health").permitAll()
 
                         // subject, chapter, topic: các actor nghiệp vụ đều có thể xem
-                        .requestMatchers("/api/subjects/**").hasAnyRole("ADMIN, STAFF, MANAGER, TEACHER")
-                        .requestMatchers("/api/chapters/**").hasAnyRole("ADMIN, STAFF, MANAGER, TEACHER")
-                        .requestMatchers("/api/topics/**").hasAnyRole("ADMIN, STAFF, MANAGER, TEACHER")
+                        .requestMatchers("/api/subjects/**").hasAnyRole("ADMIN", "STAFF", "MANAGER", "TEACHER")
+                        .requestMatchers("/api/chapters/**").hasAnyRole("ADMIN", "STAFF", "MANAGER", "TEACHER")
+                        .requestMatchers("/api/topics/**").hasAnyRole("ADMIN", "STAFF", "MANAGER", "TEACHER")
 
                         // manager review sample lesson plans
                         .requestMatchers("/api/sample-lesson-plans/review/**").hasAnyRole("MANAGER")

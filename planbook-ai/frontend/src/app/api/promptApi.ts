@@ -21,7 +21,7 @@ export interface UpdatePromptPayload {
 }
 
 const promptClient = axios.create({
-    baseURL: 'http://localhost:8086/api/ai/prompts',
+    baseURL: import.meta.env.VITE_API_BASE_URL + '/api/ai/prompts',
     headers: {
         'Content-Type': 'application/json',
     },

@@ -7,6 +7,7 @@ import com.planbook.service.staff.SampleLessonPlanService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -23,7 +24,7 @@ public class SampleLessonPlanController {
     }
 
     @PostMapping
-    public ResponseEntity<SampleLessonPlanResponse> createSample(@RequestBody SampleLessonPlanRequest request, Authentication authentication) {
+    public ResponseEntity<SampleLessonPlanResponse> createSample(@Valid @RequestBody SampleLessonPlanRequest request, Authentication authentication) {
         Long staffId = authUtil.extractStaffId(authentication);
         return ResponseEntity.ok(sampleLessonPlanService.createSample(request, staffId));
     }
@@ -43,7 +44,7 @@ public class SampleLessonPlanController {
     @PutMapping("/{id}")
     public ResponseEntity<SampleLessonPlanResponse> updateSample(
             @PathVariable Long id,
-            @RequestBody SampleLessonPlanRequest request,
+            @Valid @RequestBody SampleLessonPlanRequest request,
             Authentication authentication
     ) {
         Long staffId = authUtil.extractStaffId(authentication);

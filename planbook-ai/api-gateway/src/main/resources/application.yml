@@ -40,6 +40,22 @@ spring:
           filters:
             - StripPrefix=0
 
+        # =================== CURRICULUM SERVICE (port 8083) ===================
+        - id: curriculum-service
+          uri: ${CURRICULUM_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**
+          filters:
+            - StripPrefix=0
+
+        # =================== AI SERVICE (port 8086) ===================
+        - id: ai-service
+          uri: ${AI_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=0
+
       default-filters:
         # Deduplicate CORS headers
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials

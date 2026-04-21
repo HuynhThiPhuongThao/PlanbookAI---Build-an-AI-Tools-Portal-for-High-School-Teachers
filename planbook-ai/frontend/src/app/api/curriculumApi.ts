@@ -19,7 +19,7 @@ export const getTopicsByChapter = (chapterId: number) =>
 // --- Sample Lesson Plans (STAFF tạo, gửi Manager duyệt) ---
 
 export const getSampleLessonPlans = () =>
-  axiosClient.get('/sample-lesson-plans');
+  axiosClient.get('/sample-lesson-plans/my');
 
 export const createSampleLessonPlan = (data: {
   title: string;
@@ -44,6 +44,5 @@ export const aiGenerateLessonPlan = (data: {
   grade?: string;
   additionalContext?: string;
 }) => axiosClient.post('/ai/generate-lesson-plan', data, {
-  baseURL: 'http://localhost:8086',  // Trực tiếp ai-service vì chưa route qua gateway
-  timeout: 30000, // AI cần thời gian lâu hơn
+  timeout: 60000,
 });

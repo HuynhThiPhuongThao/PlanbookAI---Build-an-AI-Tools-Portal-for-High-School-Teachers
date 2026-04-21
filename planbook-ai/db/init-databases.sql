@@ -5,6 +5,7 @@ CREATE DATABASE IF NOT EXISTS db_curriculum;
 CREATE DATABASE IF NOT EXISTS db_question;
 CREATE DATABASE IF NOT EXISTS db_exam;
 CREATE DATABASE IF NOT EXISTS db_package;
+CREATE DATABASE IF NOT EXISTS db_ai;
 
 -- Grant full privileges cho user planbook vào tất cả DB
 GRANT ALL PRIVILEGES ON *.* TO 'planbook'@'%';
