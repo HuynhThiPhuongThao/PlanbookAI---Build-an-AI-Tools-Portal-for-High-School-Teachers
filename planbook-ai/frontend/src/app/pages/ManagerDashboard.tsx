@@ -1,28 +1,20 @@
-﻿import DashboardLayout from '../components/DashboardLayout';
+import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import {
-  Package,
-  ShoppingCart,
-  CheckCircle,
-  Clock,
-  DollarSign,
-  TrendingUp,
-  FileCheck,
+  Package, ShoppingCart, Clock, CheckCircle, FileCheck, Loader2,
 } from 'lucide-react';
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axiosClient from '../api/axiosClient';
 
 function getNameFromToken(): string {
   try {
     const token = localStorage.getItem('access_token');
     if (!token) return '';
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.fullName || '';
+    return JSON.parse(atob(token.split('.')[1])).fullName || '';
   } catch { return ''; }
 }
-
 function useRealUserName() {
   const [name, setName] = React.useState(getNameFromToken());
   React.useEffect(() => {
@@ -35,133 +27,165 @@ function useRealUserName() {
 
 export default function ManagerDashboard() {
   const realName = useRealUserName();
-  const managerStats = [
-    { label: 'Active Packages', value: '8', icon: Package, change: '2 pending approval' },
-    { label: 'Total Orders', value: '156', icon: ShoppingCart, change: '+12 this week' },
-    { label: 'Pending Reviews', value: '23', icon: Clock, change: '5 urgent' },
-    { label: 'Revenue (MTD)', value: '$12.4K', icon: DollarSign, change: '+18% growth' },
-  ];
+  const [pendingPlans, setPendingPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionMsg, setActionMsg] = useState('');
 
-  const packages = [
-    { name: 'Basic Plan', price: '$9.99/mo', users: 45, status: 'Active' },
-    { name: 'Professional Plan', price: '$19.99/mo', users: 89, status: 'Active' },
-    { name: 'Premium Plan', price: '$29.99/mo', users: 34, status: 'Active' },
-    { name: 'Enterprise Plan', price: '$49.99/mo', users: 12, status: 'Active' },
-  ];
+  useEffect(() => {
+    axiosClient.get('/sample-lesson-plans?status=PENDING')
+      .then((data: any) => setPendingPlans(Array.isArray(data) ? data : []))
+      .catch(() => setPendingPlans([]))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const pendingApprovals = [
-    { type: 'Lesson Plan', title: 'Introduction to Organic Chemistry', author: 'Nguyễn Staff', submitted: '2 hours ago' },
-    { type: 'Question Bank', title: '20 Questions - Atomic Structure', author: 'Trần Staff', submitted: '5 hours ago' },
-    { type: 'Prompt Template', title: 'Exercise Generator v2', author: 'Lê Staff', submitted: '1 day ago' },
-    { type: 'Lesson Plan', title: 'Chemical Bonding Advanced', author: 'Phạm Staff', submitted: '1 day ago' },
-  ];
+  const handleApprove = async (id: number) => {
+    try {
+      await axiosClient.put(`/sample-lesson-plans/${id}/approve`);
+      setPendingPlans(p => p.filter(x => x.id !== id));
+      setActionMsg('Đã duyệt!'); setTimeout(() => setActionMsg(''), 3000);
+    } catch { setActionMsg('Lỗi khi duyệt!'); }
+  };
 
-  const recentOrders = [
-    { id: 'ORD-1234', customer: 'Nguyễn High School', package: 'Professional', amount: '$199.90', date: '2026-03-04', status: 'Completed' },
-    { id: 'ORD-1235', customer: 'Trần Văn School', package: 'Premium', amount: '$299.90', date: '2026-03-03', status: 'Processing' },
-    { id: 'ORD-1236', customer: 'Lê Thị Academy', package: 'Basic', amount: '$99.90', date: '2026-03-02', status: 'Completed' },
-  ];
+  const handleReject = async (id: number) => {
+    try {
+      await axiosClient.put(`/sample-lesson-plans/${id}/reject`);
+      setPendingPlans(p => p.filter(x => x.id !== id));
+      setActionMsg('Đã từ chối!'); setTimeout(() => setActionMsg(''), 3000);
+    } catch { setActionMsg('Lỗi khi từ chối!'); }
+  };
 
   return (
     <DashboardLayout role="manager" userName={realName}>
       <div className="space-y-8">
+
+        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Manager Dashboard
-          </h1>
-          <p className="text-gray-600">
-            Package management, orders, and content approval
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Manager Dashboard</h1>
+          <p className="text-gray-600">Quản lý gói dịch vụ, đơn hàng và duyệt nội dung</p>
         </div>
 
-        {/* Manager Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {managerStats.map((stat) => (
-            <Card key={stat.label}>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-2">
-                  <stat.icon className="w-8 h-8 text-purple-600" />
-                  <span className="text-2xl font-bold">{stat.value}</span>
-                </div>
-                <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                <div className="flex items-center gap-1 text-xs text-purple-600">
-                  <TrendingUp className="w-3 h-3" />
-                  {stat.change}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Toast */}
+        {actionMsg && (
+          <div className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg w-fit">
+            {actionMsg}
+          </div>
+        )}
+
+        {/* Thống kê — hiện số thật từ API (tạm để trống, chờ API) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <Package className="w-8 h-8 text-purple-600" />
+                <span className="text-2xl font-bold text-gray-400">—</span>
+              </div>
+              <p className="text-sm text-gray-600">Gói dịch vụ đang hoạt động</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <ShoppingCart className="w-8 h-8 text-blue-600" />
+                <span className="text-2xl font-bold text-gray-400">—</span>
+              </div>
+              <p className="text-sm text-gray-600">Tổng đơn hàng</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <Clock className="w-8 h-8 text-orange-600" />
+                <span className="text-2xl font-bold text-yellow-600">
+                  {loading ? '...' : pendingPlans.length}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">Giáo án chờ duyệt</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Pending Content Approvals */}
+        {/* Pending Content Approvals — DỮ LIỆU THẬT */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Pending Content Approvals</CardTitle>
-                <CardDescription>Review and approve content created by staff</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-orange-600" />
+                  Giáo Án Chờ Duyệt
+                </CardTitle>
+                <CardDescription>Xem xét và duyệt nội dung do Staff tạo</CardDescription>
               </div>
-              <Button variant="outline" size="sm">View All</Button>
+              {!loading && pendingPlans.length > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-700">
+                  {pendingPlans.length} chờ duyệt
+                </Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {pendingApprovals.map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-4 flex-1">
-                    <FileCheck className="w-5 h-5 text-orange-600" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline">{item.type}</Badge>
-                        <p className="font-medium text-gray-900">{item.title}</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-8 text-gray-500">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải...
+              </div>
+            ) : pendingPlans.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">Không có giáo án nào chờ duyệt</p>
+                <p className="text-sm">Khi Staff gửi giáo án, chúng sẽ hiện ở đây</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingPlans.map((plan) => (
+                  <div key={plan.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                    <div className="flex items-center gap-4 flex-1">
+                      <FileCheck className="w-5 h-5 text-orange-600 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline">Giáo Án Mẫu</Badge>
+                          <p className="font-medium text-gray-900 truncate">{plan.title}</p>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {plan.topic?.name && `Bài: ${plan.topic.name}`}
+                          {plan.staffId && ` • Staff ID: ${plan.staffId}`}
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-600">
-                        By {item.author} • {item.submitted}
-                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-4 shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => handleReject(plan.id)}>
+                        Từ chối
+                      </Button>
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700"
+                        onClick={() => handleApprove(plan.id)}>
+                        <CheckCircle className="w-4 h-4 mr-1" />Duyệt
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">Review</Button>
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Approve
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Package Management */}
+          {/* Subscription Packages */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Subscription Packages</CardTitle>
-                  <CardDescription>Manage service packages</CardDescription>
+                  <CardTitle>Gói Dịch Vụ</CardTitle>
+                  <CardDescription>Quản lý các gói đăng ký</CardDescription>
                 </div>
                 <Button size="sm">
-                  <Package className="w-4 h-4 mr-2" />
-                  New Package
+                  <Package className="w-4 h-4 mr-2" /> Thêm gói
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {packages.map((pkg, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">{pkg.name}</p>
-                      <p className="text-sm text-gray-600">{pkg.users} active users</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">{pkg.price}</p>
-                      <Badge className="bg-green-100 text-green-700">{pkg.status}</Badge>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-8 text-gray-500">
+                <Package className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                <p className="text-sm">Chưa có dữ liệu gói dịch vụ</p>
+                <p className="text-xs text-gray-400">Tính năng đang được phát triển</p>
               </div>
             </CardContent>
           </Card>
@@ -171,36 +195,23 @@ export default function ManagerDashboard() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Recent Orders</CardTitle>
-                  <CardDescription>Latest subscription orders</CardDescription>
+                  <CardTitle>Đơn Hàng Gần Đây</CardTitle>
+                  <CardDescription>Các đơn đăng ký mới nhất</CardDescription>
                 </div>
-                <Button variant="outline" size="sm">View All</Button>
+                <Button variant="outline" size="sm">Xem tất cả</Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium text-gray-900">{order.id}</p>
-                      <Badge className={order.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}>
-                        {order.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">{order.customer}</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">{order.package} Plan</span>
-                      <span className="font-bold text-gray-900">{order.amount}</span>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-8 text-gray-500">
+                <ShoppingCart className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                <p className="text-sm">Chưa có đơn hàng nào</p>
+                <p className="text-xs text-gray-400">Tính năng đang được phát triển</p>
               </div>
             </CardContent>
           </Card>
         </div>
+
       </div>
     </DashboardLayout>
   );
 }
-
-

@@ -1,16 +1,7 @@
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import {
-  Users,
-  Settings,
-  FileText,
-  DollarSign,
-  TrendingUp,
-  UserPlus,
-  Database,
-  Shield,
-} from 'lucide-react';
+import { Users, Settings, FileText, Shield, UserPlus, Database, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import React from 'react';
 
@@ -18,11 +9,9 @@ function getNameFromToken(): string {
   try {
     const token = localStorage.getItem('access_token');
     if (!token) return '';
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.fullName || '';
+    return JSON.parse(atob(token.split('.')[1])).fullName || '';
   } catch { return ''; }
 }
-
 function useRealUserName() {
   const [name, setName] = React.useState(getNameFromToken());
   React.useEffect(() => {
@@ -38,75 +27,66 @@ export default function AdminDashboard() {
   const realName = useRealUserName();
 
   const systemStats = [
-    { label: 'Total Users', value: '1,248', icon: Users, change: '+48 this month' },
-    { label: 'Active Teachers', value: '856', icon: UserPlus, change: '68% active rate' },
-    { label: 'System Uptime', value: '99.9%', icon: Shield, change: 'Last 30 days' },
-    { label: 'Total Revenue', value: '$24.5K', icon: DollarSign, change: '+12% vs last month' },
+    { label: 'Tổng người dùng',    icon: Users,    color: 'text-purple-600' },
+    { label: 'Giáo viên đang hoạt động', icon: UserPlus, color: 'text-blue-600' },
+    { label: 'Uptime hệ thống',    icon: Shield,   color: 'text-green-600' },
+    { label: 'Doanh thu tháng',    icon: Database, color: 'text-orange-600' },
   ];
 
   const adminActions = [
     {
-      title: 'User Management',
-      description: 'Create, update, and manage user accounts and roles',
+      title: 'Quản lý Người Dùng',
+      description: 'Tạo, chỉnh sửa và phân quyền tài khoản (Teacher, Staff, Manager)',
       icon: Users,
-      action: 'Manage Users',
+      action: 'Mở quản lý',
       onClick: () => navigate('/admin/users'),
     },
     {
-      title: 'System Configuration',
-      description: 'Configure global system settings and behavior',
+      title: 'Cấu hình Hệ Thống',
+      description: 'Cấu hình các thông số vận hành toàn hệ thống',
       icon: Settings,
-      action: 'Configure System',
+      action: 'Cấu hình',
       onClick: () => {},
     },
     {
-      title: 'Curriculum Framework',
-      description: 'Design and manage lesson plan templates',
+      title: 'Chương Trình Giảng Dạy',
+      description: 'Thiết kế và quản lý khung chương trình (Môn, Chương, Bài)',
       icon: FileText,
-      action: 'Manage Templates',
+      action: 'Quản lý',
       onClick: () => {},
     },
     {
-      title: 'Revenue Tracking',
-      description: 'View financial metrics and subscription data',
-      icon: DollarSign,
-      action: 'View Analytics',
+      title: 'Bảo Mật & Phân Quyền',
+      description: 'Kiểm soát quyền truy cập và nhật ký hoạt động hệ thống',
+      icon: Shield,
+      action: 'Xem báo cáo',
       onClick: () => {},
     },
-  ];
-
-  const recentUsers = [
-    { name: 'Trần Văn Minh', role: 'Teacher', status: 'Active', joined: '2026-03-01' },
-    { name: 'Lê Thị Hương', role: 'Teacher', status: 'Active', joined: '2026-03-02' },
-    { name: 'Phạm Quốc Bảo', role: 'Staff', status: 'Active', joined: '2026-03-05' },
-    { name: 'Nguyễn Thu Trang', role: 'Teacher', status: 'Inactive', joined: '2026-02-28' },
   ];
 
   return (
     <DashboardLayout role="admin" userName={realName}>
       <div className="space-y-8">
-        {/* Welcome Section */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Xin chào, {realName || 'Admin'}! 👋
           </h1>
-          <p className="text-gray-600">System administration overview</p>
+          <p className="text-gray-600">Trang quản trị hệ thống PlanbookAI</p>
         </div>
 
-        {/* System Stats */}
+        {/* Stats — chờ API thật */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {systemStats.map((stat) => (
             <Card key={stat.label}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <stat.icon className="w-8 h-8 text-purple-600" />
-                  <span className="text-2xl font-bold">{stat.value}</span>
+                  <stat.icon className={`w-8 h-8 ${stat.color}`} />
+                  <span className="text-2xl font-bold text-gray-400">—</span>
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                <p className="text-xs text-green-600 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {stat.change}
-                </p>
+                <div className="flex items-center gap-1 text-xs text-gray-400">
+                  <TrendingUp className="w-3 h-3" /> Đang cập nhật...
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -114,7 +94,7 @@ export default function AdminDashboard() {
 
         {/* Admin Actions */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Administration Tools</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Công cụ Quản Trị</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {adminActions.map((action) => (
               <Card key={action.title} className="hover:shadow-md transition-shadow">
@@ -130,10 +110,7 @@ export default function AdminDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button
-                    className="w-full bg-purple-600 hover:bg-purple-700"
-                    onClick={action.onClick}
-                  >
+                  <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={action.onClick}>
                     {action.action}
                   </Button>
                 </CardContent>
@@ -142,37 +119,24 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Recent Users */}
+        {/* Recent Registrations — placeholder */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent User Registrations</CardTitle>
-            <CardDescription>Latest users who joined the platform</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Người Dùng Mới Đăng Ký</CardTitle>
+                <CardDescription>Các tài khoản được tạo gần đây</CardDescription>
+              </div>
+              <Button variant="outline" onClick={() => navigate('/admin/users')}>
+                Xem tất cả
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recentUsers.map((user, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-purple-700">{user.name.charAt(0)}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{user.name}</p>
-                      <p className="text-xs text-gray-500">{user.role}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xs px-2 py-1 rounded-full ${user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {user.status}
-                    </span>
-                    <p className="text-xs text-gray-400 mt-1">{user.joined}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-8 text-gray-500">
+              <Users className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">Vào "Quản lý Người Dùng" để xem danh sách đầy đủ</p>
             </div>
-            <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/admin/users')}>
-              View All Users
-            </Button>
           </CardContent>
         </Card>
       </div>
