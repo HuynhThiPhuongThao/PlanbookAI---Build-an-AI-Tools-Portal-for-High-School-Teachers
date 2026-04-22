@@ -31,7 +31,7 @@ class LessonPlanRequest(BaseModel):
 
 
 class LessonActivity(BaseModel):
-    time: str
+    time: int  # số phút (Gemini trả về integer)
     activity: str
 
 

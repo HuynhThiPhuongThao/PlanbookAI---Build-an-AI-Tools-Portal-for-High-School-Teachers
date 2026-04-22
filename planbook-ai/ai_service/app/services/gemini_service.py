@@ -220,3 +220,5 @@ async def generate_lesson_plan(request: LessonPlanRequest, db: Session):
     for act in data["activities"]:
         if not isinstance(act.get("time"), int):
             raise ValueError("Activity time must be number")
+
+    return data
