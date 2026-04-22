@@ -3,6 +3,7 @@ package com.planbook.service.teacher;
 import com.planbook.dto.teacher.LessonPlanRequest;
 import com.planbook.dto.teacher.LessonPlanResponse;
 import com.planbook.dto.staff.TopicResponse;
+import com.planbook.dto.PromptDTO;
 import com.planbook.dto.staff.ChapterResponse;
 import com.planbook.dto.staff.SubjectResponse;
 import com.planbook.entity.teacher.LessonPlan;
@@ -14,6 +15,8 @@ import com.planbook.repository.teacher.LessonPlanRepository;
 import com.planbook.repository.staff.TopicRepository;
 import com.planbook.repository.admin.CurriculumTemplateRepository;
 import com.planbook.repository.staff.SampleLessonPlanRepository;
+import com.planbook.service.AiPromptService;
+
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -26,15 +29,18 @@ public class LessonPlanService {
     private final TopicRepository topicRepository;
     private final CurriculumTemplateRepository curriculumTemplateRepository;
     private final SampleLessonPlanRepository sampleLessonPlanRepository;
+    private final AiPromptService aiPromptService;
 
     public LessonPlanService(LessonPlanRepository lessonPlanRepository,
                              TopicRepository topicRepository,
                              CurriculumTemplateRepository curriculumTemplateRepository,
-                             SampleLessonPlanRepository sampleLessonPlanRepository) {
+                             SampleLessonPlanRepository sampleLessonPlanRepository,
+                             AiPromptService aiPromptService) {
         this.lessonPlanRepository = lessonPlanRepository;
         this.topicRepository = topicRepository;
         this.curriculumTemplateRepository = curriculumTemplateRepository;
         this.sampleLessonPlanRepository = sampleLessonPlanRepository;
+        this.aiPromptService = aiPromptService;
     }
 
     public List<LessonPlanResponse> getLessonPlansByTeacher(Long teacherId) {
@@ -60,7 +66,7 @@ public class LessonPlanService {
 
         SampleLessonPlan sampleLessonPlan = null;
         if (request.getSampleLessonPlanId() != null) {
-sampleLessonPlan = sampleLessonPlanRepository.findById(request.getSampleLessonPlanId())
+                sampleLessonPlan = sampleLessonPlanRepository.findById(request.getSampleLessonPlanId())
                     .orElseThrow(() -> new EntityNotFoundException("Sample lesson plan not found with id " + request.getSampleLessonPlanId()));
 
             if (sampleLessonPlan.getStatus() != SampleLessonPlanStatus.APPROVED) {
@@ -69,8 +75,17 @@ sampleLessonPlan = sampleLessonPlanRepository.findById(request.getSampleLessonPl
         }
 
         LessonPlan lessonPlan = new LessonPlan();
-        lessonPlan.setTitle(request.getTitle());
-        lessonPlan.setContent(request.getContent());
+
+        //Bổ sung logic gọi AI service nếu content rỗng
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            PromptDTO.PromptResponse prompt = aiPromptService.getActivePrompt("lessonplan_template");
+            lessonPlan.setContent(prompt.getContent());
+            lessonPlan.setTitle(prompt.getName());
+        } else {
+            lessonPlan.setTitle(request.getTitle());
+            lessonPlan.setContent(request.getContent());
+        }
+
         lessonPlan.setStatus(request.getStatus() != null ? request.getStatus() : LessonPlan.Status.DRAFT);
         lessonPlan.setTeacherId(teacherId);
         lessonPlan.setTopic(topic);
@@ -105,8 +120,16 @@ sampleLessonPlan = sampleLessonPlanRepository.findById(request.getSampleLessonPl
             }
         }
 
+
+         // ✅ Bổ sung logic gọi AI service nếu content rỗng khi update
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            PromptDTO.PromptResponse prompt = aiPromptService.getActivePrompt("lessonplan_template");
+            existing.setContent(prompt.getContent());
+            existing.setTitle(prompt.getName());
+        } else {
         existing.setTitle(request.getTitle());
         existing.setContent(request.getContent());
+        }
         existing.setStatus(request.getStatus() != null ? request.getStatus() : existing.getStatus());
         existing.setTopic(topic);
         existing.setCurriculumTemplate(curriculumTemplate);
@@ -182,3 +205,6 @@ private LessonPlanResponse toResponse(LessonPlan lessonPlan) {
         return response;
     }
 }
+
+
+
