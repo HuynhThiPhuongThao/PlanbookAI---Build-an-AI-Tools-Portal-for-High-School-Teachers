@@ -21,6 +21,9 @@ export const getTopicsByChapter = (chapterId: number) =>
 export const getSampleLessonPlans = () =>
   axiosClient.get('/sample-lesson-plans/my');
 
+export const getSampleLessonPlanById = (id: number) =>
+  axiosClient.get(`/sample-lesson-plans/${id}`);
+
 export const createSampleLessonPlan = (data: {
   title: string;
   content: string;
@@ -34,7 +37,7 @@ export const updateSampleLessonPlan = (id: number, data: {
 }) => axiosClient.put(`/sample-lesson-plans/${id}`, data);
 
 export const submitForReview = (id: number) =>
-  axiosClient.put(`/sample-lesson-plans/${id}/submit`);
+  axiosClient.post(`/sample-lesson-plans/${id}/submit`);
 
 // --- AI Generate (gọi ai-service qua gateway) ---
 

@@ -5,7 +5,7 @@
 # Stop: docker compose down
 # Stop + xóa data: docker compose down -v
 # =====================================================================
-
+# docker compose up -d --build frontend
 services:
 
   # -------------------------------------------------------------------
@@ -24,8 +24,9 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
-      # seed-data.sql KHÔNG mount ở đây vì nó cần chạy SAU khi Hibernate tạo bảng
-      # Chạy: .\seed.ps1 (Windows) hoặc bash seed.sh (Linux/Mac) sau khi docker compose up
+      # Script 02: Tạo bảng + seed data tự động
+      # CHỈ chạy khi volume mysql_data TRỐNG (lần đầu hoặc sau: docker compose down -v)
+      - ./db/02-master-seed.sql:/docker-entrypoint-initdb.d/02-master-seed.sql
 
     networks:
       - planbook-network

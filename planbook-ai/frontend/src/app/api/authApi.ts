@@ -36,5 +36,19 @@ export const authApi = {
   // 7. Đổi mật khẩu (cần đăng nhập, gửi kèm mật khẩu cũ để xác thực)
   changePassword: (data: { currentPassword: string; newPassword: string }) => {
     return axiosClient.post('/auth/change-password', data);
-  }
+  },
+
+  // 8. Admin tạo tài khoản nội bộ cho STAFF / MANAGER
+  // Backend nhận role qua @RequestParam (query param), KHÔNG phải body!
+  createInternalAccount: (data: {
+    email: string;
+    password: string;
+    fullName: string;
+    role: 'STAFF' | 'MANAGER';
+  }) => {
+    const { role, ...body } = data;
+    return axiosClient.post('/auth/internal/create-account', body, {
+      params: { role },  // ?role=STAFF hoặc ?role=MANAGER
+    });
+  },
 };

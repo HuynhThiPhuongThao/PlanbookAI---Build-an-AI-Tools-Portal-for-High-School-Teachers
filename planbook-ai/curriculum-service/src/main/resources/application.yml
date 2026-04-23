@@ -51,4 +51,4 @@ jwt:
 
 ai:
   service:
-    url: ${AI_SERVICE_URL:http://localhost:8086}/api/ai/prompts/active/lessonplan_template
+    url: ${AI_SERVICE_URL:http://localhost:8086}/api/ai/prompts/active/generate_lesson_plan

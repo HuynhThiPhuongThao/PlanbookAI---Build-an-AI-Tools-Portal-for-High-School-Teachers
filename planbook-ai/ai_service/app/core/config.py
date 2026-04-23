@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     db_host: str = Field(default="127.0.0.1", alias="MYSQL_HOST")
     db_port: int = Field(default=3306, alias="MYSQL_PORT")
-    db_name: str = Field(default="planbook_ai", alias="MYSQL_DB")
+    db_name: str = Field(default="db_ai", alias="MYSQL_DB")
     db_user: str = Field(default="root", alias="MYSQL_USER")
     db_password: str = Field(default="12345p", alias="MYSQL_PASSWORD")
 
