@@ -39,16 +39,15 @@ export const authApi = {
   },
 
   // 8. Admin tạo tài khoản nội bộ cho STAFF / MANAGER
-  // Backend nhận role qua @RequestParam (query param), KHÔNG phải body!
+  // Role nằm trong body (KHÔNG phải query param)
+  // Lý do: API Gateway có thể strip query params → gây lỗi 500
   createInternalAccount: (data: {
     email: string;
     password: string;
     fullName: string;
     role: 'STAFF' | 'MANAGER';
   }) => {
-    const { role, ...body } = data;
-    return axiosClient.post('/auth/internal/create-account', body, {
-      params: { role },  // ?role=STAFF hoặc ?role=MANAGER
-    });
+    // Gửi toàn bộ data (kể cả role) vào body luôn
+    return axiosClient.post('/auth/internal/create-account', data);
   },
 };

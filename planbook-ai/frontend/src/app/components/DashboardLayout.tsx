@@ -67,7 +67,24 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
     };
     
     window.addEventListener('profileUpdated', handleProfileUpdate);
-    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+
+    // 4. Firebase: Đăng ký Token thiết bị và gửi lên Backend (để nhận thông báo)
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      import('../firebase').then(({ requestPermission }) => {
+        requestPermission().then((fcmToken) => {
+          if (fcmToken) {
+            axiosClient.put('/users/me/fcm-token', { token: fcmToken })
+              .then(() => console.log('Đã lưu FCM Token lên server thành công!'))
+              .catch(err => console.error('Lỗi lưu FCM Token', err));
+          }
+        }).catch(err => console.error("Lỗi xin quyền Firebase: ", err));
+      }).catch(err => console.error("Lỗi import firebase: ", err));
+    }
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
   }, []);
 
   const handleLogout = () => {

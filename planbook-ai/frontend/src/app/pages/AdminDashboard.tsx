@@ -50,10 +50,10 @@ export default function AdminDashboard() {
     },
     {
       title: 'Chương Trình Giảng Dạy',
-      description: 'Thiết kế và quản lý khung chương trình (Môn, Chương, Bài)',
+      description: 'Thiết kế và quản lý khung chương trình (Môn, Chương, Bài) cùng Mẫu giáo án',
       icon: FileText,
       action: 'Quản lý',
-      onClick: () => {},
+      onClick: () => navigate('/admin/curriculum'),
     },
     {
       title: 'Bảo Mật & Phân Quyền',

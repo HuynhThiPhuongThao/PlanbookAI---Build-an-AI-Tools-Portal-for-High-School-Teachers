@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import {
   Package, ShoppingCart, Clock, CheckCircle, FileCheck,
-  Loader2, XCircle, History,
+  Loader2, XCircle, History, Eye, X
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
@@ -57,6 +57,10 @@ export default function ManagerDashboard() {
   const [pendingPlans, setPendingPlans] = useState<any[]>([]);
   const [loadingPending, setLoadingPending] = useState(true);
   const [actionMsg, setActionMsg] = useState('');
+  
+  /* ── Modal Xem Chi Tiết ── */
+  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /* ── history ── */
   const [historyPlans, setHistoryPlans] = useState<any[]>([]);
@@ -112,24 +116,35 @@ export default function ManagerDashboard() {
 
   /* ── approve / reject ── */
   const handleApprove = async (id: number) => {
+    setIsSubmitting(true);
     try {
       await axiosClient.post(`/sample-lesson-plans/review/${id}/approve`, { reviewNote: 'Duyệt bài' });
       setPendingPlans(p => p.filter(x => x.id !== id));
       setActionMsg('✅ Đã duyệt giáo án!');
       setTimeout(() => setActionMsg(''), 3000);
-      // invalidate history cache
       setHistoryLoaded(false);
-    } catch { setActionMsg('❌ Lỗi khi duyệt!'); }
+      setSelectedPlan(null); // Đóng modal
+    } catch { 
+      setActionMsg('❌ Lỗi khi duyệt!'); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReject = async (id: number) => {
+    setIsSubmitting(true);
     try {
       await axiosClient.post(`/sample-lesson-plans/review/${id}/reject`, { reviewNote: 'Từ chối bài' });
       setPendingPlans(p => p.filter(x => x.id !== id));
       setActionMsg('🚫 Đã từ chối giáo án!');
       setTimeout(() => setActionMsg(''), 3000);
       setHistoryLoaded(false);
-    } catch { setActionMsg('❌ Lỗi khi từ chối!'); }
+      setSelectedPlan(null); // Đóng modal
+    } catch { 
+      setActionMsg('❌ Lỗi khi từ chối!'); 
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -141,6 +156,76 @@ export default function ManagerDashboard() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Manager Dashboard</h1>
           <p className="text-gray-600">Quản lý gói dịch vụ, đơn hàng và duyệt nội dung</p>
         </div>
+
+        {/* MODAL XEM CHI TIẾT GIÁO ÁN */}
+        {selectedPlan && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedPlan.title}</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedPlan.topic?.name && `Chủ đề: ${selectedPlan.topic.name} • `}
+                    Người tạo (Staff ID): {selectedPlan.staffId}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => !isSubmitting && setSelectedPlan(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                  <h3 className="font-semibold text-gray-800 border-b pb-3 mb-4">Nội dung Giáo Án</h3>
+                  {selectedPlan.content ? (
+                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-slate-50 p-4 rounded-lg border border-slate-100">
+                      {/* Thử parse JSON cho đẹp, nếu lỗi thì in text raw */}
+                      {(() => {
+                        try {
+                          return JSON.stringify(JSON.parse(selectedPlan.content), null, 2);
+                        } catch {
+                          return selectedPlan.content;
+                        }
+                      })()}
+                    </pre>
+                  ) : (
+                    <p className="text-gray-500 italic">Không có nội dung chi tiết.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-end gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSelectedPlan(null)}
+                  disabled={isSubmitting}
+                >
+                  Đóng
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  onClick={() => handleReject(selectedPlan.id)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                  Từ Chối
+                </Button>
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => handleApprove(selectedPlan.id)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                  Duyệt Bài
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Action Toast */}
         {actionMsg && (
@@ -274,14 +359,9 @@ export default function ManagerDashboard() {
                         </div>
                       </div>
                       <div className="flex gap-2 ml-4 shrink-0">
-                        <Button variant="outline" size="sm"
-                          className="border-red-300 text-red-600 hover:bg-red-50"
-                          onClick={() => handleReject(plan.id)}>
-                          <XCircle className="w-4 h-4 mr-1" /> Từ chối
-                        </Button>
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700"
-                          onClick={() => handleApprove(plan.id)}>
-                          <CheckCircle className="w-4 h-4 mr-1" /> Duyệt
+                        <Button size="sm" className="bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-0"
+                          onClick={() => setSelectedPlan(plan)}>
+                          <Eye className="w-4 h-4 mr-1" /> Xem & Duyệt
                         </Button>
                       </div>
                     </div>

@@ -1,11 +1,13 @@
 package com.planbook.controller.staff;
 
 import com.planbook.dto.staff.ChapterResponse;
+import com.planbook.dto.staff.ChapterRequest;
 import com.planbook.dto.staff.TopicResponse;
 import com.planbook.service.staff.ChapterService;
 import com.planbook.service.staff.TopicService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -42,5 +44,21 @@ public class ChapterController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(topics);
-}
+    }
+
+    @PostMapping
+    public ResponseEntity<ChapterResponse> createChapter(@Valid @RequestBody ChapterRequest request) {
+        return ResponseEntity.ok(chapterService.createChapter(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ChapterResponse> updateChapter(@PathVariable Long id, @Valid @RequestBody ChapterRequest request) {
+        return ResponseEntity.ok(chapterService.updateChapter(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteChapter(@PathVariable Long id) {
+        chapterService.deleteChapter(id);
+        return ResponseEntity.ok().build();
+    }
 }

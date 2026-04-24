@@ -17,11 +17,22 @@ public class FirebaseConfig {
         try {
             // Kiểm tra xem đã khởi tạo chưa (tránh lỗi tạo 2 lần)
             if (FirebaseApp.getApps().isEmpty()) {
-                // ClassPathResource sẽ tự mò vào thư mục resources
-                ClassPathResource resource = new ClassPathResource("planbootai-firebase-adminsdk-fbsvc-3837193fcb.json");
+                java.io.InputStream serviceAccountStream;
+                
+                // Môi trường Docker: ưu tiên đọc từ volume mounted vào /app/secrets/
+                java.io.File secretFile = new java.io.File("/app/secrets/firebase-adminsdk.json");
+                if (secretFile.exists()) {
+                    System.out.println("🔥 Đang nạp Firebase config từ file secrets (Volume Mount)...");
+                    serviceAccountStream = new java.io.FileInputStream(secretFile);
+                } else {
+                    // Môi trường dev (Local): nạp từ thư mục resources
+                    System.out.println("🔥 Không thấy thư mục secrets, đang nạp từ resources (Local)...");
+                    ClassPathResource resource = new ClassPathResource("planbootai-firebase-adminsdk-fbsvc-3837193fcb.json");
+                    serviceAccountStream = resource.getInputStream();
+                }
                 
                 FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                        .setCredentials(GoogleCredentials.fromStream(serviceAccountStream))
                         .build();
 
                 FirebaseApp.initializeApp(options);

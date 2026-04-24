@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- PlanbookAI - Master Seed File
 -- File này được MySQL tự động chạy khi container khởi động lần đầu
 -- (hoặc khi volume bị xóa: docker compose down -v)

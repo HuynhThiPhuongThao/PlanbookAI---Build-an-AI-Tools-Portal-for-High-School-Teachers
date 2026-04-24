@@ -38,6 +38,8 @@ public class UserProfile {
     @Column(name = "is_active")
     @Builder.Default
     private boolean active = true;
+    @Column(name = "fcm_token")
+    private String fcmToken;
     @Column(name = "created_at", updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

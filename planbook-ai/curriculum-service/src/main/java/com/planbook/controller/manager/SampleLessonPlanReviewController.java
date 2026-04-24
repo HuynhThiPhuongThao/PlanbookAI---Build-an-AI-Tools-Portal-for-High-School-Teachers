@@ -27,6 +27,11 @@ public class SampleLessonPlanReviewController {
         return ResponseEntity.ok(sampleLessonPlanReviewService.getPendingSamples());
     }
 
+    @GetMapping("/history")
+    public ResponseEntity<List<SampleLessonPlanResponse>> getReviewHistory() {
+        return ResponseEntity.ok(sampleLessonPlanReviewService.getReviewHistory());
+    }
+
     @PostMapping("/{id}/approve")
     public ResponseEntity<SampleLessonPlanResponse> approveSample(
             @PathVariable Long id,

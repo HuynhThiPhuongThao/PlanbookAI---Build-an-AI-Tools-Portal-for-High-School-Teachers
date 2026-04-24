@@ -16,6 +16,27 @@ export const getChaptersBySubject = (subjectId: number) =>
 export const getTopicsByChapter = (chapterId: number) =>
   axiosClient.get(`/chapters/${chapterId}/topics`);
 
+// --- Admin: Quản lý Cấu trúc môn học ---
+export const createSubject = (data: { name: string; description?: string }) => axiosClient.post('/subjects', data);
+export const updateSubject = (id: number, data: { name: string; description?: string }) => axiosClient.put(`/subjects/${id}`, data);
+export const deleteSubject = (id: number) => axiosClient.delete(`/subjects/${id}`);
+
+export const createChapter = (data: { name: string; subjectId: number }) => axiosClient.post('/chapters', data);
+export const updateChapter = (id: number, data: { name: string; subjectId: number }) => axiosClient.put(`/chapters/${id}`, data);
+export const deleteChapter = (id: number) => axiosClient.delete(`/chapters/${id}`);
+
+export const createTopic = (data: { title: string; chapterId: number }) => axiosClient.post('/topics', data);
+export const updateTopic = (id: number, data: { title: string; chapterId: number }) => axiosClient.put(`/topics/${id}`, data);
+export const deleteTopic = (id: number) => axiosClient.delete(`/topics/${id}`);
+
+// --- Admin: Quản lý Khung Giáo Án (Templates) ---
+export const getCurriculumTemplates = () => axiosClient.get('/curriculum-templates');
+export const getCurriculumTemplateById = (id: number) => axiosClient.get(`/curriculum-templates/${id}`);
+export const createCurriculumTemplate = (data: { name: string; description: string; isActive?: boolean }) => axiosClient.post('/curriculum-templates', data);
+export const updateCurriculumTemplate = (id: number, data: { name: string; description: string; isActive?: boolean }) => axiosClient.put(`/curriculum-templates/${id}`, data);
+export const deleteCurriculumTemplate = (id: number) => axiosClient.delete(`/curriculum-templates/${id}`);
+
+
 // --- Sample Lesson Plans (STAFF tạo, gửi Manager duyệt) ---
 
 export const getSampleLessonPlans = () =>

@@ -80,6 +80,7 @@ export default function StaffDashboard() {
     { label: 'Đang chờ duyệt',       icon: Clock,       color: 'text-yellow-600', value: loadingPlans ? '...' : String(pendingCount) },
     { label: 'Đã được duyệt',        icon: CheckCircle, color: 'text-green-600',  value: loadingPlans ? '...' : String(approvedCount) },
     { label: 'Tỉ lệ được duyệt',    icon: TrendingUp,  color: 'text-teal-600',   value: loadingPlans ? '...' : approvalRate },
+    { label: 'Câu hỏi đã đóng góp',  icon: PlusCircle,  color: 'text-purple-600', value: '0 (Sắp ra mắt)' },
   ];
 
   return (
@@ -93,7 +94,7 @@ export default function StaffDashboard() {
         </div>
 
         {/* Stats thật từ API */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6">
           {staffStats.map((stat) => (
             <Card key={stat.label}>
               <CardContent className="pt-6">

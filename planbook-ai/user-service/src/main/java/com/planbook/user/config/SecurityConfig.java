@@ -37,7 +37,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/api-docs/**", // custom path từ application.yml
-                                "/webjars/**")
+                                "/webjars/**",
+                                // Internal endpoint: chỉ auth-service mới gọi, qua Docker network
+                                "/api/users/internal/**")
                         .permitAll()
                         // Cho phép CORS Preflight Requests đi qua mà không cần token
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()

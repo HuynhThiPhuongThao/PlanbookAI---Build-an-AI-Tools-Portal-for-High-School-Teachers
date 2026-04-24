@@ -144,6 +144,8 @@ services:
     depends_on:
       mysql:
         condition: service_started
+    volumes:
+      - ./secrets:/app/secrets
     networks:
       - planbook-network
 

@@ -59,6 +59,26 @@ public class UserService {
                 .collect(Collectors.toList()); // chuyen thanh List<UserResponse>
     }
 
+    // === INTERNAL: Tạo profile sau khi auth-service tạo account ===
+    // Được gọi từ auth-service qua Docker internal network (không qua Gateway)
+    @Transactional
+    public void initProfile(com.planbook.user.dto.InitProfileRequest request) {
+        // Nếu đã có profile rồi (idempotent) → bỏ qua, không ghi đè
+        if (userProfileRepository.existsById(request.getUserId())) {
+            log.info("Profile đã tồn tại cho userId={}, bỏ qua init.", request.getUserId());
+            return;
+        }
+        UserProfile profile = new UserProfile();
+        profile.setUserId(request.getUserId());
+        profile.setEmail(request.getEmail());
+        profile.setFullName(request.getFullName());
+        profile.setRole(com.planbook.user.entity.Role.valueOf(request.getRole()));
+        profile.setActive(true);
+        userProfileRepository.save(profile);
+        log.info("Đã khởi tạo profile cho userId={} role={}", request.getUserId(), request.getRole());
+    }
+
+
     // === CẬP NHẬT PROFILE ===
     @Transactional // nếu có lỗi giữa chừng → rollback, không lưu nửa vời
     public UserResponse updateProfile(Long userId, UpdateProfileRequest request, String email, String fullName, String role) {
@@ -78,6 +98,22 @@ public class UserService {
         if (request.getBio() != null)
             profile.setBio(request.getBio());
         return toResponse(userProfileRepository.save(profile));
+    }
+
+    // === FCM TOKEN ===
+    @Transactional
+    public void updateFcmToken(Long userId, String token) {
+        userProfileRepository.findById(userId).ifPresent(profile -> {
+            profile.setFcmToken(token);
+            userProfileRepository.save(profile);
+            log.info("Cập nhật FCM Token cho user {}", userId);
+        });
+    }
+
+    public String getFcmToken(Long userId) {
+        return userProfileRepository.findById(userId)
+                .map(UserProfile::getFcmToken)
+                .orElse(null);
     }
 
     // === KHÓA / MỞ TÀI KHOẢN ===

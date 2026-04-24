@@ -351,7 +351,9 @@ export default function AdminUsers() {
       // axiosClient interceptor đã unwrap response.data rồi
       // nên `data` ở đây là array trực tiếp, không cần .data nữa
       const data = await userApi.getAllUsers();
-      setUsers(Array.isArray(data) ? data : []);
+      // Chỉ lấy danh sách nhân sự nội bộ (ADMIN, MANAGER, STAFF), ẩn TEACHER đi
+      const internalUsers = (Array.isArray(data) ? data : []).filter(u => u.role !== 'TEACHER');
+      setUsers(internalUsers);
     } catch (error: any) {
       console.error('Lỗi khi tải danh sách users:', error);
       setErrorOption(error.response?.data?.message || 'Không thể tải danh sách tài khoản');
