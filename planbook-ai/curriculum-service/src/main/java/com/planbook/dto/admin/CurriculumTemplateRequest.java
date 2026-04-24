@@ -1,14 +1,27 @@
 package com.planbook.dto.admin;
 
 import com.planbook.enums.TemplateStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class CurriculumTemplateRequest {
 
+    @NotBlank(message = "Name is required")
     private String name;
+
+    @Size(min = 5, max = 500, message = "Description must be between 5-500 chars")
     private String description;
+
+    @NotNull(message = "Grade level is required")
     private String gradeLevel;
+
+    @NotNull(message = "Subject ID is required")
     private Long subjectId;
+
+    @NotBlank(message = "Structure JSON is required")
     private String structureJson;
+
     private TemplateStatus status;
 
     public CurriculumTemplateRequest() {

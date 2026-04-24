@@ -77,15 +77,11 @@ public class QuestionService {
     }
     
     @Transactional
-public QuestionResponseDTO createQuestion(QuestionRequestDTO request) {
-    // Tạm thời hardcode user ID = 1 khi Security bị tắt
-    Long currentUserId = 1L;
-    String currentUserName = "System";
-    
-    // TẠM THỜI BỎ QUA KIỂM TRA ROLE - CHỈ ĐỂ TEST API
-    // if (!currentUserRole.equals("TEACHER") && !currentUserRole.equals("STAFF")) {
-    //     throw new UnauthorizedException("Chỉ Teacher và Staff mới có quyền tạo câu hỏi");
-    // }
+    public QuestionResponseDTO createQuestion(QuestionRequestDTO request) {
+        Long currentUserId = userContextService.getCurrentUserId();
+        String currentUserName = userContextService.getCurrentUserName();
+        
+        userContextService.requireRole("TEACHER", "STAFF");
     
     Question question = new Question();
     question.setContent(request.getContent());
@@ -110,13 +106,13 @@ public QuestionResponseDTO createQuestion(QuestionRequestDTO request) {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy câu hỏi với ID: " + id));
         
-        // if (!userContextService.isCurrentUserAuthor(question.getAuthorId())) {
-        //     throw new UnauthorizedException("Bạn không có quyền sửa câu hỏi này");
-        // }
+        if (!userContextService.isCurrentUserAuthor(question.getAuthorId())) {
+            throw new UnauthorizedException("Bạn không có quyền sửa câu hỏi này");
+        }
         
-        // if (!question.getStatus().equals(QuestionStatus.PENDING.name())) {
-        //     throw new UnauthorizedException("Chỉ có thể sửa câu hỏi khi đang ở trạng thái PENDING");
-        // }
+        if (!question.getStatus().equals(QuestionStatus.PENDING.name())) {
+            throw new UnauthorizedException("Chỉ có thể sửa câu hỏi khi đang ở trạng thái PENDING");
+        }
         
         question.setContent(request.getContent());
         question.setSubject(request.getSubject());
@@ -133,9 +129,8 @@ public QuestionResponseDTO createQuestion(QuestionRequestDTO request) {
     }
     
     @Transactional
-public void deleteQuestion(Long id) {
-    // Tạm thời bỏ qua kiểm tra role ADMIN để test
-    // userContextService.requireRole("ADMIN");
+    public void deleteQuestion(Long id) {
+        userContextService.requireRole("ADMIN");
     
     Question question = questionRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy câu hỏi với ID: " + id));

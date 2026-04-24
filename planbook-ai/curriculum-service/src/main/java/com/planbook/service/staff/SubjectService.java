@@ -6,7 +6,9 @@ import com.planbook.entity.staff.Subject;
 import com.planbook.repository.staff.SubjectRepository;
 import org.springframework.stereotype.Service;
 import jakarta.persistence.EntityNotFoundException;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 
 @Service
 public class SubjectService {
@@ -16,10 +18,9 @@ public class SubjectService {
         this.subjectRepository = subjectRepository;
     }
 
-    public List<SubjectResponse> getAllSubjects() {
-        return subjectRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<SubjectResponse> getAllSubjects(Pageable pageable) {
+        return subjectRepository.findAll(pageable)
+                .map(this::toResponse);
     }
 
     public SubjectResponse getSubjectById(Long id) {

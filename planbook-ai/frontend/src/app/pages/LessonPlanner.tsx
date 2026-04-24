@@ -18,6 +18,7 @@ import { ArrowLeft, Sparkles, Download, Save, Loader2, Plus, Trash2 } from 'luci
 
 import React from 'react';
 import axios from 'axios';
+import * as api from '../api/curriculumApi';
 
 function getNameFromToken(): string {
   try {
@@ -115,6 +116,24 @@ export default function LessonPlanner() {
     }
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSavePlan = async () => {
+    if (!generatedPlan) return;
+    setIsSaving(true);
+    try {
+      await api.createLessonPlan({
+        title: generatedPlan.title,
+        content: JSON.stringify(generatedPlan)
+      });
+      alert('Đã lưu giáo án thành công!');
+      window.location.href = '/teacher/lesson-plans';
+    } catch (err: any) {
+      alert('Lỗi khi lưu giáo án: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const addObjective = () => {
     if (generatedPlan) {
@@ -281,8 +300,8 @@ export default function LessonPlanner() {
                       <Download className="w-4 h-4 mr-2" />
                       Export PDF
                     </Button>
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                      <Save className="w-4 h-4 mr-2" />
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleSavePlan} disabled={isSaving}>
+                      {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                       Save Plan
                     </Button>
                   </div>

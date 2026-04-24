@@ -45,7 +45,7 @@ public class SecurityConfig {
                     throws ServletException, IOException {
 
                 String userId    = request.getHeader("X-User-Id");
-                String rolesHeader = request.getHeader("X-Roles");
+                String rolesHeader = request.getHeader("X-Role");
 
                 if (userId != null && rolesHeader != null && !rolesHeader.isBlank()) {
                     List<SimpleGrantedAuthority> authorities = Arrays.stream(rolesHeader.split(","))

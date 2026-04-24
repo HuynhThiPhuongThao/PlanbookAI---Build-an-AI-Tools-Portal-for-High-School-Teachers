@@ -37,11 +37,42 @@ export const createQuestion = (data: QuestionData) => {
 };
 
 // Duyệt câu hỏi (APPROVED hoặc REJECTED)
-export const approveQuestion = (id: number, approved: boolean, rejectionReason?: string) => {
-  return axiosClient.post(`/questions/${id}/approve`, { approved, rejectionReason });
+export const approveQuestion = (id: number, status: string, reviewNote?: string) => {
+  return axiosClient.post(`/questions/${id}/approve`, null, { params: { status, reviewNote } });
 };
 
 // Xóa câu hỏi (cho Admin)
 export const deleteQuestion = (id: number) => {
   return axiosClient.delete(`/questions/${id}`);
+};
+
+// ==========================================
+// AI Question Endpoints (gọi qua Gateway -> Question Bank Service -> AI Service)
+// ==========================================
+
+export const aiSuggestQuestion = (data: {
+  subject: string;
+  topic: string;
+  difficultyLevel: string;
+  keyword?: string;
+  additionalContext?: string;
+}) => {
+  return axiosClient.post('/questions/ai/suggest', data, { timeout: 60000 });
+};
+
+export const aiImproveQuestion = (data: {
+  content: string;
+  options: string[];
+  correctAnswer: string;
+  improvementGoal?: string;
+}) => {
+  return axiosClient.post('/questions/ai/improve', data, { timeout: 60000 });
+};
+
+export const aiGenerateAnswer = (data: {
+  content: string;
+  options: string[];
+  correctAnswer: string;
+}) => {
+  return axiosClient.post('/questions/ai/generate-answer', data, { timeout: 60000 });
 };

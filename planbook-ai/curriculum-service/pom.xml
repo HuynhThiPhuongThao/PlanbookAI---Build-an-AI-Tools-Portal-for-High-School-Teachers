@@ -81,6 +81,18 @@
         </dependency>
 
         <!-- ============================================================
+             FLYWAY: Database Migration
+        ============================================================ -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
+        <!-- ============================================================
              VALIDATION: @Valid @NotNull @Email annotations trong DTO
         ============================================================ -->
         <dependency>

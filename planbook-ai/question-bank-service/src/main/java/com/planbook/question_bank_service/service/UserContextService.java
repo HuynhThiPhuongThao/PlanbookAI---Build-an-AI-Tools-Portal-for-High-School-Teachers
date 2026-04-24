@@ -2,6 +2,7 @@ package com.planbook.question_bank_service.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.planbook.question_bank_service.exception.UnauthorizedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -44,10 +45,14 @@ public class UserContextService {
         return getCurrentUserRole().equals(role);
     }
     
-    public void requireRole(String role) {
-        if (!hasRole(role)) {
-            throw new RuntimeException("Yêu cầu quyền: " + role);
+    public void requireRole(String... roles) {
+        String currentRole = getCurrentUserRole();
+        for (String role : roles) {
+            if (currentRole.equals(role)) {
+                return;
+            }
         }
+        throw new UnauthorizedException("Yêu cầu một trong các quyền: " + String.join(", ", roles));
     }
     
     public boolean isCurrentUserAuthor(Long authorId) {
