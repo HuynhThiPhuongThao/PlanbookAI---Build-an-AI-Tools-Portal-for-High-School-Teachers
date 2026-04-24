@@ -8,6 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 @RestController
@@ -32,8 +36,12 @@ public class CurriculumTemplateController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CurriculumTemplateResponse>> getAllTemplates() {
-        return ResponseEntity.ok(curriculumTemplateService.getAllTemplates());
+    public ResponseEntity<Page<CurriculumTemplateResponse>> getAllTemplates(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(curriculumTemplateService.getAllTemplates(pageable));
     }
 
     @GetMapping("/{id}")

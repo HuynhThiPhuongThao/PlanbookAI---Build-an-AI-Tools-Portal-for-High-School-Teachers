@@ -11,6 +11,10 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 
@@ -26,8 +30,12 @@ public class SubjectController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SubjectResponse>> getAllSubjects() {
-        return ResponseEntity.ok(subjectService.getAllSubjects());
+    public ResponseEntity<Page<SubjectResponse>> getAllSubjects(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(subjectService.getAllSubjects(pageable));
     }
 
     @GetMapping("/{id}/chapters")

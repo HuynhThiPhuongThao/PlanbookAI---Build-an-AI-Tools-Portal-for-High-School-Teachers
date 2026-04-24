@@ -10,6 +10,9 @@ import com.planbook.repository.staff.SubjectRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 @Service
@@ -34,11 +37,9 @@ public class CurriculumTemplateService {
         return toResponse(saved);
     }
 
-    public List<CurriculumTemplateResponse> getAllTemplates() {
-        return curriculumTemplateRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<CurriculumTemplateResponse> getAllTemplates(Pageable pageable) {
+        return curriculumTemplateRepository.findAll(pageable)
+                .map(this::toResponse);
     }
 
     public CurriculumTemplateResponse getTemplateById(Long id) {
