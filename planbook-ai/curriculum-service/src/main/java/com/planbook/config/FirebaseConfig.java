@@ -27,7 +27,7 @@ public class FirebaseConfig {
                 } else {
                     // Môi trường dev (Local): nạp từ thư mục resources
                     System.out.println("🔥 Không thấy thư mục secrets, đang nạp từ resources (Local)...");
-                    ClassPathResource resource = new ClassPathResource("planbootai-firebase-adminsdk-fbsvc-3837193fcb.json");
+                    ClassPathResource resource = new ClassPathResource("planbootai-firebase-adminsdk.json");
                     serviceAccountStream = resource.getInputStream();
                 }
                 
