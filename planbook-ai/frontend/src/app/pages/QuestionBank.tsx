@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -15,11 +15,8 @@ import {
 } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { mockQuestions } from '../mockData';
-import { Question } from '../types';
-import { ArrowLeft, Plus, Search, Filter, Edit, Trash2, Eye } from 'lucide-react';
-
-import React from 'react';
+import { ArrowLeft, Plus, Search, Sparkles, Edit, Trash2, Eye, Loader2 } from 'lucide-react';
+import * as api from '../api/questionApi';
 
 function getNameFromToken(): string {
   try {
@@ -42,26 +39,167 @@ function useRealUserName() {
 
 export default function QuestionBank() {
   const realName = useRealUserName();
-  const [questions, setQuestions] = useState<Question[]>(mockQuestions);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
-  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+
+  // Dialog & Form State
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<any | null>(null);
+
+  // New Question Form
+  const [formData, setFormData] = useState({
+    subject: 'Chemistry',
+    topic: '',
+    difficultyLevel: 'MEDIUM',
+    content: '',
+    options: ['', '', '', ''],
+    correctAnswer: '',
+    explanation: ''
+  });
+  
+  const [aiLoading, setAiLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  const fetchQuestions = async () => {
+    setLoading(true);
+    try {
+      const res: any = await api.getQuestions({
+        size: 100 // load max for now
+      });
+      // The API returns PaginatedResponse, so data is in res.data
+      setQuestions(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuestions();
+  }, []);
 
   const filteredQuestions = questions.filter(q => {
-    const matchesSearch = q.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         q.topic.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (q.content && q.content.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (q.topic && q.topic.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesSubject = subjectFilter === 'all' || q.subject === subjectFilter;
-    const matchesDifficulty = difficultyFilter === 'all' || q.difficulty === difficultyFilter;
+    const matchesDifficulty = difficultyFilter === 'all' || q.difficultyLevel === difficultyFilter.toUpperCase();
     return matchesSearch && matchesSubject && matchesDifficulty;
   });
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
+  const getDifficultyColor = (diff: string) => {
+    if (!diff) return 'bg-gray-100 text-gray-700';
+    switch (diff.toLowerCase()) {
       case 'easy': return 'bg-green-100 text-green-700';
       case 'medium': return 'bg-yellow-100 text-yellow-700';
       case 'hard': return 'bg-red-100 text-red-700';
       default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  // --- Handlers for New Question ---
+  const handleOptionChange = (index: number, value: string) => {
+    const newOptions = [...formData.options];
+    newOptions[index] = value;
+    setFormData({ ...formData, options: newOptions });
+  };
+
+  const handleSaveQuestion = async () => {
+    if (!formData.content || !formData.topic || !formData.correctAnswer) {
+      alert("Vui lòng điền đủ Topic, Question Content và Correct Answer!");
+      return;
+    }
+    setSaveLoading(true);
+    try {
+      await api.createQuestion({
+        ...formData,
+        options: formData.options.filter(o => o.trim() !== '') // remove empty options
+      });
+      alert("Đã gửi câu hỏi thành công! Đang chờ duyệt.");
+      setIsDialogOpen(false);
+      setFormData({
+        subject: 'Chemistry', topic: '', difficultyLevel: 'MEDIUM', content: '',
+        options: ['', '', '', ''], correctAnswer: '', explanation: ''
+      });
+      fetchQuestions();
+    } catch (e) {
+      alert("Lỗi khi lưu câu hỏi");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if(!window.confirm("Xóa câu hỏi này?")) return;
+    try {
+      await api.deleteQuestion(id);
+      fetchQuestions();
+    } catch(e) {
+      alert("Lỗi xóa");
+    }
+  }
+
+  // --- AI Tools ---
+  const handleAiSuggest = async () => {
+    if (!formData.topic) {
+      alert("Vui lòng nhập Topic trước khi nhờ AI gợi ý.");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const res: any = await api.aiSuggestQuestion({
+        subject: formData.subject,
+        topic: formData.topic,
+        difficultyLevel: formData.difficultyLevel
+      });
+      
+      if (res && res.length > 0) {
+        const aiQ = res[0]; // lấy câu đầu tiên gợi ý
+        setFormData({
+          ...formData,
+          content: aiQ.content || '',
+          options: aiQ.options && aiQ.options.length > 0 ? aiQ.options : ['', '', '', ''],
+          correctAnswer: aiQ.correctAnswer || '',
+          explanation: aiQ.explanation || ''
+        });
+      }
+    } catch (e) {
+      alert("Lỗi AI Suggest");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAiImprove = async () => {
+    if (!formData.content) {
+      alert("Vui lòng nhập nội dung câu hỏi cần cải thiện.");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const res: any = await api.aiImproveQuestion({
+        content: formData.content,
+        options: formData.options.filter(o => o.trim() !== ''),
+        correctAnswer: formData.correctAnswer,
+        improvementGoal: 'Make it clearer and more engaging'
+      });
+      
+      setFormData({
+        ...formData,
+        content: res.improvedContent || formData.content,
+        options: res.improvedOptions || formData.options,
+        correctAnswer: res.improvedCorrectAnswer || formData.correctAnswer,
+        explanation: res.explanation || formData.explanation
+      });
+    } catch (e) {
+      alert("Lỗi AI Improve");
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -77,149 +215,115 @@ export default function QuestionBank() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Question Bank</h1>
-              <p className="text-gray-600">Manage and organize your question repository</p>
+              <h1 className="text-3xl font-bold text-gray-900">Ngân hàng Câu hỏi</h1>
+              <p className="text-gray-600">Quản lý và đóng góp câu hỏi trắc nghiệm</p>
             </div>
           </div>
-          <Dialog>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Question
+                Thêm Câu hỏi
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Question</DialogTitle>
-                <DialogDescription>Create a new question for your question bank</DialogDescription>
+                <DialogTitle>Thêm Câu hỏi Mới</DialogTitle>
+                <DialogDescription>Nhập thủ công hoặc sử dụng AI để hỗ trợ soạn câu hỏi.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 mt-4">
+              
+              {/* AI Tool Bar */}
+              <div className="flex gap-2 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                <Button variant="outline" size="sm" className="text-purple-700 border-purple-300 hover:bg-purple-100" onClick={handleAiSuggest} disabled={aiLoading}>
+                  {aiLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  AI Gợi ý
+                </Button>
+                <Button variant="outline" size="sm" className="text-blue-700 border-blue-300 hover:bg-blue-100" onClick={handleAiImprove} disabled={aiLoading}>
+                  {aiLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Edit className="w-4 h-4 mr-2" />}
+                  AI Cải thiện
+                </Button>
+              </div>
+
+              <div className="space-y-4 mt-2">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Subject</Label>
-                    <Select defaultValue="Chemistry">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Label>Môn học</Label>
+                    <Select value={formData.subject} onValueChange={(val) => setFormData({...formData, subject: val})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Chemistry">Chemistry</SelectItem>
                         <SelectItem value="Physics">Physics</SelectItem>
                         <SelectItem value="Biology">Biology</SelectItem>
+                        <SelectItem value="Math">Math</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Topic</Label>
-                    <Input placeholder="e.g., Atomic Structure" />
+                    <Label>Bài (Topic)</Label>
+                    <Input placeholder="VD: Cấu tạo nguyên tử" value={formData.topic} onChange={e => setFormData({...formData, topic: e.target.value})} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Difficulty</Label>
-                    <Select defaultValue="medium">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Type</Label>
-                    <Select defaultValue="multiple-choice">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-                        <SelectItem value="short-answer">Short Answer</SelectItem>
-                        <SelectItem value="fill-blank">Fill in the Blank</SelectItem>
-                        <SelectItem value="essay">Essay</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                
                 <div className="space-y-2">
-                  <Label>Question</Label>
-                  <Textarea placeholder="Enter your question here..." rows={3} />
+                  <Label>Độ khó</Label>
+                  <Select value={formData.difficultyLevel} onValueChange={(val) => setFormData({...formData, difficultyLevel: val})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EASY">Dễ</SelectItem>
+                      <SelectItem value="MEDIUM">Trung bình</SelectItem>
+                      <SelectItem value="HARD">Khó</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                
                 <div className="space-y-2">
-                  <Label>Options (for multiple choice)</Label>
-                  {[1, 2, 3, 4].map((num) => (
-                    <Input key={num} placeholder={`Option ${num}`} />
+                  <Label>Nội dung câu hỏi</Label>
+                  <Textarea placeholder="Nhập câu hỏi..." rows={3} value={formData.content} onChange={e => setFormData({...formData, content: e.target.value})} />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Các đáp án (Options)</Label>
+                  {formData.options.map((opt, idx) => (
+                    <Input key={idx} placeholder={`Đáp án ${idx + 1}`} value={opt} onChange={e => handleOptionChange(idx, e.target.value)} />
                   ))}
                 </div>
+                
                 <div className="space-y-2">
-                  <Label>Correct Answer</Label>
-                  <Input placeholder="Enter the correct answer or option number" />
+                  <Label>Đáp án đúng (Copy chính xác nội dung đáp án)</Label>
+                  <Input placeholder="VD: Proton và nơtron" value={formData.correctAnswer} onChange={e => setFormData({...formData, correctAnswer: e.target.value})} />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label>Explanation (Optional)</Label>
-                  <Textarea placeholder="Provide an explanation for the correct answer..." rows={2} />
+                  <Label>Giải thích (Tùy chọn)</Label>
+                  <Textarea placeholder="Vì sao lại chọn đáp án này?" rows={2} value={formData.explanation} onChange={e => setFormData({...formData, explanation: e.target.value})} />
                 </div>
-                <div className="space-y-2">
-                  <Label>Tags (comma separated)</Label>
-                  <Input placeholder="e.g., atoms, periodic-table, elements" />
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button className="flex-1 bg-green-600 hover:bg-green-700">Save Question</Button>
-                  <Button variant="outline" className="flex-1">Cancel</Button>
+                
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleSaveQuestion} disabled={saveLoading}>
+                    {saveLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Gửi Câu Hỏi (Chờ Duyệt)
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>Hủy</Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-gray-900">{questions.length}</div>
-              <p className="text-sm text-gray-600">Total Questions</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-green-600">
-                {questions.filter(q => q.difficulty === 'easy').length}
-              </div>
-              <p className="text-sm text-gray-600">Easy Questions</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-yellow-600">
-                {questions.filter(q => q.difficulty === 'medium').length}
-              </div>
-              <p className="text-sm text-gray-600">Medium Questions</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-red-600">
-                {questions.filter(q => q.difficulty === 'hard').length}
-              </div>
-              <p className="text-sm text-gray-600">Hard Questions</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Filters */}
         <Card>
           <CardHeader>
-            <CardTitle>Search & Filter</CardTitle>
+            <CardTitle>Tìm kiếm & Lọc</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Search</Label>
+                <Label>Tìm kiếm</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                   <Input
-                    placeholder="Search questions or topics..."
+                    placeholder="Tìm nội dung câu hỏi..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -227,13 +331,11 @@ export default function QuestionBank() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Subject</Label>
+                <Label>Môn học</Label>
                 <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Subjects</SelectItem>
+                    <SelectItem value="all">Tất cả</SelectItem>
                     <SelectItem value="Chemistry">Chemistry</SelectItem>
                     <SelectItem value="Physics">Physics</SelectItem>
                     <SelectItem value="Biology">Biology</SelectItem>
@@ -241,16 +343,14 @@ export default function QuestionBank() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Difficulty</Label>
+                <Label>Độ khó</Label>
                 <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="easy">Dễ</SelectItem>
+                    <SelectItem value="medium">Trung bình</SelectItem>
+                    <SelectItem value="hard">Khó</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -261,48 +361,46 @@ export default function QuestionBank() {
         {/* Questions List */}
         <Card>
           <CardHeader>
-            <CardTitle>Questions ({filteredQuestions.length})</CardTitle>
-            <CardDescription>Click on a question to view details</CardDescription>
+            <CardTitle>Danh sách Câu hỏi ({filteredQuestions.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {filteredQuestions.map((question) => (
-                <div
-                  key={question.id}
-                  className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => setSelectedQuestion(question)}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline">{question.subject}</Badge>
-                        <Badge variant="outline">{question.topic}</Badge>
-                        <Badge className={getDifficultyColor(question.difficulty)}>
-                          {question.difficulty}
-                        </Badge>
+            {loading ? (
+              <div className="flex justify-center items-center py-10">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              </div>
+            ) : filteredQuestions.length === 0 ? (
+               <p className="text-center text-gray-500 py-10">Không có câu hỏi nào.</p>
+            ) : (
+              <div className="space-y-3">
+                {filteredQuestions.map((q) => (
+                  <div key={q.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 cursor-pointer" onClick={() => setSelectedQuestion(q)}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">{q.subject}</Badge>
+                          <Badge variant="outline">{q.topic}</Badge>
+                          <Badge className={getDifficultyColor(q.difficultyLevel)}>
+                            {q.difficultyLevel}
+                          </Badge>
+                          <Badge variant="secondary" className={q.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
+                            {q.status}
+                          </Badge>
+                        </div>
+                        <p className="font-medium text-gray-900 line-clamp-2">{q.content}</p>
                       </div>
-                      <p className="font-medium text-gray-900 mb-2">{question.question}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span>Type: {question.type}</span>
-                        <span>•</span>
-                        <span>Tags: {question.tags.join(', ')}</span>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedQuestion(q)}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700" onClick={() => handleDelete(q.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -311,59 +409,52 @@ export default function QuestionBank() {
           <Dialog open={!!selectedQuestion} onOpenChange={() => setSelectedQuestion(null)}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Question Details</DialogTitle>
+                <DialogTitle>Chi tiết Câu hỏi</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div className="flex gap-2">
                   <Badge variant="outline">{selectedQuestion.subject}</Badge>
                   <Badge variant="outline">{selectedQuestion.topic}</Badge>
-                  <Badge className={getDifficultyColor(selectedQuestion.difficulty)}>
-                    {selectedQuestion.difficulty}
+                  <Badge className={getDifficultyColor(selectedQuestion.difficultyLevel)}>
+                    {selectedQuestion.difficultyLevel}
                   </Badge>
                 </div>
                 <div>
-                  <Label className="text-base">Question:</Label>
-                  <p className="mt-2 text-gray-900">{selectedQuestion.question}</p>
+                  <Label className="text-base font-bold text-purple-700">Câu hỏi:</Label>
+                  <p className="mt-2 text-gray-900 bg-gray-50 p-3 rounded border">{selectedQuestion.content}</p>
                 </div>
                 {selectedQuestion.options && (
                   <div>
-                    <Label className="text-base">Options:</Label>
+                    <Label className="text-base font-bold text-blue-700">Các đáp án:</Label>
                     <div className="mt-2 space-y-2">
-                      {selectedQuestion.options.map((option, index) => (
-                        <div
-                          key={index}
-                          className={`p-3 rounded-lg border ${
-                            index === selectedQuestion.correctAnswer
-                              ? 'bg-green-50 border-green-500'
-                              : 'bg-gray-50'
-                          }`}
-                        >
-                          <span className="font-medium mr-2">{index + 1}.</span>
-                          {option}
-                          {index === selectedQuestion.correctAnswer && (
-                            <Badge className="ml-2 bg-green-600">Correct Answer</Badge>
-                          )}
-                        </div>
-                      ))}
+                      {selectedQuestion.options.map((option: string, index: number) => {
+                         const isCorrect = option.trim().toLowerCase() === selectedQuestion.correctAnswer?.trim().toLowerCase();
+                         return (
+                          <div
+                            key={index}
+                            className={`p-3 rounded-lg border ${
+                              isCorrect ? 'bg-green-50 border-green-500 font-bold' : 'bg-gray-50'
+                            }`}
+                          >
+                            <span className="mr-2">{String.fromCharCode(65 + index)}.</span>
+                            {option}
+                            {isCorrect && (
+                              <Badge className="ml-2 bg-green-600">Đúng</Badge>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
                 {selectedQuestion.explanation && (
                   <div>
-                    <Label className="text-base">Explanation:</Label>
-                    <p className="mt-2 text-gray-700 bg-blue-50 p-3 rounded-lg">
+                    <Label className="text-base font-bold text-orange-700">Giải thích:</Label>
+                    <p className="mt-2 text-gray-700 bg-orange-50 p-3 rounded-lg border border-orange-100">
                       {selectedQuestion.explanation}
                     </p>
                   </div>
                 )}
-                <div>
-                  <Label className="text-base">Tags:</Label>
-                  <div className="flex gap-2 mt-2">
-                    {selectedQuestion.tags.map((tag) => (
-                      <Badge key={tag} variant="outline">{tag}</Badge>
-                    ))}
-                  </div>
-                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -372,5 +463,3 @@ export default function QuestionBank() {
     </DashboardLayout>
   );
 }
-
-

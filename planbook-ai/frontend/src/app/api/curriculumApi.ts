@@ -36,6 +36,21 @@ export const createCurriculumTemplate = (data: { name: string; description: stri
 export const updateCurriculumTemplate = (id: number, data: { name: string; description: string; isActive?: boolean }) => axiosClient.put(`/curriculum-templates/${id}`, data);
 export const deleteCurriculumTemplate = (id: number) => axiosClient.delete(`/curriculum-templates/${id}`);
 
+// --- Teacher: Quản lý Giáo Án Cá Nhân (Lesson Plans) ---
+export const getMyLessonPlans = () => axiosClient.get('/lesson-plans');
+export const getLessonPlanById = (id: number) => axiosClient.get(`/lesson-plans/${id}`);
+export const createLessonPlan = (data: {
+  title: string;
+  content: string;
+  topicId?: number;
+  curriculumTemplateId?: number;
+}) => axiosClient.post('/lesson-plans', data);
+export const updateLessonPlan = (id: number, data: {
+  title?: string;
+  content?: string;
+}) => axiosClient.put(`/lesson-plans/${id}`, data);
+export const deleteLessonPlan = (id: number) => axiosClient.delete(`/lesson-plans/${id}`);
+
 
 // --- Sample Lesson Plans (STAFF tạo, gửi Manager duyệt) ---
 

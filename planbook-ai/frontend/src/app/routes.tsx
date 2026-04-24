@@ -8,6 +8,7 @@ import ExerciseCreator from "./pages/ExerciseCreator";
 import ExamGenerator from "./pages/ExamGenerator";
 import OCRGrading from "./pages/OCRGrading";
 import LessonPlanner from "./pages/LessonPlanner";
+import TeacherLessonPlans from "./pages/TeacherLessonPlans";
 import StudentResults from "./pages/StudentResults";
 import AdminDashboard from "./pages/AdminDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
             Component: () => <RequireRole allowedRoles={["TEACHER"]} />,
             children: [
               { path: "teacher", Component: TeacherDashboard },
+              { path: "teacher/lesson-plans", Component: TeacherLessonPlans },
               { path: "lesson-planner", Component: LessonPlanner },
               { path: "exercise-creator", Component: ExerciseCreator },
               { path: "exam-generator", Component: ExamGenerator },

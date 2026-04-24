@@ -32,7 +32,8 @@ export default function TeacherDashboard() {
   ];
 
   const aiTools = [
-    { title: 'Lập kế hoạch bài học',      description: 'Tạo giáo án toàn diện với sự hỗ trợ của AI',                 icon: BookOpen,      href: '/lesson-planner',   color: 'bg-blue-500' },
+    { title: 'Giáo Án Của Tôi',           description: 'Quản lý các giáo án bạn đã tạo hoặc lưu',                     icon: BookOpen,      href: '/teacher/lesson-plans', color: 'bg-indigo-500' },
+    { title: 'Lập kế hoạch bài học AI',   description: 'Tạo giáo án toàn diện với sự hỗ trợ của AI',                  icon: Sparkles,      href: '/lesson-planner',   color: 'bg-blue-500' },
     { title: 'Người tạo bài tập',          description: 'Tạo bài tập phù hợp với chương trình giảng dạy',              icon: ClipboardCheck, href: '/exercise-creator', color: 'bg-green-500' },
     { title: 'Trình tạo bài kiểm tra',     description: 'Tạo bài kiểm tra trắc nghiệm nhiều biến thể',                icon: FileText,      href: '/exam-generator',   color: 'bg-purple-500' },
     { title: 'Chấm điểm OCR',              description: 'Tự động chấm điểm bài làm bằng AI nhận dạng hình ảnh',        icon: ScanLine,      href: '/ocr-grading',      color: 'bg-orange-500' },

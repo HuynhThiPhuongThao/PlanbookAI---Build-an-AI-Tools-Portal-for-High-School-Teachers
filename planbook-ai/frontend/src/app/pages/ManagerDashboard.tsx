@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
+import * as qApi from '../api/questionApi';
 
 function getNameFromToken(): string {
   try {
@@ -70,13 +71,37 @@ export default function ManagerDashboard() {
   /* ── firebase toast ── */
   const [fcmToast, setFcmToast] = useState<{ title: string; body: string } | null>(null);
 
-  /* ── fetch pending ── */
   const fetchPending = () => {
     setLoadingPending(true);
     axiosClient.get('/sample-lesson-plans/review/pending')
       .then((data: any) => setPendingPlans(Array.isArray(data) ? data : []))
       .catch(() => setPendingPlans([]))
       .finally(() => setLoadingPending(false));
+  };
+
+  /* ── pending questions ── */
+  const [pendingQuestions, setPendingQuestions] = useState<any[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
+
+  const fetchPendingQuestions = () => {
+    setLoadingQuestions(true);
+    axiosClient.get('/questions', { params: { size: 100 } })
+      .then((res: any) => {
+         const data = res.data || [];
+         setPendingQuestions(data.filter((q: any) => q.status === 'PENDING'));
+      })
+      .catch(() => setPendingQuestions([]))
+      .finally(() => setLoadingQuestions(false));
+  };
+
+  const handleApproveQuestion = async (id: number, isApproved: boolean) => {
+    try {
+      await qApi.approveQuestion(id, isApproved ? 'APPROVED' : 'REJECTED', '');
+      alert(isApproved ? 'Đã duyệt câu hỏi' : 'Đã từ chối câu hỏi');
+      fetchPendingQuestions();
+    } catch (e) {
+      alert('Lỗi khi duyệt câu hỏi');
+    }
   };
 
   /* ── fetch history (lazy — chỉ load khi mở tab) ── */
@@ -93,6 +118,7 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     fetchPending();
+    fetchPendingQuestions();
 
     // Firebase
     import('../firebase').then(({ requestPermission, listenForMessage }) => {
@@ -415,6 +441,54 @@ export default function ManagerDashboard() {
                 </div>
               )
             )}
+          </CardContent>
+        </Card>
+
+        {/* ── Card: Duyệt Câu Hỏi ── */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Duyệt Câu Hỏi (Ngân hàng câu hỏi)</CardTitle>
+            <CardDescription>Các câu hỏi do giáo viên đóng góp cần quản lý phê duyệt</CardDescription>
+          </CardHeader>
+          <CardContent>
+             {loadingQuestions ? (
+                <div className="flex items-center justify-center py-10 text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải...
+                </div>
+              ) : pendingQuestions.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="font-medium">Không có câu hỏi nào chờ duyệt</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingQuestions.map((q) => (
+                    <div key={q.id}
+                      className="flex flex-col gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <div className="flex items-start justify-between">
+                        <div>
+                           <div className="flex items-center gap-2 mb-2">
+                             <Badge variant="outline">{q.subject}</Badge>
+                             <Badge variant="outline">{q.topic}</Badge>
+                             <Badge>{q.difficultyLevel}</Badge>
+                           </div>
+                           <p className="font-medium text-gray-900">{q.content}</p>
+                           <p className="text-sm text-gray-500 mt-2">Đáp án đúng: <span className="font-bold">{q.correctAnswer}</span></p>
+                           {q.explanation && <p className="text-sm text-gray-500 italic mt-1">Giải thích: {q.explanation}</p>}
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApproveQuestion(q.id, true)}>
+                            Duyệt
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleApproveQuestion(q.id, false)}>
+                            Từ chối
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
           </CardContent>
         </Card>
 
