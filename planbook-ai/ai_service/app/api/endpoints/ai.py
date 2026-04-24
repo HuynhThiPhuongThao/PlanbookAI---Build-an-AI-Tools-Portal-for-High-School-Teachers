@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from ai_service.app.models.schemas import (
 from ai_service.app.services import gemini_service
 from ai_service.app.dependencies import get_db
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ai", tags=["AI"])
 
@@ -29,8 +31,9 @@ async def generate_exercise_api(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+    except Exception as exc:
+        logger.exception(f"Unexpected error in generate_exercise: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {type(exc).__name__}: {str(exc)}") from exc
 
 
 @router.post(
@@ -48,5 +51,6 @@ async def generate_lesson_plan_api(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+    except Exception as exc:
+        logger.exception(f"Unexpected error in generate_lesson_plan: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {type(exc).__name__}: {str(exc)}") from exc

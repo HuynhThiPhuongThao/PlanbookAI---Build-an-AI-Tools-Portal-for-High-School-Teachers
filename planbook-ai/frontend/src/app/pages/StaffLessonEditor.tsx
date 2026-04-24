@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -12,13 +12,14 @@ import {
 } from '../components/ui/select';
 import {
   ArrowLeft, Sparkles, Save, Send, Loader2, BookOpen,
-  ChevronRight, CheckCircle, Clock, FileText,
+  ChevronRight, CheckCircle, Clock, FileText, Pencil,
 } from 'lucide-react';
 import React from 'react';
 import {
   getSubjects, getChaptersBySubject, getTopicsByChapter,
-  createSampleLessonPlan, submitForReview, aiGenerateLessonPlan,
-  getSampleLessonPlans,
+  createSampleLessonPlan, updateSampleLessonPlan,
+  submitForReview, aiGenerateLessonPlan,
+  getSampleLessonPlans, getSampleLessonPlanById,
 } from '../api/curriculumApi';
 
 // ---- helpers ----
@@ -42,7 +43,7 @@ function useRealUserName() {
 // ---- types ----
 interface Subject { id: number; name: string; }
 interface Chapter { id: number; name: string; }
-interface Topic   { id: number; name: string; }
+interface Topic   { id: number; title: string; name?: string; }
 interface SamplePlan {
   id: number; title: string; status: string; topic?: { name: string };
 }
@@ -58,6 +59,12 @@ const statusColor: Record<string, string> = {
 // =====================================================================
 export default function StaffLessonEditor() {
   const realName = useRealUserName();
+  const [searchParams] = useSearchParams();
+
+  // --- edit mode: đọc ?id= từ URL ---
+  const editIdParam = searchParams.get('id');
+  const editId      = editIdParam ? Number(editIdParam) : null;
+  const isEditMode  = editId !== null;
 
   // --- state: dropdown data ---
   const [subjects, setSubjects]   = useState<Subject[]>([]);
@@ -75,24 +82,41 @@ export default function StaffLessonEditor() {
   const [isSaving,      setIsSaving]      = useState(false);
   const [isGenerating,  setIsGenerating]  = useState(false);
   const [isSubmitting,  setIsSubmitting]  = useState(false);
-  const [savedId,       setSavedId]       = useState<number | null>(null);
+  // savedId: khi CREATE mới → backend trả về id. Khi EDIT → dùng editId luôn
+  const [savedId,       setSavedId]       = useState<number | null>(isEditMode ? editId : null);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(isEditMode);
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
 
   // --- state: my plans list ---
   const [myPlans, setMyPlans] = useState<SamplePlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
 
-  // ---- load subjects on mount ----
+  // ---- load subjects + (nếu edit mode) load plan cũ ----
   useEffect(() => {
     getSubjects()
       .then((data: any) => setSubjects(Array.isArray(data) ? data : []))
       .catch(() => setSubjects([]));
-    // Load my plans
+
     getSampleLessonPlans()
       .then((data: any) => setMyPlans(Array.isArray(data) ? data : []))
       .catch(() => setMyPlans([]))
       .finally(() => setLoadingPlans(false));
-  }, []);
+
+    // Edit mode: fill dữ liệu cũ vào form
+    if (isEditMode && editId) {
+      setIsLoadingEdit(true);
+      getSampleLessonPlanById(editId)
+        .then((data: any) => {
+          setTitle(data.title || '');
+          setContent(data.content || '');
+          // topic id nếu backend trả về
+          if (data.topic?.id) setSelectedTopic(String(data.topic.id));
+          showToast(`Đang chỉnh sửa: "${data.title}"`, 'ok');
+        })
+        .catch(() => showToast('Không tải được giáo án cũ — kiểm tra ID!', 'err'))
+        .finally(() => setIsLoadingEdit(false));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- load chapters when subject changes ----
   useEffect(() => {
@@ -118,6 +142,66 @@ export default function StaffLessonEditor() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // ---- Format: biến JSON Object từ AI thành văn bản dễ đọc cho textarea ----
+  const formatLessonPlan = (data: any): string => {
+    // Nếu data không phải object hợp lệ → trả về chuỗi rỗng
+    if (!data || typeof data !== 'object') return '';
+
+    let text = '';
+
+    // 1. Tiêu đề bài học
+    if (data.title) {
+      text += `TIÊU ĐỀ: ${data.title}\n`;
+      text += '─'.repeat(50) + '\n\n';
+    }
+
+    // 2. Thông tin chung
+    if (data.grade || data.durationMinutes) {
+      if (data.grade)           text += `Lớp: ${data.grade}\n`;
+      if (data.durationMinutes) text += `Thời lượng: ${data.durationMinutes} phút\n`;
+      text += '\n';
+    }
+
+    // 3. Mục tiêu bài học — lặp qua mảng objectives
+    if (Array.isArray(data.objectives) && data.objectives.length > 0) {
+      text += 'MỤC TIÊU BÀI HỌC:\n';
+      data.objectives.forEach((obj: string, idx: number) => {
+        text += `  ${idx + 1}. ${obj}\n`;
+      });
+      text += '\n';
+    }
+
+    // 4. Các hoạt động — lặp qua mảng activities
+    // Mỗi activity có: time (số phút) + activity (chuỗi mô tả)
+    if (Array.isArray(data.activities) && data.activities.length > 0) {
+      text += `CÁC HOẠT ĐỘNG:\n`;
+      data.activities.forEach((act: any) => {
+        const timeLabel = act.time ? `[${act.time} phút]` : '';
+        // Dòng đầu của activity.activity là tên hoạt động
+        const lines = (act.activity || '').split('\n');
+        const actTitle = lines[0]?.trim() || '';
+        const actDetail = lines.slice(1).join('\n').trim();
+
+        text += `\n+ ${timeLabel} ${actTitle}\n`;
+        if (actDetail) {
+          // Thụt lề nội dung chi tiết vào 2 spaces
+          actDetail.split('\n').forEach((line: string) => {
+            text += `  ${line}\n`;
+          });
+        }
+      });
+      text += '\n';
+    }
+
+    // 5. Đánh giá
+    if (data.assessment) {
+      text += 'ĐÁNH GIÁ:\n';
+      text += `  ${data.assessment}\n`;
+    }
+
+    return text.trim();
+  };
+
   // ---- AI generate ----
   const handleAI = async () => {
     const topicObj = topics.find(t => String(t.id) === selectedTopic);
@@ -126,15 +210,19 @@ export default function StaffLessonEditor() {
     setIsGenerating(true);
     try {
       const res: any = await aiGenerateLessonPlan({
-        topic: topicObj.name,
+        topic: topicObj.title || topicObj.name || '',
         subject: subjectObj?.name || '',
         grade: 'Trung học phổ thông',
       });
-      // ai-service trả về JSON có field content hoặc lesson_plan
-      const aiContent = res?.content || res?.lesson_plan ||
-        JSON.stringify(res, null, 2);
-      setContent(aiContent);
-      if (!title) setTitle(`Giáo án mẫu: ${topicObj.name}`);
+
+      // Bóc tách và format JSON → văn bản dễ đọc
+      // res là object (AI trả về đã parse sẵn qua axiosClient)
+      const formatted = formatLessonPlan(res);
+
+      // Fallback: nếu format thất bại → dùng JSON.stringify để debug
+      setContent(formatted || JSON.stringify(res, null, 2));
+
+      if (!title) setTitle(`Giáo án mẫu: ${topicObj.title || topicObj.name}`);
       showToast('AI đã sinh nội dung! Kiểm tra và chỉnh sửa trước khi lưu.', 'ok');
     } catch (e: any) {
       showToast('AI đang bận — thử lại sau hoặc nhập tay nha!', 'err');
@@ -143,22 +231,31 @@ export default function StaffLessonEditor() {
     }
   };
 
-  // ---- Save draft ----
+
+  // ---- Save draft (CREATE hoặc UPDATE tuỳ mode) ----
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
       showToast('Điền tiêu đề và nội dung trước đã!', 'err'); return;
     }
-    if (!selectedTopic) {
+    // Khi tạo mới bắt buộc phải chọn topic
+    if (!isEditMode && !selectedTopic) {
       showToast('Chọn bài (Topic) để gán giáo án!', 'err'); return;
     }
     setIsSaving(true);
     try {
-      const res: any = await createSampleLessonPlan({
-        title, content, topicId: Number(selectedTopic),
-      });
-      setSavedId(res?.id || null);
-      showToast('Đã lưu nháp thành công!', 'ok');
-      // refresh list
+      if (isEditMode && editId) {
+        // ── UPDATE (PUT) ──
+        await updateSampleLessonPlan(editId, { title, content });
+        setSavedId(editId); // unlock nút Gửi duyệt
+        showToast('Đã cập nhật giáo án!', 'ok');
+      } else {
+        // ── CREATE (POST) ──
+        const res: any = await createSampleLessonPlan({
+          title, content, topicId: Number(selectedTopic),
+        });
+        setSavedId(res?.id || null);
+        showToast('Đã lưu thành công!', 'ok');
+      }
       getSampleLessonPlans()
         .then((d: any) => setMyPlans(Array.isArray(d) ? d : []))
         .catch(() => {});
@@ -171,7 +268,7 @@ export default function StaffLessonEditor() {
 
   // ---- Submit for review ----
   const handleSubmit = async () => {
-    if (!savedId) { showToast('Lưu nháp trước đã rồi mới gửi duyệt được!', 'err'); return; }
+    if (!savedId) { showToast('Bạn phải lưu trước đã rồi mới gửi duyệt được!', 'err'); return; }
     setIsSubmitting(true);
     try {
       await submitForReview(savedId);
@@ -208,10 +305,31 @@ export default function StaffLessonEditor() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Soạn Giáo Án Mẫu</h1>
-            <p className="text-gray-600">Chọn bài học → Gọi AI gợi ý → Chỉnh sửa → Gửi Manager duyệt</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-gray-900">
+                {isEditMode ? 'Chỉnh Sửa Giáo Án' : 'Soạn Giáo Án Mẫu'}
+              </h1>
+              {isEditMode && (
+                <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
+                  <Pencil className="w-3 h-3" /> Chỉnh sửa #{editId}
+                </span>
+              )}
+            </div>
+            <p className="text-gray-600">
+              {isEditMode
+                ? 'Cập nhật nội dung → Lưu → Gửi Manager duyệt lại'
+                : 'Chọn bài học → Gọi AI gợi ý → Chỉnh sửa → Gửi Manager duyệt'}
+            </p>
           </div>
         </div>
+
+        {/* Loading overlay khi đang load plan cũ */}
+        {isLoadingEdit && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Đang tải dữ liệu giáo án cũ...
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -286,7 +404,7 @@ export default function StaffLessonEditor() {
                         {topics.length === 0
                           ? <SelectItem value="__none" disabled>Đang tải...</SelectItem>
                           : topics.map(t => (
-                            <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                            <SelectItem key={t.id} value={String(t.id)}>{t.title || t.name}</SelectItem>
                           ))
                         }
                       </SelectContent>
@@ -330,7 +448,7 @@ export default function StaffLessonEditor() {
               >
                 {isSaving
                   ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang lưu...</>
-                  : <><Save className="w-4 h-4 mr-2" />Lưu nháp</>
+                  : <><Save className="w-4 h-4 mr-2" />Lưu</>
                 }
               </Button>
               <Button
@@ -347,7 +465,7 @@ export default function StaffLessonEditor() {
               </Button>
               {!savedId && (
                 <p className="text-xs text-gray-400 text-center">
-                  Lưu nháp trước, sau đó mới gửi duyệt được nhé!
+                  Hãy lưu bài trước, sau đó mới gửi duyệt được nhé!
                 </p>
               )}
             </div>
@@ -393,7 +511,7 @@ export default function StaffLessonEditor() {
                 {savedId && (
                   <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-3 py-2 rounded-lg">
                     <CheckCircle className="w-4 h-4" />
-                    Đã lưu nháp (ID: #{savedId}) — sẵn sàng gửi duyệt!
+                    Đã lưu bài (ID: #{savedId}) — sẵn sàng gửi duyệt!
                   </div>
                 )}
               </CardContent>

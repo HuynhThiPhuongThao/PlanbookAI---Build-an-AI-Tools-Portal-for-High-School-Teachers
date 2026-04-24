@@ -3,6 +3,7 @@ package com.planbook.auth.service;
 import com.planbook.auth.dto.AuthResponse;
 import com.planbook.auth.dto.LoginRequest;
 import com.planbook.auth.dto.RegisterRequest;
+import com.planbook.auth.dto.CreateAccountRequest;
 import com.planbook.auth.entity.RefreshToken;
 import com.planbook.auth.entity.Role;
 import com.planbook.auth.entity.User;
@@ -19,7 +20,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * AuthService - Business logic cho authentication.
@@ -40,6 +44,11 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final RestTemplate restTemplate;
+
+    // URL của user-service trong Docker network (bypass Gateway)
+    @Value("${user-service.internal-url:http://user-service:8082}")
+    private String userServiceUrl;
 
     @Value("${jwt.expiration}")
     private long jwtExpiration;
@@ -68,9 +77,9 @@ public class AuthService {
         return generateAuthResponse(user);
     }
 
-    // ===== ĐỂ ADMIN TAO ACCOUNT =====
+    // ===== ĐỂ ADMIN TẠO ACCOUNT =====
     @Transactional
-    public AuthResponse createInternalAccount(RegisterRequest request, Role assignedRole) {
+    public AuthResponse createInternalAccount(CreateAccountRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email đã tồn tại hoặc bị giang hồ lụm: " + request.getEmail());
         }
@@ -79,11 +88,28 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role(assignedRole)
+                .role(request.getRole()) // Lấy từ body thay vì query param
                 .build();
 
         user = userRepository.save(user);
-        log.info("Admin created new internal account: {} with role: {}", user.getEmail(), assignedRole);
+        log.info("Admin created new internal account: {} with role: {}", user.getEmail(), request.getRole());
+
+        // Đồng bộ profile sang user-service (qua Docker internal network)
+        // Nếu gọi thất bại (user-service tạm thời down) thì chỉ log warn, KHÔNG rollback
+        // User vẫn login được và profile sẽ được tạo lazy khi login lần đầu
+        try {
+            Map<String, Object> profilePayload = Map.of(
+                    "userId",   user.getId(),
+                    "email",    user.getEmail(),
+                    "fullName", user.getFullName(),
+                    "role",     user.getRole().name()
+            );
+            String initUrl = userServiceUrl + "/api/users/internal/init-profile";
+            restTemplate.postForEntity(initUrl, profilePayload, String.class);
+            log.info("Profile đã được init cho userId={}", user.getId());
+        } catch (Exception e) {
+            log.warn("Không thể init profile cho userId={}: {}. User vẫn login được bình thưẝng.", user.getId(), e.getMessage());
+        }
 
         return generateAuthResponse(user);
     }

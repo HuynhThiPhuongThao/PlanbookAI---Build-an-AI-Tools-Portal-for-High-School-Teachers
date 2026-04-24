@@ -17,6 +17,11 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
+  flyway:
+    baseline-on-migrate: true    # Chấp nhận DB đã có bảng từ trước (seed SQL) — không crash
+    baseline-version: 0          # Version baseline là 0 (trước migration đầu tiên)
+
+
   # CORS - cho phép Frontend gọi từ localhost:5173 (Vite dev server)
   web:
     cors:

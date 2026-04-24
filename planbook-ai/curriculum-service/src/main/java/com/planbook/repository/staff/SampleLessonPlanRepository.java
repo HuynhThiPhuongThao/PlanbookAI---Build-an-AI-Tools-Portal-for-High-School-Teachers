@@ -12,6 +12,8 @@ public interface SampleLessonPlanRepository extends JpaRepository<SampleLessonPl
 
     List<SampleLessonPlan> findByStatus(SampleLessonPlanStatus status);
 
+    List<SampleLessonPlan> findByStatusInOrderByUpdatedAtDesc(List<SampleLessonPlanStatus> statuses);
+
     List<SampleLessonPlan> findByTopicIdAndStatus(Long topicId, SampleLessonPlanStatus status);
 
     List<SampleLessonPlan> findByCurriculumTemplateIdAndStatus(Long curriculumTemplateId, SampleLessonPlanStatus status);

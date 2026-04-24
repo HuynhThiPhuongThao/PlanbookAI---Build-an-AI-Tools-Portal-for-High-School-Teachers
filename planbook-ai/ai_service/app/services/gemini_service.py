@@ -103,7 +103,7 @@ def _build_prompt(db: Session, name: str, variables: Dict[str, Any]) -> str:
 
 
 # =========================
-# Call Gemini
+# Call Gemini (với retry tự động cho lỗi 503)
 # =========================
 async def _call_gemini(prompt: str) -> Dict[str, Any]:
 
@@ -112,16 +112,42 @@ async def _call_gemini(prompt: str) -> Dict[str, Any]:
 
     client = _get_client()
 
-    response = await asyncio.to_thread(
-        client.models.generate_content,
-        model=settings.gemini_model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"
-        ),
-    )
+    # Retry tối đa 3 lần cho lỗi 503 (Gemini đang quá tải)
+    # Thời gian chờ giữa các lần: 2s → 5s → 10s
+    max_retries = 3
+    retry_delays = [2, 5, 10]
 
-    return _extract_json_payload(response.text or "")
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=settings.gemini_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
+            )
+            return _extract_json_payload(response.text or "")
+
+        except Exception as exc:
+            last_error = exc
+            error_str = str(exc)
+
+            # Chỉ retry nếu là lỗi 503 (server overloaded) hoặc 429 (rate limit)
+            if "503" in error_str or "UNAVAILABLE" in error_str or "429" in error_str or "quota" in error_str.lower():
+                if attempt < max_retries - 1:
+                    wait = retry_delays[attempt]
+                    await asyncio.sleep(wait)
+                    continue  # thử lại
+            # Lỗi khác (400, 401...) → không retry, ném ngay
+            raise
+
+    # Hết retry vẫn lỗi
+    raise RuntimeError(
+        f"Gemini API đang quá tải sau {max_retries} lần thử. "
+        f"Vui lòng thử lại sau vài phút. Chi tiết: {last_error}"
+    )
 
 
 # =========================
@@ -195,7 +221,7 @@ async def generate_lesson_plan(request: LessonPlanRequest, db: Session):
         {
             "topic": request.topic,
             "grade": request.grade,
-            "duration_minutes": request.durationMinutes,
+            "duration_minutes": request.duration_minutes,
         },
     )
 
@@ -220,3 +246,5 @@ async def generate_lesson_plan(request: LessonPlanRequest, db: Session):
     for act in data["activities"]:
         if not isinstance(act.get("time"), int):
             raise ValueError("Activity time must be number")
+
+    return data

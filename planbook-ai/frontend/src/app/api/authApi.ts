@@ -36,5 +36,18 @@ export const authApi = {
   // 7. Đổi mật khẩu (cần đăng nhập, gửi kèm mật khẩu cũ để xác thực)
   changePassword: (data: { currentPassword: string; newPassword: string }) => {
     return axiosClient.post('/auth/change-password', data);
-  }
+  },
+
+  // 8. Admin tạo tài khoản nội bộ cho STAFF / MANAGER
+  // Role nằm trong body (KHÔNG phải query param)
+  // Lý do: API Gateway có thể strip query params → gây lỗi 500
+  createInternalAccount: (data: {
+    email: string;
+    password: string;
+    fullName: string;
+    role: 'STAFF' | 'MANAGER';
+  }) => {
+    // Gửi toàn bộ data (kể cả role) vào body luôn
+    return axiosClient.post('/auth/internal/create-account', data);
+  },
 };

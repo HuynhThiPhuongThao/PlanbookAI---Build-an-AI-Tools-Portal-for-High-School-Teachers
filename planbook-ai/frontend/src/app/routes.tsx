@@ -16,6 +16,7 @@ import StaffPrompts from "./pages/StaffPrompts";
 import StaffLessonEditor from "./pages/StaffLessonEditor";
 import NotFound from "./pages/NotFound";
 import AdminUsers from "./pages/AdminUsers";
+import AdminCurriculum from "./pages/AdminCurriculum";
 import UserProfile from "./pages/UserProfile";
 import { RequireAuth, RequireRole } from "./components/ProtectedRoute";
 
@@ -72,6 +73,7 @@ export const router = createBrowserRouter([
             children: [
               { path: "admin", Component: AdminDashboard },
               { path: "admin/users", Component: AdminUsers },
+              { path: "admin/curriculum", Component: AdminCurriculum },
             ],
           },
         ],

@@ -35,9 +35,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Versioning
-app.include_router(ai.router, prefix="/v1")
-app.include_router(ocr.router, prefix="/v1")
+# Versioning (đã gỡ /v1 để thống nhất với API Gateway /api/)
+app.include_router(ai.router)
+app.include_router(ocr.router)
 app.include_router(prompt_routes.router)
 
 

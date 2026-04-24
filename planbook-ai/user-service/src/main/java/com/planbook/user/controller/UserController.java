@@ -2,6 +2,7 @@ package com.planbook.user.controller;
 
 import com.planbook.user.dto.UpdateProfileRequest;
 import com.planbook.user.dto.UserResponse;
+import com.planbook.user.dto.InitProfileRequest;
 import com.planbook.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +42,26 @@ public class UserController {
         return ResponseEntity.ok(userService.updateProfile(userId, request, email, fullName, role));
     }
 
+    // PUT /api/users/me/fcm-token → Lấy và lưu FCM Token từ Frontend
+    @PutMapping("/me/fcm-token")
+    public ResponseEntity<String> updateFcmToken(
+            @RequestAttribute("userId") Long userId,
+            @RequestBody java.util.Map<String, String> request) {
+        String token = request.get("token");
+        if (token != null && !token.trim().isEmpty()) {
+            userService.updateFcmToken(userId, token);
+            return ResponseEntity.ok("FCM Token updated successfully");
+        }
+        return ResponseEntity.badRequest().body("Token is required");
+    }
+
+    // GET /api/users/internal/{userId}/fcm-token → Curriculum Service gọi lấy Token
+    @GetMapping("/internal/{userId}/fcm-token")
+    public ResponseEntity<String> getFcmTokenInternal(@PathVariable Long userId) {
+        String token = userService.getFcmToken(userId);
+        return token != null ? ResponseEntity.ok(token) : ResponseEntity.notFound().build();
+    }
+
     // GET /api/users → Admin lấy danh sách tất cả user
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
@@ -72,4 +93,14 @@ public class UserController {
         userService.activateUser(userId);
         return ResponseEntity.ok("Đã mở tài khoản " + userId);
     }
-}
+
+    // POST /api/users/internal/init-profile
+    // Được gọi từ auth-service (qua Docker internal network, KHÔNG qua Gateway)
+    // sau khi Admin tạo tài khoản để đồng bộ profile vào db_user
+    // Không cần JWT vì chỉ có services trong cùng Docker network mới gọi được
+    @PostMapping("/internal/init-profile")
+    public ResponseEntity<String> initProfile(@RequestBody InitProfileRequest request) {
+        userService.initProfile(request);
+        return ResponseEntity.ok("Profile initialized for userId=" + request.getUserId());
+    }
+}

@@ -9,15 +9,24 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 
 @Service
 public class SampleLessonPlanReviewService {
 
     private final SampleLessonPlanRepository sampleLessonPlanRepository;
+    private final com.planbook.service.FirebaseNotificationService firebaseNotificationService;
+    private final org.springframework.web.client.RestTemplate restTemplate;
 
-    public SampleLessonPlanReviewService(SampleLessonPlanRepository sampleLessonPlanRepository) {
+    public SampleLessonPlanReviewService(SampleLessonPlanRepository sampleLessonPlanRepository,
+                                         com.planbook.service.FirebaseNotificationService firebaseNotificationService,
+                                         org.springframework.web.client.RestTemplate restTemplate) {
         this.sampleLessonPlanRepository = sampleLessonPlanRepository;
+        this.firebaseNotificationService = firebaseNotificationService;
+        this.restTemplate = restTemplate;
     }
 
     public List<SampleLessonPlanResponse> getPendingSamples() {
@@ -27,6 +36,19 @@ public class SampleLessonPlanReviewService {
                 .toList();
     }
 
+    // Tiêu chí môn học: Dùng Redis Cache để cache lại lịch sử duyệt
+    @Cacheable(value = "reviewHistoryCache")
+    public List<SampleLessonPlanResponse> getReviewHistory() {
+        return sampleLessonPlanRepository.findByStatusInOrderByUpdatedAtDesc(
+                    Arrays.asList(SampleLessonPlanStatus.APPROVED, SampleLessonPlanStatus.REJECTED)
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    // Khi duyệt bài, xóa cache lịch sử đi để nó lấy mới
+    @CacheEvict(value = "reviewHistoryCache", allEntries = true)
     public SampleLessonPlanResponse approveSample(Long id, SampleLessonPlanReviewRequest request, Long managerId) {
         SampleLessonPlan sampleLessonPlan = sampleLessonPlanRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Sample lesson plan not found with id: " + id));
@@ -41,9 +63,27 @@ public class SampleLessonPlanReviewService {
         sampleLessonPlan.setReviewedAt(LocalDateTime.now());
 
         SampleLessonPlan updated = sampleLessonPlanRepository.save(sampleLessonPlan);
+        
+        // Push Firebase: Báo cho Staff
+        System.out.println("🔥 [Firebase] thông báo Firebase Approve tới Staff...");
+        try {
+            String tokenUrl = "http://user-service:8082/api/users/internal/" + updated.getStaffId() + "/fcm-token";
+            String staffFcmToken = restTemplate.getForObject(tokenUrl, String.class);
+            if (staffFcmToken != null && !staffFcmToken.trim().isEmpty()) {
+                firebaseNotificationService.sendNotification(staffFcmToken, 
+                    "Giáo án của bạn đã được duyệt! 🎉", 
+                    "Giáo án: " + updated.getTitle()
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Không thể lấy FCM Token của Staff: " + e.getMessage());
+        }
+
         return toResponse(updated);
     }
 
+    // Khi từ chối bài, xóa cache lịch sử
+    @CacheEvict(value = "reviewHistoryCache", allEntries = true)
     public SampleLessonPlanResponse rejectSample(Long id, SampleLessonPlanReviewRequest request, Long managerId) {
         SampleLessonPlan sampleLessonPlan = sampleLessonPlanRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Sample lesson plan not found with id: " + id));
@@ -58,6 +98,22 @@ public class SampleLessonPlanReviewService {
         sampleLessonPlan.setReviewedAt(LocalDateTime.now());
 
         SampleLessonPlan updated = sampleLessonPlanRepository.save(sampleLessonPlan);
+        
+        // Push Firebase: Báo cho Staff
+        System.out.println("🔥 [Firebase] thông báo Firebase Reject tới Staff...");
+        try {
+            String tokenUrl = "http://user-service:8082/api/users/internal/" + updated.getStaffId() + "/fcm-token";
+            String staffFcmToken = restTemplate.getForObject(tokenUrl, String.class);
+            if (staffFcmToken != null && !staffFcmToken.trim().isEmpty()) {
+                firebaseNotificationService.sendNotification(staffFcmToken, 
+                    "Giáo án của bạn bị từ chối ❌", 
+                    "Lý do: " + request.getReviewNote() + " - Bài: " + updated.getTitle()
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Không thể lấy FCM Token của Staff: " + e.getMessage());
+        }
+
         return toResponse(updated);
     }
 

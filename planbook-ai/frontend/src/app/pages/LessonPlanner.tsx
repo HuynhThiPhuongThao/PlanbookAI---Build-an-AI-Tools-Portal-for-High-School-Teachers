@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -17,6 +17,7 @@ import { Badge } from '../components/ui/badge';
 import { ArrowLeft, Sparkles, Download, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 
 import React from 'react';
+import axios from 'axios';
 
 function getNameFromToken(): string {
   try {
@@ -41,69 +42,79 @@ export default function LessonPlanner() {
   const realName = useRealUserName();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('Chemistry');
   const [grade, setGrade] = useState('Grade 10');
   const [topic, setTopic] = useState('');
   const [duration, setDuration] = useState('45');
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    if (!topic.trim()) {
+      setErrorMsg('Vui lòng nhập Topic/Chapter trước khi generate.');
+      return;
+    }
+
     setIsGenerating(true);
-    // Simulate AI generation
-    setTimeout(() => {
+    setErrorMsg(null);
+    setGeneratedPlan(null);
+
+    try {
+      const token = localStorage.getItem('access_token');
+      const gradeNumber = grade.replace('Grade ', '');
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/api/ai/generate-lesson-plan`,
+        {
+          topic: `${subject} - ${topic}`,
+          grade: gradeNumber,
+          durationMinutes: parseInt(duration),
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          timeout: 60000, // AI có thể chậm, cho 60s
+        }
+      );
+
+      const data = response.data;
+
+      // Map từ AI response sang internal structure của UI
       setGeneratedPlan({
-        title: title || `${topic || subject} Lesson Plan`,
+        title: title || data.title || `${topic} Lesson Plan`,
         subject,
         grade,
-        topic: topic || 'Introduction to the Topic',
-        duration: parseInt(duration),
-        objectives: [
-          'Students will understand the fundamental concepts of the topic',
-          'Students will be able to apply knowledge to solve basic problems',
-          'Students will develop critical thinking skills through hands-on activities'
-        ],
-        materials: [
-          'Textbook: Chapter references',
-          'Whiteboard and markers',
-          'Laboratory equipment (if applicable)',
-          'Student worksheets',
-          'Multimedia presentation',
-          'Safety equipment (if needed)'
-        ],
-        activities: [
-          {
-            time: `0-${Math.floor(duration * 0.2)} min`,
-            activity: 'Introduction & Warm-up',
-            description: 'Review previous lesson concepts. Introduce today\'s topic with a real-world connection or engaging question to capture student interest.'
-          },
-          {
-            time: `${Math.floor(duration * 0.2)}-${Math.floor(duration * 0.5)} min`,
-            activity: 'Direct Instruction',
-            description: 'Present the main concepts using visual aids and examples. Encourage student questions and provide clear explanations. Break down complex ideas into manageable parts.'
-          },
-          {
-            time: `${Math.floor(duration * 0.5)}-${Math.floor(duration * 0.75)} min`,
-            activity: 'Guided Practice',
-            description: 'Work through examples together as a class. Students participate in solving problems with teacher support. Address misconceptions immediately.'
-          },
-          {
-            time: `${Math.floor(duration * 0.75)}-${Math.floor(duration * 0.9)} min`,
-            activity: 'Independent Practice',
-            description: 'Students work on problems individually or in small groups. Teacher circulates to provide assistance and check for understanding.'
-          },
-          {
-            time: `${Math.floor(duration * 0.9)}-${duration} min`,
-            activity: 'Closure & Assessment',
-            description: 'Review key concepts learned. Students complete exit ticket or quick assessment. Preview homework and next lesson.'
-          }
-        ],
-        assessment: 'Formative assessment through class participation, guided practice observation, and exit ticket (3-5 questions on key concepts). Monitor student understanding throughout the lesson.',
-        homework: 'Complete worksheet problems 1-10. Read textbook pages for next lesson. Prepare questions for clarification.',
-        notes: 'Adjust timing based on student understanding. Have extension activities ready for advanced students. Prepare additional support materials for struggling students.'
+        topic: data.topic || topic,
+        // AI trả về "durationMinutes", UI dùng "duration"
+        duration: data.durationMinutes ?? parseInt(duration),
+        objectives: Array.isArray(data.objectives) ? data.objectives : [],
+        materials: [],  // AI hiện không trả về → để trống
+        // AI trả về time là số (phút), format lại thành string "X phút"
+        activities: Array.isArray(data.activities)
+          ? data.activities.map((act: any) => ({
+              time: typeof act.time === 'number' ? `${act.time} phút` : String(act.time),
+              activity: act.activity || act.name || '',
+              description: act.description || act.detail || '',
+            }))
+          : [],
+        assessment: data.assessment || '',
+        homework: data.homework || '',
+        notes: data.notes || '',
       });
+    } catch (err: any) {
+      const detail =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        'Đã có lỗi xảy ra khi tạo kế hoạch bài học.';
+      setErrorMsg(String(detail));
+    } finally {
       setIsGenerating(false);
-    }, 2500);
+    }
   };
+
 
   const addObjective = () => {
     if (generatedPlan) {
@@ -240,6 +251,12 @@ export default function LessonPlanner() {
                 )}
               </Button>
 
+              {errorMsg && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-3 rounded-lg">
+                  ⚠️ {errorMsg}
+                </div>
+              )}
+
               <div className="pt-4 border-t">
                 <p className="text-xs text-gray-600 mb-2">Powered by Gemini AI</p>
                 <div className="bg-purple-50 p-3 rounded-lg text-xs text-purple-900">
@@ -247,6 +264,7 @@ export default function LessonPlanner() {
                 </div>
               </div>
             </CardContent>
+
           </Card>
 
           {/* Lesson Plan Preview */}
@@ -349,22 +367,33 @@ export default function LessonPlanner() {
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mb-3">Lesson Activities</h3>
                     <div className="space-y-4">
-                      {generatedPlan.activities.map((activity: any, idx: number) => (
-                        <div key={idx} className="relative pl-8 pb-4 border-l-2 border-purple-300 last:border-l-0">
-                          <div className="absolute left-[-9px] top-0 w-4 h-4 bg-purple-600 rounded-full" />
-                          <div className="bg-white p-4 rounded-lg border shadow-sm">
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <Badge className="bg-purple-100 text-purple-700 mb-2">
-                                  {activity.time}
-                                </Badge>
-                                <h4 className="font-bold text-gray-900">{activity.activity}</h4>
+                      {generatedPlan.activities.map((activity: any, idx: number) => {
+                          // AI gộp title + nội dung vào 1 field "activity" phân tách bằng \n
+                          // Dòng đầu = tiêu đề hoạt động, các dòng còn lại = chi tiết
+                          const lines = (activity.activity || '').split('\n');
+                          const actTitle = lines[0]?.trim() || `Hoạt động ${idx + 1}`;
+                          const actBody = lines.slice(1).join('\n').trim();
+
+                          return (
+                            <div key={idx} className="relative pl-8 pb-4 border-l-2 border-purple-300 last:border-l-0">
+                              <div className="absolute left-[-9px] top-0 w-4 h-4 bg-purple-600 rounded-full" />
+                              <div className="bg-white p-4 rounded-lg border shadow-sm">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge className="bg-purple-100 text-purple-700 shrink-0">
+                                    {activity.time}
+                                  </Badge>
+                                  <h4 className="font-bold text-gray-900">{actTitle}</h4>
+                                </div>
+                                {actBody && (
+                                  <p className="text-gray-700 text-sm whitespace-pre-line leading-relaxed">
+                                    {actBody}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            <p className="text-gray-700 text-sm">{activity.description}</p>
-                          </div>
-                        </div>
-                      ))}
+                          );
+                        })}
+
                     </div>
                   </div>
 

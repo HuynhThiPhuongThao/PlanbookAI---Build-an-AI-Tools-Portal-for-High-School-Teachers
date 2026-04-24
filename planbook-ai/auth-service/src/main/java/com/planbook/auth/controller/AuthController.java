@@ -3,8 +3,8 @@ package com.planbook.auth.controller;
 import com.planbook.auth.dto.AuthResponse;
 import com.planbook.auth.dto.LoginRequest;
 import com.planbook.auth.dto.RegisterRequest;
+import com.planbook.auth.dto.CreateAccountRequest;
 import com.planbook.auth.entity.User;
-import com.planbook.auth.entity.Role;
 import com.planbook.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,10 +53,9 @@ public class AuthController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Admin tạo tài khoản nội bộ", description = "Tạo account cho Manager hoặc Staff")
     public ResponseEntity<AuthResponse> createInternalAccount(
-            @RequestParam Role role,
-            @Valid @RequestBody RegisterRequest request) {
-        log.info("Admin creating account for email: {} with role: {}", request.getEmail(), role);
-        return ResponseEntity.ok(authService.createInternalAccount(request, role));
+            @Valid @RequestBody CreateAccountRequest request) {
+        log.info("Admin creating account for email: {} with role: {}", request.getEmail(), request.getRole());
+        return ResponseEntity.ok(authService.createInternalAccount(request));
     }
 
     /**

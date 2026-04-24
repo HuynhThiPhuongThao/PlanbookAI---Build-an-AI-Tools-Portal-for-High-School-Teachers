@@ -1,12 +1,13 @@
 package com.planbook.controller.staff;
 
 import com.planbook.dto.staff.TopicResponse;
+import com.planbook.dto.staff.TopicRequest;
 import com.planbook.dto.teacher.LessonPlanResponse;
 import com.planbook.service.staff.TopicService;
 import com.planbook.service.teacher.LessonPlanService;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -43,5 +44,21 @@ public class TopicController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(lessonPlans);
+    }
+
+    @PostMapping
+    public ResponseEntity<TopicResponse> createTopic(@Valid @RequestBody TopicRequest request) {
+        return ResponseEntity.ok(topicService.createTopic(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<TopicResponse> updateTopic(@PathVariable Long id, @Valid @RequestBody TopicRequest request) {
+        return ResponseEntity.ok(topicService.updateTopic(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTopic(@PathVariable Long id) {
+        topicService.deleteTopic(id);
+        return ResponseEntity.ok().build();
     }
 }

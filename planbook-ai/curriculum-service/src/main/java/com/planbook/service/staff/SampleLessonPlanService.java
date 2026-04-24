@@ -21,20 +21,27 @@ public class SampleLessonPlanService {
     private final SampleLessonPlanRepository sampleLessonPlanRepository;
     private final CurriculumTemplateRepository curriculumTemplateRepository;
     private final TopicRepository topicRepository;
+    private final com.planbook.service.FirebaseNotificationService firebaseNotificationService;
 
     public SampleLessonPlanService(SampleLessonPlanRepository sampleLessonPlanRepository,
                                    CurriculumTemplateRepository curriculumTemplateRepository,
-                                   TopicRepository topicRepository) {
+                                   TopicRepository topicRepository,
+                                   com.planbook.service.FirebaseNotificationService firebaseNotificationService) {
         this.sampleLessonPlanRepository = sampleLessonPlanRepository;
         this.curriculumTemplateRepository = curriculumTemplateRepository;
         this.topicRepository = topicRepository;
+        this.firebaseNotificationService = firebaseNotificationService;
     }
 
     public SampleLessonPlanResponse createSample(SampleLessonPlanRequest request, Long staffId) {
-        CurriculumTemplate curriculumTemplate = curriculumTemplateRepository.findById(request.getCurriculumTemplateId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Curriculum template not found with id: " + request.getCurriculumTemplateId()
-                ));
+        // curriculumTemplateId là optional — staff có thể lưu không cần template
+        CurriculumTemplate curriculumTemplate = null;
+        if (request.getCurriculumTemplateId() != null) {
+            curriculumTemplate = curriculumTemplateRepository.findById(request.getCurriculumTemplateId())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Curriculum template not found with id: " + request.getCurriculumTemplateId()
+                    ));
+        }
 
         Topic topic = topicRepository.findById(request.getTopicId())
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -44,7 +51,7 @@ public class SampleLessonPlanService {
         SampleLessonPlan sampleLessonPlan = new SampleLessonPlan();
         sampleLessonPlan.setTitle(request.getTitle());
         sampleLessonPlan.setContent(request.getContent());
-        sampleLessonPlan.setCurriculumTemplate(curriculumTemplate);
+        sampleLessonPlan.setCurriculumTemplate(curriculumTemplate); // null nếu không có
         sampleLessonPlan.setTopic(topic);
         sampleLessonPlan.setStaffId(staffId);
         sampleLessonPlan.setStatus(SampleLessonPlanStatus.DRAFT);
@@ -52,6 +59,7 @@ public class SampleLessonPlanService {
         SampleLessonPlan saved = sampleLessonPlanRepository.save(sampleLessonPlan);
         return toResponse(saved);
     }
+
 
     public List<SampleLessonPlanResponse> getMySamples(Long staffId) {
         return sampleLessonPlanRepository.findByStaffId(staffId)
@@ -132,6 +140,14 @@ if (!sampleLessonPlan.getStaffId().equals(staffId)) {
 
         sampleLessonPlan.setStatus(SampleLessonPlanStatus.PENDING_REVIEW);
         SampleLessonPlan updated = sampleLessonPlanRepository.save(sampleLessonPlan);
+
+        // TODO: Đoạn này lấy Token thật của Manager từ Database ra (hiện tại giả lập)
+        System.out.println("🔥 [Firebase] Chuẩn bị bắn Firebase tới Manager...");
+        String dummyManagerToken = "DUMMY_TOKEN_TU_FRONTEND_XUONG"; 
+        firebaseNotificationService.sendNotification(dummyManagerToken, 
+            "Giáo án cần duyệt mới!", 
+            "Staff vừa gửi duyệt: " + sampleLessonPlan.getTitle()
+        );
 
         return toResponse(updated);
     }
