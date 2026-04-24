@@ -2,8 +2,11 @@ package com.planbook.service;
 
 import com.planbook.dto.CreateExamRequest;
 import com.planbook.dto.ExamResponse;
+import com.planbook.dto.PromptDTO;
 import com.planbook.entity.Exam;
 import com.planbook.repository.ExamRepository;
+import com.planbook.service.AiPromptService;
+
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -13,14 +16,28 @@ import java.util.List;
 public class ExamService {
 
     private final ExamRepository examRepository;
+    private final AiPromptService aiPromptService;
 
-    public ExamService(ExamRepository examRepository) {
+    public ExamService(ExamRepository examRepository, AiPromptService aiPromptService) {
         this.examRepository = examRepository;
+        this.aiPromptService = aiPromptService;
     }
 
     public ExamResponse createExam(CreateExamRequest request, Long teacherId) {
+        // 🔹 AI integration
+        PromptDTO.PromptResponse prompt =
+            aiPromptService.getActivePrompt("exam_generation_template");
+
+        System.out.println("AI Prompt: " + prompt.getContent());
+
         Exam exam = new Exam();
-        exam.setTitle(request.getTitle());
+
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            exam.setTitle(prompt.getName());
+        } else {
+            exam.setTitle(request.getTitle());
+        }
+        
         exam.setTeacherId(teacherId); // lấy từ JWT, không dùng request.getTeacherId()
         exam.setQuestionIds(request.getQuestionIds());
         exam.setAnswerKey(request.getAnswerKey());
