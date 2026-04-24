@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import {
   FileText, PlusCircle, CheckCircle, Clock,
-  TrendingUp, Loader2, XCircle, Send, Pencil,
+  TrendingUp, Loader2, XCircle, Send, Pencil, BookOpen,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import React, { useEffect, useState } from 'react';
@@ -125,7 +125,23 @@ export default function StaffDashboard() {
           </CardContent>
         </Card>
 
-        {/* Danh sách giáo án của staff */}
+        {/* Quản lý cấu trúc môn học */}
+        <Card className="bg-gradient-to-r from-emerald-500 to-teal-600 border-0 text-white">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold mb-1">Cấu Trúc Môn Học</h3>
+                <p className="text-emerald-100 text-sm">Quản lý danh sách Môn học – Chương – Bài học trong hệ thống</p>
+              </div>
+              <Button asChild className="bg-white text-emerald-600 hover:bg-emerald-50 font-semibold gap-2 shrink-0">
+                <Link to="/staff/curriculum">
+                  <BookOpen className="w-4 h-4" /> Quản lý
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">

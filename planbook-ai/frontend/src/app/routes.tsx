@@ -15,6 +15,7 @@ import ManagerDashboard from "./pages/ManagerDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
 import StaffPrompts from "./pages/StaffPrompts";
 import StaffLessonEditor from "./pages/StaffLessonEditor";
+import StaffCurriculum from "./pages/StaffCurriculum";
 import NotFound from "./pages/NotFound";
 import AdminUsers from "./pages/AdminUsers";
 import AdminCurriculum from "./pages/AdminCurriculum";
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
               { path: "staff", Component: StaffDashboard },
               { path: "staff/prompts", Component: StaffPrompts },
               { path: "staff/lesson-editor", Component: StaffLessonEditor },
+              { path: "staff/curriculum", Component: StaffCurriculum },
             ],
           },
 

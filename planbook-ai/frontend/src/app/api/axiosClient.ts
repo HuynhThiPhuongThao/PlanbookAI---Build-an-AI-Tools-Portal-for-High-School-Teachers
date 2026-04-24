@@ -45,8 +45,13 @@ axiosClient.interceptors.response.use((response) => {
 
   if (error.response && error.response.status === 401) {
     console.error("Token expired or unauthorized!");
-    localStorage.removeItem('access_token');
-    window.location.href = '/';
+    // Chỉ redirect nếu KHÔNG phải đang ở trang login rồi
+    // Tránh vòng lặp: login 401 → redirect về / → lại gọi → 401 → ...
+    const isLoginRequest = error.config?.url?.includes('/auth/login');
+    if (!isLoginRequest) {
+      localStorage.removeItem('access_token');
+      window.location.href = '/';
+    }
   }
   return Promise.reject(error);
 });

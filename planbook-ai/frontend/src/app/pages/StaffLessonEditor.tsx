@@ -40,6 +40,12 @@ function useRealUserName() {
   return name;
 }
 
+function toList<T>(value: any): T[] {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.content)) return value.content;
+  return [];
+}
+
 // ---- types ----
 interface Subject { id: number; name: string; }
 interface Chapter { id: number; name: string; }
@@ -94,11 +100,11 @@ export default function StaffLessonEditor() {
   // ---- load subjects + (nếu edit mode) load plan cũ ----
   useEffect(() => {
     getSubjects()
-      .then((data: any) => setSubjects(Array.isArray(data) ? data : []))
+      .then((data: any) => setSubjects(toList<Subject>(data)))
       .catch(() => setSubjects([]));
 
     getSampleLessonPlans()
-      .then((data: any) => setMyPlans(Array.isArray(data) ? data : []))
+      .then((data: any) => setMyPlans(toList<SamplePlan>(data)))
       .catch(() => setMyPlans([]))
       .finally(() => setLoadingPlans(false));
 
@@ -124,7 +130,7 @@ export default function StaffLessonEditor() {
     setChapters([]); setTopics([]);
     setSelectedChapter(''); setSelectedTopic('');
     getChaptersBySubject(Number(selectedSubject))
-      .then((data: any) => setChapters(Array.isArray(data) ? data : []))
+      .then((data: any) => setChapters(toList<Chapter>(data)))
       .catch(() => setChapters([]));
   }, [selectedSubject]);
 
@@ -133,7 +139,7 @@ export default function StaffLessonEditor() {
     if (!selectedChapter) { setTopics([]); return; }
     setTopics([]); setSelectedTopic('');
     getTopicsByChapter(Number(selectedChapter))
-      .then((data: any) => setTopics(Array.isArray(data) ? data : []))
+      .then((data: any) => setTopics(toList<Topic>(data)))
       .catch(() => setTopics([]));
   }, [selectedChapter]);
 
@@ -257,7 +263,7 @@ export default function StaffLessonEditor() {
         showToast('Đã lưu thành công!', 'ok');
       }
       getSampleLessonPlans()
-        .then((d: any) => setMyPlans(Array.isArray(d) ? d : []))
+        .then((d: any) => setMyPlans(toList<SamplePlan>(d)))
         .catch(() => {});
     } catch {
       showToast('Lưu thất bại — kiểm tra service đang chạy không!', 'err');
@@ -275,7 +281,7 @@ export default function StaffLessonEditor() {
       showToast('Đã gửi Manager duyệt! Chờ kết quả nhé.', 'ok');
       setSavedId(null);
       getSampleLessonPlans()
-        .then((d: any) => setMyPlans(Array.isArray(d) ? d : []))
+        .then((d: any) => setMyPlans(toList<SamplePlan>(d)))
         .catch(() => {});
     } catch {
       showToast('Gửi duyệt thất bại!', 'err');

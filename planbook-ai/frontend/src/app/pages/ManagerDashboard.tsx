@@ -144,7 +144,7 @@ export default function ManagerDashboard() {
   const handleApprove = async (id: number) => {
     setIsSubmitting(true);
     try {
-      await axiosClient.post(`/sample-lesson-plans/review/${id}/approve`, { reviewNote: 'Duyệt bài' });
+      await axiosClient.put(`/sample-lesson-plans/review/${id}/approve`, { reviewNote: 'Duyệt bài' });
       setPendingPlans(p => p.filter(x => x.id !== id));
       setActionMsg('✅ Đã duyệt giáo án!');
       setTimeout(() => setActionMsg(''), 3000);
@@ -160,7 +160,7 @@ export default function ManagerDashboard() {
   const handleReject = async (id: number) => {
     setIsSubmitting(true);
     try {
-      await axiosClient.post(`/sample-lesson-plans/review/${id}/reject`, { reviewNote: 'Từ chối bài' });
+      await axiosClient.put(`/sample-lesson-plans/review/${id}/reject`, { reviewNote: 'Từ chối bài' });
       setPendingPlans(p => p.filter(x => x.id !== id));
       setActionMsg('🚫 Đã từ chối giáo án!');
       setTimeout(() => setActionMsg(''), 3000);
