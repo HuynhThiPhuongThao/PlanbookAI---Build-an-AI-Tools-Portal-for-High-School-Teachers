@@ -1,541 +1,251 @@
-import DashboardLayout from '../components/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import {
-  Package, ShoppingCart, Clock, CheckCircle, FileCheck,
-  Loader2, XCircle, History, Eye, X
-} from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import axiosClient from '../api/axiosClient';
-import * as qApi from '../api/questionApi';
+import { useState } from "react";
 
-function getNameFromToken(): string {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return '';
-    return JSON.parse(atob(token.split('.')[1])).fullName || '';
-  } catch { return ''; }
-}
-function useRealUserName() {
-  const [name, setName] = React.useState(getNameFromToken());
-  React.useEffect(() => {
-    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
-    window.addEventListener('profileUpdated', h);
-    return () => window.removeEventListener('profileUpdated', h);
-  }, []);
-  return name;
-}
+const INIT_PACKAGES = [
+  {
+    id: 1, name: "Free", price: 0, duration: 30, description: "Gói cơ bản dành cho giáo viên mới bắt đầu",
+    features: ["Tối đa 5 giáo án/tháng", "Ngân hàng câu hỏi hạn chế", "Xuất PDF cơ bản"],
+    usersCount: 342, isActive: true, highlight: false,
+  },
+  {
+    id: 2, name: "Pro AI", price: 99000, duration: 30, description: "Sức mạnh AI đầy đủ cho giáo viên chuyên nghiệp",
+    features: ["Giáo án không giới hạn", "AI sinh câu hỏi tự động", "OCR chấm điểm tự động", "Báo cáo phân tích học sinh", "Hỗ trợ ưu tiên 24/7"],
+    usersCount: 128, isActive: true, highlight: true,
+  },
+  {
+    id: 3, name: "School", price: 499000, duration: 30, description: "Giải pháp toàn trường, quản lý tập trung",
+    features: ["Tất cả tính năng Pro AI", "Quản lý nhiều lớp/giáo viên", "Dashboard trường học", "API tích hợp hệ thống", "Đào tạo & onboarding"],
+    usersCount: 12, isActive: true, highlight: false,
+  },
+];
 
-/* ── badge màu theo trạng thái ── */
-function StatusBadge({ status }: { status: string }) {
-  if (status === 'APPROVED')
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
-        <CheckCircle className="w-3 h-3" /> Đã duyệt
-      </span>
-    );
-  if (status === 'REJECTED')
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
-        <XCircle className="w-3 h-3" /> Từ chối
-      </span>
-    );
-  return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
-      <Clock className="w-3 h-3" /> Chờ duyệt
-    </span>
-  );
-}
+const fmt = (n) => n === 0 ? "Miễn phí" : new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 
-export default function ManagerDashboard() {
-  const realName = useRealUserName();
+export default function PackageManage() {
+  const [packages, setPackages] = useState(INIT_PACKAGES);
+  const [editing, setEditing] = useState(null); // { pkg, isNew }
+  const [toast, setToast] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  /* ── tab ── */
-  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
-
-  /* ── pending ── */
-  const [pendingPlans, setPendingPlans] = useState<any[]>([]);
-  const [loadingPending, setLoadingPending] = useState(true);
-  const [actionMsg, setActionMsg] = useState('');
-  
-  /* ── Modal Xem Chi Tiết ── */
-  const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  /* ── history ── */
-  const [historyPlans, setHistoryPlans] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
-
-  /* ── firebase toast ── */
-  const [fcmToast, setFcmToast] = useState<{ title: string; body: string } | null>(null);
-
-  const fetchPending = () => {
-    setLoadingPending(true);
-    axiosClient.get('/sample-lesson-plans/review/pending')
-      .then((data: any) => setPendingPlans(Array.isArray(data) ? data : []))
-      .catch(() => setPendingPlans([]))
-      .finally(() => setLoadingPending(false));
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
-  /* ── pending questions ── */
-  const [pendingQuestions, setPendingQuestions] = useState<any[]>([]);
-  const [loadingQuestions, setLoadingQuestions] = useState(true);
+  const openNew = () => setEditing({
+    isNew: true,
+    pkg: { id: null, name: "", price: 0, duration: 30, description: "", features: [""], isActive: true, highlight: false, usersCount: 0 }
+  });
 
-  const fetchPendingQuestions = () => {
-    setLoadingQuestions(true);
-    axiosClient.get('/questions', { params: { size: 100 } })
-      .then((res: any) => {
-         const data = res.data || [];
-         setPendingQuestions(data.filter((q: any) => q.status === 'PENDING'));
-      })
-      .catch(() => setPendingQuestions([]))
-      .finally(() => setLoadingQuestions(false));
-  };
+  const openEdit = (pkg) => setEditing({ isNew: false, pkg: { ...pkg, features: [...pkg.features] } });
 
-  const handleApproveQuestion = async (id: number, isApproved: boolean) => {
-    try {
-      await qApi.approveQuestion(id, isApproved ? 'APPROVED' : 'REJECTED', '');
-      alert(isApproved ? 'Đã duyệt câu hỏi' : 'Đã từ chối câu hỏi');
-      fetchPendingQuestions();
-    } catch (e) {
-      alert('Lỗi khi duyệt câu hỏi');
+  const handleSave = async () => {
+    const { pkg, isNew } = editing;
+    if (!pkg.name.trim()) { showToast("Tên gói không được để trống", "error"); return; }
+    setSaving(true);
+    await new Promise(r => setTimeout(r, 700));
+    if (isNew) {
+      setPackages(prev => [...prev, { ...pkg, id: Date.now() }]);
+      showToast("Gói mới đã được tạo thành công!");
+    } else {
+      setPackages(prev => prev.map(p => p.id === pkg.id ? pkg : p));
+      showToast("Cập nhật gói thành công!");
     }
+    setSaving(false);
+    setEditing(null);
   };
 
-  /* ── fetch history (lazy — chỉ load khi mở tab) ── */
-  const fetchHistory = () => {
-    setLoadingHistory(true);
-    axiosClient.get('/sample-lesson-plans/review/history')
-      .then((data: any) => {
-        setHistoryPlans(Array.isArray(data) ? data : []);
-        setHistoryLoaded(true);
-      })
-      .catch(() => setHistoryPlans([]))
-      .finally(() => setLoadingHistory(false));
+  const handleToggle = async (id) => {
+    setPackages(prev => prev.map(p => p.id === id ? { ...p, isActive: !p.isActive } : p));
+    const pkg = packages.find(p => p.id === id);
+    showToast(`Gói "${pkg.name}" ${pkg.isActive ? "đã tắt" : "đã bật"}.`, "warn");
   };
 
-  useEffect(() => {
-    fetchPending();
-    fetchPendingQuestions();
-
-    // Firebase
-    import('../firebase').then(({ requestPermission, listenForMessage }) => {
-      requestPermission();
-      listenForMessage((payload: any) => {
-        if (payload?.notification) {
-          setFcmToast({ title: payload.notification.title, body: payload.notification.body });
-          const audio = new Audio('/notification-sound.mp3');
-          audio.play().catch(() => {});
-          setTimeout(() => setFcmToast(null), 5000);
-          fetchPending();
-        }
-      });
-    }).catch(e => console.error('Lỗi khi tải Firebase:', e));
-  }, []);
-
-  /* Khi chuyển sang tab history lần đầu → load */
-  useEffect(() => {
-    if (activeTab === 'history' && !historyLoaded) fetchHistory();
-  }, [activeTab]);
-
-  /* ── approve / reject ── */
-  const handleApprove = async (id: number) => {
-    setIsSubmitting(true);
-    try {
-      await axiosClient.post(`/sample-lesson-plans/review/${id}/approve`, { reviewNote: 'Duyệt bài' });
-      setPendingPlans(p => p.filter(x => x.id !== id));
-      setActionMsg('✅ Đã duyệt giáo án!');
-      setTimeout(() => setActionMsg(''), 3000);
-      setHistoryLoaded(false);
-      setSelectedPlan(null); // Đóng modal
-    } catch { 
-      setActionMsg('❌ Lỗi khi duyệt!'); 
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleDelete = async () => {
+    setPackages(prev => prev.filter(p => p.id !== deleteConfirm.id));
+    showToast(`Đã xoá gói "${deleteConfirm.name}".`, "warn");
+    setDeleteConfirm(null);
   };
 
-  const handleReject = async (id: number) => {
-    setIsSubmitting(true);
-    try {
-      await axiosClient.post(`/sample-lesson-plans/review/${id}/reject`, { reviewNote: 'Từ chối bài' });
-      setPendingPlans(p => p.filter(x => x.id !== id));
-      setActionMsg('🚫 Đã từ chối giáo án!');
-      setTimeout(() => setActionMsg(''), 3000);
-      setHistoryLoaded(false);
-      setSelectedPlan(null); // Đóng modal
-    } catch { 
-      setActionMsg('❌ Lỗi khi từ chối!'); 
-    } finally {
-      setIsSubmitting(false);
-    }
+  const updateFeature = (idx, val) => {
+    setEditing(prev => ({ ...prev, pkg: { ...prev.pkg, features: prev.pkg.features.map((f, i) => i === idx ? val : f) } }));
   };
+
+  const addFeature = () => setEditing(prev => ({ ...prev, pkg: { ...prev.pkg, features: [...prev.pkg.features, ""] } }));
+  const removeFeature = (idx) => setEditing(prev => ({ ...prev, pkg: { ...prev.pkg, features: prev.pkg.features.filter((_, i) => i !== idx) } }));
+
+  const totalRevenue = packages.reduce((s, p) => s + p.price * p.usersCount, 0);
 
   return (
-    <DashboardLayout role="manager" userName={realName}>
-      <div className="space-y-8">
+    <div style={{ minHeight: "100vh", background: "#0d1117", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: "#f0f6fc" }}>
+      <div style={{ position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56,189,248,0.08) 0%, transparent 60%)", pointerEvents: "none", zIndex: 0 }} />
 
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Manager Dashboard</h1>
-          <p className="text-gray-600">Quản lý gói dịch vụ, đơn hàng và duyệt nội dung</p>
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", top: 20, right: 20, zIndex: 999, background: toast.type === "success" ? "#134e4a" : toast.type === "warn" ? "#431407" : "#450a0a", padding: "12px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 12px 32px rgba(0,0,0,0.5)", borderLeft: `4px solid ${toast.type === "success" ? "#14b8a6" : toast.type === "warn" ? "#fb923c" : "#ef4444"}` }}>
+          {toast.msg}
         </div>
+      )}
 
-        {/* MODAL XEM CHI TIẾT GIÁO ÁN */}
-        {selectedPlan && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedPlan.title}</h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {selectedPlan.topic?.name && `Chủ đề: ${selectedPlan.topic.name} • `}
-                    Người tạo (Staff ID): {selectedPlan.staffId}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => !isSubmitting && setSelectedPlan(null)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                  <h3 className="font-semibold text-gray-800 border-b pb-3 mb-4">Nội dung Giáo Án</h3>
-                  {selectedPlan.content ? (
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-slate-50 p-4 rounded-lg border border-slate-100">
-                      {/* Thử parse JSON cho đẹp, nếu lỗi thì in text raw */}
-                      {(() => {
-                        try {
-                          return JSON.stringify(JSON.parse(selectedPlan.content), null, 2);
-                        } catch {
-                          return selectedPlan.content;
-                        }
-                      })()}
-                    </pre>
-                  ) : (
-                    <p className="text-gray-500 italic">Không có nội dung chi tiết.</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-end gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSelectedPlan(null)}
-                  disabled={isSubmitting}
-                >
-                  Đóng
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                  onClick={() => handleReject(selectedPlan.id)}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
-                  Từ Chối
-                </Button>
-                <Button 
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                  onClick={() => handleApprove(selectedPlan.id)}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                  Duyệt Bài
-                </Button>
-              </div>
+      {/* Delete confirm */}
+      {deleteConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 14, padding: 32, maxWidth: 380, width: "90%" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, color: "#ef4444" }}>Xoá gói "{deleteConfirm.name}"?</div>
+            <p style={{ color: "#8b949e", marginBottom: 24 }}>Hành động này không thể hoàn tác. Hiện có {deleteConfirm.usersCount} người đang dùng gói này.</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setDeleteConfirm(null)} style={{ padding: "8px 18px", border: "1px solid #30363d", borderRadius: 6, background: "transparent", color: "#8b949e", cursor: "pointer" }}>Huỷ</button>
+              <button onClick={handleDelete} style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Xoá</button>
             </div>
           </div>
-        )}
-
-        {/* Action Toast */}
-        {actionMsg && (
-          <div className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg w-fit shadow-lg">
-            {actionMsg}
-          </div>
-        )}
-
-        {/* Firebase Toast */}
-        {fcmToast && (
-          <div className="fixed top-20 right-4 z-50 bg-white border-l-4 border-orange-500 shadow-xl rounded-lg p-4 animate-bounce">
-            <h3 className="font-bold text-orange-700 flex items-center">
-              <span className="text-xl mr-2">🔔</span> {fcmToast.title}
-            </h3>
-            <p className="text-gray-600 text-sm mt-1">{fcmToast.body}</p>
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <Package className="w-8 h-8 text-purple-600" />
-                <span className="text-2xl font-bold text-gray-400">—</span>
-              </div>
-              <p className="text-sm text-gray-600">Gói dịch vụ đang hoạt động</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <ShoppingCart className="w-8 h-8 text-blue-600" />
-                <span className="text-2xl font-bold text-gray-400">—</span>
-              </div>
-              <p className="text-sm text-gray-600">Tổng đơn hàng</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <Clock className="w-8 h-8 text-orange-600" />
-                <span className="text-2xl font-bold text-yellow-600">
-                  {loadingPending ? '...' : pendingPlans.length}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600">Giáo án chờ duyệt</p>
-            </CardContent>
-          </Card>
         </div>
+      )}
 
-        {/* ── TAB DUYỆT GIÁO ÁN ── */}
-        <Card>
-          <CardHeader className="pb-0">
-            <div className="flex items-center justify-between mb-4">
+      {/* Edit Modal */}
+      {editing && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 16, padding: 36, width: 520, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
+            <button onClick={() => setEditing(null)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 18 }}>✕</button>
+            <h2 style={{ margin: "0 0 24px 0", fontSize: 18, fontWeight: 700, color: "#38bdf8" }}>
+              {editing.isNew ? "Tạo gói mới" : `Chỉnh sửa: ${editing.pkg.name}`}
+            </h2>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileCheck className="w-5 h-5 text-orange-600" />
-                  Duyệt Giáo Án
-                </CardTitle>
-                <CardDescription>Xem xét và duyệt nội dung do Staff tạo</CardDescription>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Tên gói *</label>
+                <input value={editing.pkg.name} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, name: e.target.value } }))}
+                  style={{ width: "100%", padding: "9px 12px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 7, color: "#f0f6fc", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
               </div>
-              {!loadingPending && pendingPlans.length > 0 && activeTab === 'pending' && (
-                <Badge className="bg-yellow-100 text-yellow-700">
-                  {pendingPlans.length} chờ duyệt
-                </Badge>
-              )}
+              <div>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Giá (VND/tháng)</label>
+                <input type="number" min="0" value={editing.pkg.price} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, price: Number(e.target.value) } }))}
+                  style={{ width: "100%", padding: "9px 12px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 7, color: "#f0f6fc", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+              </div>
             </div>
 
-            {/* Tab buttons */}
-            <div className="flex gap-1 border-b border-gray-200">
-              <button
-                onClick={() => setActiveTab('pending')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-                  activeTab === 'pending'
-                    ? 'border-orange-500 text-orange-600 bg-orange-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-                Chờ Duyệt
-                {!loadingPending && pendingPlans.length > 0 && (
-                  <span className="ml-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {pendingPlans.length}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-                  activeTab === 'history'
-                    ? 'border-indigo-500 text-indigo-600 bg-indigo-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <History className="w-4 h-4" />
-                Lịch Sử
-              </button>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Mô tả</label>
+              <textarea value={editing.pkg.description} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, description: e.target.value } }))} rows={2}
+                style={{ width: "100%", padding: "9px 12px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 7, color: "#f0f6fc", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }} />
             </div>
-          </CardHeader>
 
-          <CardContent className="pt-4">
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Tính năng</label>
+              {editing.pkg.features.map((f, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                  <input value={f} onChange={e => updateFeature(i, e.target.value)}
+                    style={{ flex: 1, padding: "7px 10px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 6, color: "#f0f6fc", fontSize: 13, outline: "none" }} />
+                  <button onClick={() => removeFeature(i)} style={{ padding: "0 10px", border: "none", background: "#1f2937", color: "#ef4444", borderRadius: 6, cursor: "pointer", fontSize: 16 }}>−</button>
+                </div>
+              ))}
+              <button onClick={addFeature} style={{ marginTop: 6, padding: "6px 14px", border: "1px dashed #30363d", borderRadius: 6, background: "transparent", color: "#38bdf8", cursor: "pointer", fontSize: 12 }}>+ Thêm tính năng</button>
+            </div>
 
-            {/* ── Tab: Chờ duyệt ── */}
-            {activeTab === 'pending' && (
-              loadingPending ? (
-                <div className="flex items-center justify-center py-10 text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải...
-                </div>
-              ) : pendingPlans.length === 0 ? (
-                <div className="text-center py-10 text-gray-500">
-                  <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Không có giáo án nào chờ duyệt</p>
-                  <p className="text-sm mt-1">Khi Staff gửi giáo án, chúng sẽ hiện ở đây</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {pendingPlans.map((plan) => (
-                    <div key={plan.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-orange-200 hover:bg-orange-50/30 transition-colors">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="bg-orange-100 p-2 rounded-lg shrink-0">
-                          <FileCheck className="w-5 h-5 text-orange-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{plan.title}</p>
-                          <p className="text-sm text-gray-500 mt-0.5">
-                            {plan.topic?.name && `Bài: ${plan.topic.name}`}
-                            {plan.staffId && ` · Staff ID: ${plan.staffId}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 ml-4 shrink-0">
-                        <Button size="sm" className="bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-0"
-                          onClick={() => setSelectedPlan(plan)}>
-                          <Eye className="w-4 h-4 mr-1" /> Xem & Duyệt
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            )}
+            <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#8b949e" }}>
+                <input type="checkbox" checked={editing.pkg.highlight} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, highlight: e.target.checked } }))} />
+                Đánh dấu nổi bật (Recommended)
+              </label>
+            </div>
 
-            {/* ── Tab: Lịch sử ── */}
-            {activeTab === 'history' && (
-              loadingHistory ? (
-                <div className="flex items-center justify-center py-10 text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải lịch sử...
-                </div>
-              ) : historyPlans.length === 0 ? (
-                <div className="text-center py-10 text-gray-500">
-                  <History className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Chưa có giáo án nào được xử lý</p>
-                  <p className="text-sm mt-1">Các giáo án đã duyệt hoặc từ chối sẽ lưu ở đây</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {historyPlans.map((plan) => (
-                    <div key={plan.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className={`p-2 rounded-lg shrink-0 ${
-                          plan.status === 'APPROVED' ? 'bg-green-100' : 'bg-red-100'
-                        }`}>
-                          <FileCheck className={`w-5 h-5 ${
-                            plan.status === 'APPROVED' ? 'text-green-600' : 'text-red-500'
-                          }`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{plan.title}</p>
-                          <p className="text-sm text-gray-500 mt-0.5">
-                            {plan.topic?.name && `Bài: ${plan.topic.name}`}
-                            {plan.staffId && ` · Staff ID: ${plan.staffId}`}
-                            {plan.reviewedAt && ` · ${new Date(plan.reviewedAt).toLocaleDateString('vi-VN')}`}
-                          </p>
-                          {plan.reviewNote && (
-                            <p className="text-xs text-gray-400 mt-1 italic">"{plan.reviewNote}"</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="ml-4 shrink-0">
-                        <StatusBadge status={plan.status} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            )}
-          </CardContent>
-        </Card>
+            <button onClick={handleSave} disabled={saving}
+              style={{ width: "100%", padding: 12, background: "linear-gradient(135deg, #0ea5e9, #38bdf8)", border: "none", borderRadius: 8, color: "#0d1117", fontWeight: 800, fontSize: 14, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Đang lưu..." : editing.isNew ? "Tạo gói" : "Lưu thay đổi"}
+            </button>
+          </div>
+        </div>
+      )}
 
-        {/* ── Card: Duyệt Câu Hỏi ── */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Duyệt Câu Hỏi (Ngân hàng câu hỏi)</CardTitle>
-            <CardDescription>Các câu hỏi do giáo viên đóng góp cần quản lý phê duyệt</CardDescription>
-          </CardHeader>
-          <CardContent>
-             {loadingQuestions ? (
-                <div className="flex items-center justify-center py-10 text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải...
-                </div>
-              ) : pendingQuestions.length === 0 ? (
-                <div className="text-center py-10 text-gray-500">
-                  <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Không có câu hỏi nào chờ duyệt</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {pendingQuestions.map((q) => (
-                    <div key={q.id}
-                      className="flex flex-col gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <div className="flex items-start justify-between">
-                        <div>
-                           <div className="flex items-center gap-2 mb-2">
-                             <Badge variant="outline">{q.subject}</Badge>
-                             <Badge variant="outline">{q.topic}</Badge>
-                             <Badge>{q.difficultyLevel}</Badge>
-                           </div>
-                           <p className="font-medium text-gray-900">{q.content}</p>
-                           <p className="text-sm text-gray-500 mt-2">Đáp án đúng: <span className="font-bold">{q.correctAnswer}</span></p>
-                           {q.explanation && <p className="text-sm text-gray-500 italic mt-1">Giải thích: {q.explanation}</p>}
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApproveQuestion(q.id, true)}>
-                            Duyệt
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleApproveQuestion(q.id, false)}>
-                            Từ chối
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-          </CardContent>
-        </Card>
-
-        {/* Bottom cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Gói Dịch Vụ</CardTitle>
-                  <CardDescription>Quản lý các gói đăng ký</CardDescription>
-                </div>
-                <Button size="sm">
-                  <Package className="w-4 h-4 mr-2" /> Thêm gói
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <Package className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">Chưa có dữ liệu gói dịch vụ</p>
-                <p className="text-xs text-gray-400">Tính năng đang được phát triển</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Đơn Hàng Gần Đây</CardTitle>
-                  <CardDescription>Các đơn đăng ký mới nhất</CardDescription>
-                </div>
-                <Button variant="outline" size="sm">Xem tất cả</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <ShoppingCart className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">Chưa có đơn hàng nào</p>
-                <p className="text-xs text-gray-400">Tính năng đang được phát triển</p>
-              </div>
-            </CardContent>
-          </Card>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 12, color: "#38bdf8", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>MANAGER › Packages</div>
+            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em" }}>Quản lý gói cước</h1>
+            <p style={{ margin: "8px 0 0 0", color: "#8b949e", fontSize: 13 }}>Cấu hình giá và tính năng cho các gói dịch vụ PlanbookAI</p>
+          </div>
+          <button onClick={openNew}
+            style={{ padding: "10px 22px", background: "linear-gradient(135deg, #0ea5e9, #38bdf8)", border: "none", borderRadius: 9, color: "#0d1117", fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.03em" }}>
+            + Tạo gói mới
+          </button>
         </div>
 
+        {/* Revenue banner */}
+        <div style={{ background: "linear-gradient(135deg, #0c2035, #0a1929)", border: "1px solid #1d4ed8", borderRadius: 14, padding: "20px 28px", marginBottom: 32, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 11, color: "#60a5fa", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Doanh thu tháng này (ước tính)</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: "#38bdf8", letterSpacing: "-0.03em" }}>{fmt(totalRevenue)}</div>
+          </div>
+          <div style={{ display: "flex", gap: 24 }}>
+            {packages.filter(p => p.isActive).map(p => (
+              <div key={p.id} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#f0f6fc" }}>{p.usersCount}</div>
+                <div style={{ fontSize: 11, color: "#8b949e" }}>{p.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Package Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
+          {packages.map(pkg => (
+            <div key={pkg.id} style={{ background: "#161b22", border: `1px solid ${pkg.highlight ? "#0ea5e9" : "#30363d"}`, borderRadius: 16, overflow: "hidden", position: "relative", opacity: pkg.isActive ? 1 : 0.55, transition: "all .2s" }}>
+              {pkg.highlight && (
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc)" }} />
+              )}
+              {!pkg.isActive && (
+                <div style={{ position: "absolute", top: 12, right: 12, padding: "3px 10px", background: "#1f2937", border: "1px solid #374151", borderRadius: 20, fontSize: 10, fontWeight: 700, color: "#6b7280", letterSpacing: "0.08em" }}>TẮT</div>
+              )}
+              {pkg.highlight && pkg.isActive && (
+                <div style={{ position: "absolute", top: 12, right: 12, padding: "3px 10px", background: "#0c2a3f", border: "1px solid #0ea5e9", borderRadius: 20, fontSize: 10, fontWeight: 700, color: "#38bdf8", letterSpacing: "0.08em" }}>⭐ NỔI BẬT</div>
+              )}
+
+              <div style={{ padding: 24 }}>
+                <div style={{ marginBottom: 4, fontSize: 11, color: "#8b949e", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Gói</div>
+                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 8 }}>{pkg.name}</div>
+                <div style={{ fontSize: 26, fontWeight: 900, color: pkg.highlight ? "#38bdf8" : "#f0f6fc", marginBottom: 8 }}>
+                  {fmt(pkg.price)}
+                  {pkg.price > 0 && <span style={{ fontSize: 13, fontWeight: 400, color: "#8b949e" }}>/tháng</span>}
+                </div>
+                <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#8b949e", lineHeight: 1.5 }}>{pkg.description}</p>
+
+                <div style={{ marginBottom: 16 }}>
+                  {pkg.features.map((f, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                      <span style={{ color: "#38bdf8", flexShrink: 0, marginTop: 1, fontSize: 12 }}>✓</span>
+                      <span style={{ fontSize: 13, color: "#c9d1d9" }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ borderTop: "1px solid #21262d", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 12, color: "#8b949e" }}>{pkg.usersCount} người dùng</span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => handleToggle(pkg.id)}
+                      style={{ padding: "5px 12px", border: `1px solid ${pkg.isActive ? "#374151" : "#166534"}`, borderRadius: 6, background: "transparent", color: pkg.isActive ? "#6b7280" : "#22c55e", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                      {pkg.isActive ? "Tắt" : "Bật"}
+                    </button>
+                    <button onClick={() => openEdit(pkg)}
+                      style={{ padding: "5px 12px", border: "1px solid #30363d", borderRadius: 6, background: "transparent", color: "#38bdf8", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                      Sửa
+                    </button>
+                    <button onClick={() => setDeleteConfirm(pkg)}
+                      style={{ padding: "5px 12px", border: "1px solid #7f1d1d", borderRadius: 6, background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                      Xoá
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </DashboardLayout>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
+        * { box-sizing: border-box; }
+        input, textarea { color-scheme: dark; }
+      `}</style>
+    </div>
   );
 }
