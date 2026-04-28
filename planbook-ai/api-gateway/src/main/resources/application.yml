@@ -44,7 +44,23 @@ spring:
         - id: curriculum-service
           uri: ${CURRICULUM_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**
+            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**,/api/lesson-templates/**
+          filters:
+            - StripPrefix=0
+
+        # =================== QUESTION BANK SERVICE (port 8084) ===================
+        - id: question-bank-service
+          uri: ${QUESTION_BANK_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/questions/**
+          filters:
+            - StripPrefix=0
+
+        # =================== EXAM SERVICE (port 8085) ===================
+        - id: exam-service
+          uri: ${EXAM_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/exams/**
           filters:
             - StripPrefix=0
 
@@ -56,8 +72,15 @@ spring:
           filters:
             - StripPrefix=0
 
+        # =================== PACKAGE SERVICE (port 8087) ===================
+        - id: package-service
+          uri: ${PACKAGE_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/packages/**,/api/subscriptions/**,/api/revenue/**,/api/internal/**
+          filters:
+            - StripPrefix=0
+
       default-filters:
-        # Deduplicate CORS headers
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
 
 management:
@@ -71,6 +94,6 @@ eureka:
   client:
     enabled: false
 
-# JWT configuration
+# JWT — phải GIỐNG HỆT secret trong auth-service (team_tasks.md)
 jwt:
-  secret: your-secret-key-here-change-in-production
+  secret: ${JWT_SECRET:planbook-ai-super-secret-key-change-this}
