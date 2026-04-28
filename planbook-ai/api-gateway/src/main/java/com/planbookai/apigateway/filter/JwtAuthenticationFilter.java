@@ -33,7 +33,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // Public endpoints — không cần token
+        // Public endpoints do not require JWT.
         if (isPublicEndpoint(path, method)) {
             return chain.filter(exchange);
         }
@@ -74,14 +74,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * Danh sách endpoint không cần JWT.
-     *
-     * /api/auth/**          — đăng ký, đăng nhập, refresh (Người 1)
-     * GET /api/packages     — Teacher / khách xem gói trước khi mua (team_tasks: "Public, TEACHER")
-     * GET /api/packages/**  — bao gồm /api/packages/{id} nếu có
+     * Endpoints that are allowed without JWT.
      */
     private boolean isPublicEndpoint(String path, String method) {
         if (path.startsWith("/api/auth/")) {
+            return true;
+        }
+        if (path.equals("/api/payment/webhook") || path.startsWith("/api/payment/webhook/")) {
             return true;
         }
         if ("GET".equals(method) && path.startsWith("/api/packages")) {
@@ -92,6 +91,6 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return -1; // chạy trước tất cả filter khác
+        return -1; // run before other filters
     }
 }

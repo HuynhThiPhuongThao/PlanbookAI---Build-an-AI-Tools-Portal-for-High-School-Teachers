@@ -1,6 +1,12 @@
 package com.planbook.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,6 +24,10 @@ public class Result {
     private String studentName;
 
     private Double score;
+
+    private Integer totalQuestions;
+
+    private Integer correctCount;
 
     @Column(columnDefinition = "TEXT")
     private String wrongQuestionIds;
@@ -50,6 +60,14 @@ public class Result {
         return score;
     }
 
+    public Integer getTotalQuestions() {
+        return totalQuestions;
+    }
+
+    public Integer getCorrectCount() {
+        return correctCount;
+    }
+
     public String getWrongQuestionIds() {
         return wrongQuestionIds;
     }
@@ -80,6 +98,14 @@ public class Result {
 
     public void setScore(Double score) {
         this.score = score;
+    }
+
+    public void setTotalQuestions(Integer totalQuestions) {
+        this.totalQuestions = totalQuestions;
+    }
+
+    public void setCorrectCount(Integer correctCount) {
+        this.correctCount = correctCount;
     }
 
     public void setWrongQuestionIds(String wrongQuestionIds) {

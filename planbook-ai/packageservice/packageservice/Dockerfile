@@ -18,7 +18,7 @@ USER planbook
 COPY --from=builder /app/target/package-service-0.0.1-SNAPSHOT.jar package-service.jar
 EXPOSE 8087
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget -qO- http://localhost:8087/actuator/health || exit 1
+    CMD wget -qO- http://localhost:8087/api/packages || exit 1
 ENTRYPOINT ["java", \
     "-XX:+UseContainerSupport", \
     "-XX:MaxRAMPercentage=75.0", \

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axiosClient from './axiosClient';
 
 export interface PromptTemplate {
     id: number;
@@ -7,6 +7,10 @@ export interface PromptTemplate {
     content: string;
     version: number;
     is_active: boolean;
+    approval_status?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+    review_note?: string | null;
+    reviewed_by?: string | null;
+    reviewed_at?: string | null;
 }
 
 export interface CreatePromptPayload {
@@ -20,43 +24,42 @@ export interface UpdatePromptPayload {
     is_active?: boolean;
 }
 
-const promptClient = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL + '/api/ai/prompts',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
-
-promptClient.interceptors.request.use((config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
-
 export const promptApi = {
     async getAll(): Promise<PromptTemplate[]> {
-        const response = await promptClient.get<PromptTemplate[]>('');
-        return response.data;
+        return axiosClient.get('/ai/prompts');
+    },
+
+    async getPending(): Promise<PromptTemplate[]> {
+        return axiosClient.get('/ai/prompts/pending');
     },
 
     async getActive(name: string): Promise<PromptTemplate> {
-        const response = await promptClient.get<PromptTemplate>(`/active/${name}`);
-        return response.data;
+        return axiosClient.get(`/ai/prompts/active/${name}`);
     },
 
     async create(payload: CreatePromptPayload): Promise<PromptTemplate> {
-        const response = await promptClient.post<PromptTemplate>('', payload);
-        return response.data;
+        return axiosClient.post('/ai/prompts', payload);
     },
 
     async update(promptId: number, payload: UpdatePromptPayload): Promise<PromptTemplate> {
-        const response = await promptClient.put<PromptTemplate>(`/${promptId}`, payload);
-        return response.data;
+        return axiosClient.put(`/ai/prompts/${promptId}`, payload);
+    },
+
+    async approve(promptId: number, reviewNote?: string): Promise<PromptTemplate> {
+        return axiosClient.put(`/ai/prompts/${promptId}/approve`, {
+            review_note: reviewNote || 'Duyet mau loi nhac',
+            reviewed_by: 'manager',
+        });
+    },
+
+    async reject(promptId: number, reviewNote?: string): Promise<PromptTemplate> {
+        return axiosClient.put(`/ai/prompts/${promptId}/reject`, {
+            review_note: reviewNote || 'Tu choi mau loi nhac',
+            reviewed_by: 'manager',
+        });
     },
 
     async remove(promptId: number): Promise<void> {
-        await promptClient.delete(`/${promptId}`);
+        await axiosClient.delete(`/ai/prompts/${promptId}`);
     },
 };

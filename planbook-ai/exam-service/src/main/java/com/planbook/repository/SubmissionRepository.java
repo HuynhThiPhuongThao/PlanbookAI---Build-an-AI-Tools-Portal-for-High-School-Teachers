@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findByExamId(Long examId);
+
+    void deleteByExamId(Long examId);
 }

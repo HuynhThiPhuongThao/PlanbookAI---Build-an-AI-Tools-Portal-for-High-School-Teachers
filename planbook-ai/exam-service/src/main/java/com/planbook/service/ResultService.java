@@ -23,20 +23,25 @@ public class ResultService {
     public List<ResultResponse> getResultsByExam(Long examId, Long teacherId) {
         Exam exam = examRepository.findByIdAndTeacherId(examId, teacherId)
                 .orElseThrow(() -> new RuntimeException(
-                        "Không tìm thấy đề thi hoặc bạn không có quyền xem kết quả"
+                        "Khong tim thay de thi hoac ban khong co quyen xem ket qua"
                 ));
 
         return resultRepository.findByExamId(exam.getId())
                 .stream()
-                .map(result -> new ResultResponse(
-                        result.getId(),
-                        result.getSubmissionId(),
-                        result.getStudentName(),
-                        result.getScore(),
-                        result.getWrongQuestionIds(),
-                        result.getFeedback(),
-                        result.getGradedAt()
-                ))
+                .map(result -> {
+                    ResultResponse response = new ResultResponse();
+                    response.setResultId(result.getId());
+                    response.setSubmissionId(result.getSubmissionId());
+                    response.setExamTitle(exam.getTitle());
+                    response.setStudentName(result.getStudentName());
+                    response.setScore(result.getScore());
+                    response.setTotalQuestions(result.getTotalQuestions());
+                    response.setCorrectCount(result.getCorrectCount());
+                    response.setWrongQuestionIds(result.getWrongQuestionIds());
+                    response.setFeedback(result.getFeedback());
+                    response.setGradedAt(result.getGradedAt());
+                    return response;
+                })
                 .toList();
     }
 }

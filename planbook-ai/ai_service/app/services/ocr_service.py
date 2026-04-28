@@ -4,6 +4,7 @@ import re
 from typing import Any, List
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 from sqlalchemy.orm import Session
 
@@ -83,16 +84,21 @@ async def extract_answers_from_image(
     prompt = f"{prompt_template}\nExpected answer count: {expected_count}."
 
     client = _get_client()
-    response = await asyncio.to_thread(
-        client.models.generate_content,
-        model=settings.gemini_model,
-        contents=[
-            prompt,
-            types.Part.from_bytes(data=image_bytes, mime_type=image_mime_type),
-        ],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"),
-    )
+    try:
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model=settings.gemini_ocr_model,
+            contents=[
+                prompt,
+                types.Part.from_bytes(data=image_bytes, mime_type=image_mime_type),
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"),
+        )
+    except genai_errors.APIError as exc:
+        raise RuntimeError(
+            f"Gemini OCR model '{settings.gemini_ocr_model}' failed: {exc}"
+        ) from exc
 
     payload = _extract_json_payload(response.text or "")
     if not isinstance(payload, dict):

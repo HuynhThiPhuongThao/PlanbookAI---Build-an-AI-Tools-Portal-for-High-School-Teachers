@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -12,64 +12,142 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Download, Eye } from 'lucide-react';
-import { mockStudentResults } from '../mockData';
-
-import React from 'react';
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3, Download } from 'lucide-react';
+import * as examApi from '../api/examApi';
+import { exportCsv } from '../utils/exportUtils';
+import { getFullNameFromToken } from '../utils/jwt';
 
 function getNameFromToken(): string {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return '';
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.fullName || '';
-  } catch { return ''; }
+  return getFullNameFromToken();
 }
 
-function useRealUserName() {
-  const [name, setName] = React.useState(getNameFromToken());
-  React.useEffect(() => {
-    const h = (e: any) => { if (e.detail?.fullName) setName(e.detail.fullName); };
-    window.addEventListener('profileUpdated', h);
-    return () => window.removeEventListener('profileUpdated', h);
-  }, []);
-  return name;
+function toPercentage(result: examApi.ResultItem) {
+  const score = result.score || 0;
+  return Math.round((score / 10) * 100);
+}
+
+function parseWrongQuestionIds(raw?: string) {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item) && item > 0);
 }
 
 export default function StudentResults() {
-  const realName = useRealUserName();
+  const realName = getNameFromToken();
+  const [exams, setExams] = useState<examApi.ExamItem[]>([]);
   const [selectedExam, setSelectedExam] = useState('all');
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [results, setResults] = useState<examApi.ResultItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const results = selectedExam === 'all' 
-    ? mockStudentResults 
-    : mockStudentResults.filter(r => r.examId === selectedExam);
+  useEffect(() => {
+    void loadData('all');
+  }, []);
 
-  const averageScore = results.reduce((sum, r) => sum + r.percentage, 0) / results.length;
-  const passRate = (results.filter(r => r.percentage >= 60).length / results.length) * 100;
-  const topScore = Math.max(...results.map(r => r.percentage));
-  const lowScore = Math.min(...results.map(r => r.percentage));
+  const loadData = async (examId: string) => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const examList = await examApi.getExams();
+      const nextExams = Array.isArray(examList) ? examList : [];
+      setExams(nextExams);
+      setSelectedExam(examId);
+
+      if (examId === 'all') {
+        const allResults = await Promise.all(
+          nextExams.map(async (exam) => {
+            const examResults = await examApi.getExamResults(exam.id);
+            return (Array.isArray(examResults) ? examResults : []).map((result) => ({
+              ...result,
+              examTitle: result.examTitle || exam.title,
+            }));
+          }),
+        );
+        setResults(allResults.flat());
+      } else {
+        const list = await examApi.getExamResults(Number(examId));
+        setResults(Array.isArray(list) ? list : []);
+      }
+    } catch (error: any) {
+      setErrorMsg(error?.response?.data?.message || error?.message || 'Không tải được kết quả học sinh.');
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const metrics = useMemo(() => {
+    if (!results.length) {
+      return {
+        averageScore: 0,
+        passRate: 0,
+        topScore: 0,
+        lowScore: 0,
+      };
+    }
+
+    const percentages = results.map(toPercentage);
+    const passed = percentages.filter((item) => item >= 50).length;
+    return {
+      averageScore: percentages.reduce((sum, item) => sum + item, 0) / percentages.length,
+      passRate: (passed / percentages.length) * 100,
+      topScore: Math.max(...percentages),
+      lowScore: Math.min(...percentages),
+    };
+  }, [results]);
+
+  const gradeDistribution = useMemo(() => ({
+    A: results.filter((item) => toPercentage(item) >= 90).length,
+    B: results.filter((item) => toPercentage(item) >= 80 && toPercentage(item) < 90).length,
+    C: results.filter((item) => toPercentage(item) >= 70 && toPercentage(item) < 80).length,
+    D: results.filter((item) => toPercentage(item) >= 50 && toPercentage(item) < 70).length,
+    F: results.filter((item) => toPercentage(item) < 50).length,
+  }), [results]);
+
+  const mostMissedQuestions = useMemo(() => {
+    const counter = new Map<number, number>();
+    results.forEach((result) => {
+      parseWrongQuestionIds(result.wrongQuestionIds).forEach((questionId) => {
+        counter.set(questionId, (counter.get(questionId) || 0) + 1);
+      });
+    });
+
+    return Array.from(counter.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [results]);
 
   const getGrade = (percentage: number) => {
     if (percentage >= 90) return { grade: 'A', color: 'bg-green-100 text-green-700' };
     if (percentage >= 80) return { grade: 'B', color: 'bg-blue-100 text-blue-700' };
     if (percentage >= 70) return { grade: 'C', color: 'bg-yellow-100 text-yellow-700' };
-    if (percentage >= 60) return { grade: 'D', color: 'bg-orange-100 text-orange-700' };
+    if (percentage >= 50) return { grade: 'D', color: 'bg-orange-100 text-orange-700' };
     return { grade: 'F', color: 'bg-red-100 text-red-700' };
   };
 
-  const gradeDistribution = {
-    A: results.filter(r => r.percentage >= 90).length,
-    B: results.filter(r => r.percentage >= 80 && r.percentage < 90).length,
-    C: results.filter(r => r.percentage >= 70 && r.percentage < 80).length,
-    D: results.filter(r => r.percentage >= 60 && r.percentage < 70).length,
-    F: results.filter(r => r.percentage < 60).length,
+  const handleExportReport = () => {
+    const rows = [
+      ['Học sinh', 'Đề thi', 'Điểm', 'Tỷ lệ %', 'Đúng', 'Tổng câu', 'Sai câu', 'Nhận xét'],
+      ...results.map((result) => [
+        result.studentName || '',
+        result.examTitle || '',
+        String(result.score || 0),
+        String(toPercentage(result)),
+        String(result.correctCount || 0),
+        String(result.totalQuestions || 0),
+        result.wrongQuestionIds || '',
+        result.feedback || '',
+      ]),
+    ];
+
+    exportCsv(`bao-cao-ket-qua-${selectedExam}`, rows);
   };
 
   return (
     <DashboardLayout role="teacher" userName={realName}>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/teacher">
@@ -78,58 +156,63 @@ export default function StudentResults() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Student Results & Analytics</h1>
-              <p className="text-gray-600">Track student progress and performance</p>
+              <h1 className="text-3xl font-bold text-gray-900">Kết quả và phân tích học sinh</h1>
+              <p className="text-gray-600">Tổng hợp từ các bài làm đã được OCR chấm điểm.</p>
             </div>
           </div>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExportReport} disabled={!results.length}>
             <Download className="w-4 h-4 mr-2" />
-            Export Report
+            Xuất báo cáo
           </Button>
         </div>
 
-        {/* Filter */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="flex-1 max-w-xs">
-                <Select value={selectedExam} onValueChange={setSelectedExam}>
+              <div className="max-w-xs flex-1">
+                <Select value={selectedExam} onValueChange={(value) => void loadData(value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select exam" />
+                    <SelectValue placeholder="Chọn đề thi" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Exams</SelectItem>
-                    <SelectItem value="exam1">Chemistry Midterm Exam - Grade 10</SelectItem>
-                    <SelectItem value="exam2">Organic Chemistry Quiz</SelectItem>
+                    <SelectItem value="all">Tất cả đề thi</SelectItem>
+                    {exams.map((exam) => (
+                      <SelectItem key={exam.id} value={String(exam.id)}>
+                        {exam.title}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <Badge variant="outline" className="text-sm">
-                {results.length} students
+                {results.length} kết quả
               </Badge>
             </div>
           </CardContent>
         </Card>
 
-        {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {errorMsg ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMsg}</div>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <BarChart3 className="w-8 h-8 text-blue-600" />
-                <span className="text-3xl font-bold text-blue-600">{averageScore.toFixed(1)}%</span>
+                <span className="text-3xl font-bold text-blue-600">{metrics.averageScore.toFixed(1)}%</span>
               </div>
-              <p className="text-sm text-gray-600 mb-1">Class Average</p>
+              <p className="text-sm text-gray-600 mb-1">Điểm trung bình</p>
               <div className="flex items-center gap-1 text-xs text-gray-500">
-                {averageScore >= 75 ? (
+                {metrics.averageScore >= 70 ? (
                   <>
                     <TrendingUp className="w-3 h-3 text-green-600" />
-                    <span className="text-green-600">Above target</span>
+                    <span className="text-green-600">Lớp đang ổn</span>
                   </>
                 ) : (
                   <>
                     <TrendingDown className="w-3 h-3 text-orange-600" />
-                    <span className="text-orange-600">Below target</span>
+                    <span className="text-orange-600">Cần hỗ trợ thêm</span>
                   </>
                 )}
               </div>
@@ -138,133 +221,107 @@ export default function StudentResults() {
 
           <Card>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-green-600 mb-2">{passRate.toFixed(0)}%</div>
-              <p className="text-sm text-gray-600">Pass Rate</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {results.filter(r => r.percentage >= 60).length} of {results.length} students
-              </p>
+              <div className="text-3xl font-bold text-green-600 mb-2">{metrics.passRate.toFixed(0)}%</div>
+              <p className="text-sm text-gray-600">Tỷ lệ đạt</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{topScore}%</div>
-              <p className="text-sm text-gray-600">Highest Score</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {results.find(r => r.percentage === topScore)?.studentName}
-              </p>
+              <div className="text-3xl font-bold text-blue-600 mb-2">{metrics.topScore}%</div>
+              <p className="text-sm text-gray-600">Điểm cao nhất</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="pt-6">
-              <div className="text-3xl font-bold text-orange-600 mb-2">{lowScore}%</div>
-              <p className="text-sm text-gray-600">Lowest Score</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {results.find(r => r.percentage === lowScore)?.studentName}
-              </p>
+              <div className="text-3xl font-bold text-orange-600 mb-2">{metrics.lowScore}%</div>
+              <p className="text-sm text-gray-600">Điểm thấp nhất</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
         <Tabs defaultValue="results" className="w-full">
           <TabsList>
-            <TabsTrigger value="results">Student Results</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="results">Danh sách kết quả</TabsTrigger>
+            <TabsTrigger value="analytics">Phân tích</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="results" className="space-y-4 mt-6">
+          <TabsContent value="results" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Student Performance</CardTitle>
-                <CardDescription>Detailed results for each student</CardDescription>
+                <CardTitle>Kết quả từng học sinh</CardTitle>
+                <CardDescription>Danh sách điểm đã chấm từ OCR.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {results.map((result) => {
-                    const gradeInfo = getGrade(result.percentage);
-                    return (
-                      <div
-                        key={result.id}
-                        className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                        onClick={() => setSelectedStudent(result)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                              {result.studentName.charAt(0)}
-                            </div>
+                {loading ? (
+                  <div className="py-10 text-center text-gray-500">Đang tải kết quả...</div>
+                ) : results.length === 0 ? (
+                  <div className="py-10 text-center text-gray-500">Chưa có dữ liệu kết quả.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {results.map((result) => {
+                      const percentage = toPercentage(result);
+                      const gradeInfo = getGrade(percentage);
+                      return (
+                        <div key={result.resultId} className="rounded-lg border p-4 hover:bg-gray-50">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
                                 <p className="font-semibold text-gray-900">{result.studentName}</p>
-                                <Badge variant="outline">{result.studentId}</Badge>
+                                {result.examTitle ? <Badge variant="outline">{result.examTitle}</Badge> : null}
                               </div>
-                              <p className="text-sm text-gray-600">{result.examTitle}</p>
+                              <p className="text-sm text-gray-600">
+                                Đúng {result.correctCount || 0}/{result.totalQuestions || 0} câu
+                              </p>
+                              <p className="text-sm text-gray-500">Sai các câu: {result.wrongQuestionIds || 'Không có'}</p>
+                              {result.feedback ? <p className="mt-1 text-sm text-gray-500">{result.feedback}</p> : null}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-gray-900">
-                                {result.score}/{result.totalMarks}
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-gray-900">{result.score}/10</div>
+                                <div className="text-sm text-gray-600">{percentage}%</div>
                               </div>
-                              <div className="text-sm text-gray-600">
-                                {result.percentage}%
-                              </div>
+                              <Badge className={gradeInfo.color}>Xếp loại {gradeInfo.grade}</Badge>
                             </div>
-                            <Badge className={gradeInfo.color}>
-                              Grade: {gradeInfo.grade}
-                            </Badge>
-                            <Button variant="outline" size="sm">
-                              <Eye className="w-4 h-4 mr-2" />
-                              Details
-                            </Button>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6 mt-6">
-            {/* Grade Distribution */}
+          <TabsContent value="analytics" className="mt-6 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Grade Distribution</CardTitle>
-                <CardDescription>Overview of student performance levels</CardDescription>
+                <CardTitle>Phân bố kết quả</CardTitle>
+                <CardDescription>Thống kê theo nhóm điểm.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {Object.entries(gradeDistribution).map(([grade, count]) => {
-                    const percentage = (count / results.length) * 100;
+                    const percentage = results.length ? (count / results.length) * 100 : 0;
                     return (
                       <div key={grade}>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="mb-2 flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Badge className={getGrade(
-                              grade === 'A' ? 95 : 
-                              grade === 'B' ? 85 : 
-                              grade === 'C' ? 75 : 
-                              grade === 'D' ? 65 : 55
+                              grade === 'A' ? 95 :
+                              grade === 'B' ? 85 :
+                              grade === 'C' ? 75 :
+                              grade === 'D' ? 60 : 40,
                             ).color}>
-                              Grade {grade}
+                              Mức {grade}
                             </Badge>
-                            <span className="text-sm text-gray-600">
-                              {count} student{count !== 1 ? 's' : ''}
-                            </span>
+                            <span className="text-sm text-gray-600">{count} học sinh</span>
                           </div>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {percentage.toFixed(0)}%
-                          </span>
+                          <span className="text-sm font-semibold text-gray-900">{percentage.toFixed(0)}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div
-                            className="bg-blue-600 h-3 rounded-full transition-all"
-                            style={{ width: `${percentage}%` }}
-                          />
+                        <div className="h-3 w-full rounded-full bg-gray-200">
+                          <div className="h-3 rounded-full bg-blue-600" style={{ width: `${percentage}%` }} />
                         </div>
                       </div>
                     );
@@ -273,97 +330,26 @@ export default function StudentResults() {
               </CardContent>
             </Card>
 
-            {/* Question Analysis */}
             <Card>
               <CardHeader>
-                <CardTitle>Question Analysis</CardTitle>
-                <CardDescription>Most challenging questions for students</CardDescription>
+                <CardTitle>Câu hỏi bị sai nhiều</CardTitle>
+                <CardDescription>Dùng để biết phần kiến thức nào cần dạy lại.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-gray-900">Question 3</span>
-                      <Badge className="bg-red-100 text-red-700">40% correct</Badge>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-2">
-                      What is the pH of a solution with [H+] = 1 × 10^-5 M?
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      <strong>Action:</strong> Review pH calculations in next class
-                    </p>
+                {mostMissedQuestions.length === 0 ? (
+                  <div className="text-sm text-gray-500">Chưa đủ dữ liệu để phân tích câu sai.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {mostMissedQuestions.map(([questionId, count]) => (
+                      <div key={questionId} className="rounded-lg border bg-red-50 p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-900">Câu {questionId}</span>
+                          <Badge className="bg-red-100 text-red-700">{count} lượt sai</Badge>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-gray-900">Question 4</span>
-                      <Badge className="bg-yellow-100 text-yellow-700">60% correct</Badge>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-2">
-                      How many moles of O2 are needed to react with 2 moles of H2?
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      <strong>Action:</strong> Provide additional practice on stoichiometry
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-gray-900">Question 1</span>
-                      <Badge className="bg-green-100 text-green-700">100% correct</Badge>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-2">
-                      What is the atomic number of Carbon?
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      <strong>Status:</strong> Well understood by all students
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Performance Trends */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Insights</CardTitle>
-                <CardDescription>Key observations and recommendations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
-                    <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-gray-900 mb-1">Strong Performance</p>
-                      <p className="text-sm text-gray-700">
-                        Students show excellent understanding of basic atomic structure and periodic table concepts. 
-                        Consider introducing more advanced topics.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-4 bg-orange-50 rounded-lg">
-                    <TrendingDown className="w-5 h-5 text-orange-600 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-gray-900 mb-1">Needs Improvement</p>
-                      <p className="text-sm text-gray-700">
-                        pH calculations and stoichiometry problems need additional practice. 
-                        Recommend extra worksheets and one-on-one tutoring for struggling students.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
-                    <BarChart3 className="w-5 h-5 text-green-600 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-gray-900 mb-1">Class Progress</p>
-                      <p className="text-sm text-gray-700">
-                        Overall class average of {averageScore.toFixed(1)}% shows solid progress. 
-                        Continue current teaching methods while focusing on identified weak areas.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -372,5 +358,3 @@ export default function StudentResults() {
     </DashboardLayout>
   );
 }
-
-

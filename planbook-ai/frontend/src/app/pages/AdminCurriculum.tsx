@@ -1,403 +1,335 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
-import { BookOpen, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { ChevronDown, ChevronUp, FileText, Plus, Trash2 } from 'lucide-react';
 import * as api from '../api/curriculumApi';
+import { getFullNameFromToken } from '../utils/jwt';
+
+type Section = { title: string; fields: string[] };
+type Subject = { id: number; name: string };
+
+const DEFAULT_SECTIONS: Section[] = [
+  { title: 'I. Thong tin bai hoc', fields: ['Mon hoc', 'Lop', 'Chu de / Bai hoc', 'Thoi luong'] },
+  { title: 'II. Muc tieu bai hoc', fields: ['Kien thuc', 'Nang luc', 'Pham chat'] },
+  { title: 'III. Hoc lieu', fields: ['Giao vien chuan bi', 'Hoc sinh chuan bi'] },
+  { title: 'IV. Tien trinh day hoc', fields: ['Khoi dong', 'Hinh thanh kien thuc', 'Luyen tap', 'Van dung'] },
+  { title: 'V. Danh gia', fields: ['Cau hoi danh gia', 'Tieu chi', 'Hinh thuc'] },
+  { title: 'VI. Phu luc', fields: ['Phieu hoc tap', 'Bai tap', 'Dap an / Goi y'] },
+];
 
 function getNameFromToken(): string {
+  return getFullNameFromToken();
+}
+
+function toList<T>(value: any): T[] {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.content)) return value.content;
+  return [];
+}
+
+function parseSections(raw?: string): Section[] | null {
+  if (!raw) return null;
   try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return '';
-    return JSON.parse(atob(token.split('.')[1])).fullName || '';
-  } catch { return ''; }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as Section[];
+    if (Array.isArray(parsed?.sections)) return parsed.sections as Section[];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function TemplateCard({ template, onDelete }: { template: any; onDelete: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const sections = useMemo(
+    () => parseSections(template.structureJson || template.description),
+    [template.structureJson, template.description],
+  );
+
+  return (
+    <div className="border rounded-xl bg-white shadow-sm overflow-hidden">
+      <div className="px-5 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-100 p-2 rounded-lg">
+            <FileText className="w-5 h-5 text-purple-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{template.name}</h3>
+            <p className="text-xs text-gray-500">
+              {template.subject?.name || 'Dùng chung'} · {template.gradeLevel || 'THPT'} ·{' '}
+              {template.status || 'ACTIVE'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {expanded ? 'Thu gon' : 'Xem cau truc'}
+          </Button>
+          <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t bg-gray-50 px-5 py-4">
+          {sections ? (
+            <div className="space-y-4">
+              {sections.map((sec, idx) => (
+                <div key={idx}>
+                  <p className="font-medium text-purple-700 text-sm mb-1">{sec.title}</p>
+                  <ul className="list-disc list-inside text-sm text-gray-600">
+                    {sec.fields.map((field, fIdx) => (
+                      <li key={fIdx}>{field}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <pre className="text-sm text-gray-600 whitespace-pre-wrap font-sans">
+              {template.description || template.structureJson}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreateTemplateDialog({
+  open,
+  onClose,
+  onCreated,
+  subjects,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+  subjects: Subject[];
+}) {
+  const [name, setName] = useState('');
+  const [gradeLevel, setGradeLevel] = useState('THPT');
+  const [subjectId, setSubjectId] = useState('');
+  const [sections, setSections] = useState<Section[]>(DEFAULT_SECTIONS.map((s) => ({ ...s, fields: [...s.fields] })));
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) return alert('Vui long nhap ten mau');
+
+    setSaving(true);
+    try {
+      await api.createCurriculumTemplate({
+        name: name.trim(),
+        description: `Template ${name.trim()} (${gradeLevel})`,
+        gradeLevel,
+        subjectId: subjectId ? Number(subjectId) : undefined,
+        structureJson: JSON.stringify({ sections }),
+        status: 'ACTIVE',
+      });
+      onCreated();
+      onClose();
+      setName('');
+      setGradeLevel('THPT');
+      setSubjectId('');
+      setSections(DEFAULT_SECTIONS.map((s) => ({ ...s, fields: [...s.fields] })));
+    } catch {
+      alert('Tao template that bai');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateField = (sectionIdx: number, fieldIdx: number, value: string) => {
+    setSections((prev) =>
+      prev.map((sec, idx) =>
+        idx === sectionIdx ? { ...sec, fields: sec.fields.map((f, j) => (j === fieldIdx ? value : f)) } : sec,
+      ),
+    );
+  };
+
+  const addField = (sectionIdx: number) => {
+    setSections((prev) =>
+      prev.map((sec, idx) => (idx === sectionIdx ? { ...sec, fields: [...sec.fields, ''] } : sec)),
+    );
+  };
+
+  const removeField = (sectionIdx: number, fieldIdx: number) => {
+    setSections((prev) =>
+      prev.map((sec, idx) =>
+        idx === sectionIdx ? { ...sec, fields: sec.fields.filter((_, j) => j !== fieldIdx) } : sec,
+      ),
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Tao mau giao an moi</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label>Ten mau</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Mau THPT Co Ban" />
+            </div>
+            <div>
+              <Label>Cap hoc</Label>
+              <Input value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <Label>Pham vi khung</Label>
+            <Select
+              value={subjectId || '__shared'}
+              onValueChange={(value) => setSubjectId(value === '__shared' ? '' : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chon pham vi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__shared">Dùng chung cho Hóa 10, 11, 12</SelectItem>
+                {subjects.map((subject) => (
+                  <SelectItem key={subject.id} value={String(subject.id)}>
+                    {subject.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {sections.map((section, secIdx) => (
+            <div key={secIdx} className="border rounded-lg overflow-hidden">
+              <div className="bg-purple-50 px-4 py-2 border-b">
+                <p className="text-sm font-medium text-purple-700">{section.title}</p>
+              </div>
+              <div className="px-4 py-3 space-y-2">
+                {section.fields.map((field, fieldIdx) => (
+                  <div key={fieldIdx} className="flex items-center gap-2">
+                    <Input
+                      value={field}
+                      onChange={(e) => updateField(secIdx, fieldIdx, e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <Button variant="ghost" size="sm" className="text-red-500" onClick={() => removeField(secIdx, fieldIdx)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="ghost" size="sm" onClick={() => addField(secIdx)} className="text-purple-600">
+                  <Plus className="w-3 h-3 mr-1" />
+                  Them muc
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Huy
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
+            {saving ? 'Dang luu...' : 'Luu mau'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function AdminCurriculum() {
   const userName = getNameFromToken();
-  const [activeTab, setActiveTab] = useState<'structure' | 'templates'>('structure');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const loadTemplates = async () => {
+    try {
+      const res: any = await api.getCurriculumTemplates();
+      setTemplates(toList(res));
+    } catch (e) {
+      console.error(e);
+      setTemplates([]);
+    }
+  };
+
+  const loadSubjects = async () => {
+    try {
+      const res: any = await api.getSubjects();
+      setSubjects(toList<Subject>(res));
+    } catch (e) {
+      console.error(e);
+      setSubjects([]);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+    loadSubjects();
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Xoa template nay?')) return;
+    try {
+      await api.deleteCurriculumTemplate(id);
+      loadTemplates();
+    } catch {
+      alert('Xoa that bai');
+    }
+  };
 
   return (
     <DashboardLayout role="admin" userName={userName}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Chương Trình Giảng Dạy</h1>
-          <p className="text-gray-600">Quản lý cấu trúc môn học và mẫu giáo án chuẩn</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Mau Giao An</h1>
+          <p className="text-gray-600">Admin tao khung, Staff dua vao do de soan giao an mau</p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex space-x-4 border-b border-gray-200">
-          <button
-            className={`pb-4 px-4 font-medium text-sm transition-colors relative ${activeTab === 'structure' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-            onClick={() => setActiveTab('structure')}
-          >
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              Cấu trúc Môn học
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Danh sach template</CardTitle>
+              <CardDescription>Template dang ACTIVE se duoc Staff nhin thay trong man hinh soan bai</CardDescription>
             </div>
-            {activeTab === 'structure' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
-          </button>
-          
-          <button
-            className={`pb-4 px-4 font-medium text-sm transition-colors relative ${activeTab === 'templates' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-            onClick={() => setActiveTab('templates')}
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Mẫu Giáo Án
-            </div>
-            {activeTab === 'templates' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
-          </button>
-        </div>
+            <Button onClick={() => setDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+              <FileText className="w-4 h-4 mr-2" />
+              Tao mau moi
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {templates.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p>Chua co template nao</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {templates.map((template) => (
+                  <TemplateCard key={template.id} template={template} onDelete={() => handleDelete(template.id)} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Content */}
-        {activeTab === 'structure' && <StructureTab />}
-        {activeTab === 'templates' && <TemplatesTab />}
-
+        <CreateTemplateDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onCreated={loadTemplates}
+          subjects={subjects}
+        />
       </div>
     </DashboardLayout>
-  );
-}
-
-function StructureTab() {
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [chaptersBySubject, setChaptersBySubject] = useState<Record<number, any[]>>({});
-  const [topicsByChapter, setTopicsByChapter] = useState<Record<number, any[]>>({});
-  
-  const [expandedSubjects, setExpandedSubjects] = useState<Set<number>>(new Set());
-  const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<'subject' | 'chapter' | 'topic'>('subject');
-  const [dialogParentId, setDialogParentId] = useState<number | undefined>();
-  const [inputValue, setInputValue] = useState('');
-
-  const loadSubjects = async () => {
-    try {
-      const res: any = await api.getSubjects();
-      setSubjects(res || []);
-    } catch (e) { console.error(e); }
-  };
-
-  useEffect(() => { loadSubjects(); }, []);
-
-  const toggleSubject = async (subjId: number) => {
-    const newExp = new Set(expandedSubjects);
-    if (newExp.has(subjId)) {
-      newExp.delete(subjId);
-      setExpandedSubjects(newExp);
-    } else {
-      newExp.add(subjId);
-      setExpandedSubjects(newExp);
-      if (!chaptersBySubject[subjId]) {
-        try {
-          const res: any = await api.getChaptersBySubject(subjId);
-          setChaptersBySubject(prev => ({ ...prev, [subjId]: res || [] }));
-        } catch (e) { console.error(e); }
-      }
-    }
-  };
-
-  const toggleChapter = async (chapId: number) => {
-    const newExp = new Set(expandedChapters);
-    if (newExp.has(chapId)) {
-      newExp.delete(chapId);
-      setExpandedChapters(newExp);
-    } else {
-      newExp.add(chapId);
-      setExpandedChapters(newExp);
-      if (!topicsByChapter[chapId]) {
-        try {
-          const res: any = await api.getTopicsByChapter(chapId);
-          setTopicsByChapter(prev => ({ ...prev, [chapId]: res || [] }));
-        } catch (e) { console.error(e); }
-      }
-    }
-  };
-
-  // Các hàm mở Modal
-  const openSubjectModal = () => {
-    setDialogType('subject');
-    setInputValue('');
-    setDialogOpen(true);
-  };
-
-  const openChapterModal = (subjId: number) => {
-    setDialogType('chapter');
-    setDialogParentId(subjId);
-    setInputValue('');
-    setDialogOpen(true);
-  };
-
-  const openTopicModal = (chapId: number) => {
-    setDialogType('topic');
-    setDialogParentId(chapId);
-    setInputValue('');
-    setDialogOpen(true);
-  };
-
-  // Submit Modal
-  const handleDialogSubmit = async () => {
-    if (!inputValue.trim()) return;
-    try {
-      if (dialogType === 'subject') {
-        await api.createSubject({ name: inputValue });
-        loadSubjects();
-      } else if (dialogType === 'chapter' && dialogParentId) {
-        await api.createChapter({ name: inputValue, subjectId: dialogParentId });
-        const res: any = await api.getChaptersBySubject(dialogParentId);
-        setChaptersBySubject(prev => ({ ...prev, [dialogParentId]: res || [] }));
-        setExpandedSubjects(prev => new Set(prev).add(dialogParentId));
-      } else if (dialogType === 'topic' && dialogParentId) {
-        await api.createTopic({ title: inputValue, chapterId: dialogParentId });
-        const res: any = await api.getTopicsByChapter(dialogParentId);
-        setTopicsByChapter(prev => ({ ...prev, [dialogParentId]: res || [] }));
-        setExpandedChapters(prev => new Set(prev).add(dialogParentId));
-      }
-      setDialogOpen(false);
-    } catch (e) { alert("Có lỗi xảy ra khi tạo!"); }
-  };
-
-  const handleDeleteSubject = async (id: number) => {
-    if (!window.confirm("Xóa môn học này sẽ xóa cả chương và bài học. Chắc chưa?")) return;
-    try { await api.deleteSubject(id); loadSubjects(); } catch(e) { alert("Lỗi"); }
-  }
-
-  const handleDeleteChapter = async (subjId: number, chapId: number) => {
-    if (!window.confirm("Xóa chương này?")) return;
-    try { 
-      await api.deleteChapter(chapId); 
-      const res: any = await api.getChaptersBySubject(subjId);
-      setChaptersBySubject(prev => ({ ...prev, [subjId]: res || [] }));
-    } catch(e) { alert("Lỗi"); }
-  }
-
-  const handleDeleteTopic = async (chapId: number, topicId: number) => {
-    if (!window.confirm("Xóa bài học này?")) return;
-    try { 
-      await api.deleteTopic(topicId); 
-      const res: any = await api.getTopicsByChapter(chapId);
-      setTopicsByChapter(prev => ({ ...prev, [chapId]: res || [] }));
-    } catch(e) { alert("Lỗi"); }
-  }
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Cấu trúc Môn học</CardTitle>
-          <CardDescription>Hệ thống Môn học - Chương - Bài học</CardDescription>
-        </div>
-        <Button onClick={openSubjectModal} className="bg-blue-600 hover:bg-blue-700">
-          <BookOpen className="w-4 h-4 mr-2" /> Thêm Môn Học
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {subjects.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">Chưa có môn học nào.</p>
-        ) : (
-          <div className="space-y-2">
-            {subjects.map(subj => (
-              <div key={subj.id} className="border rounded-md p-2 bg-white">
-                <div className="flex items-center justify-between">
-                  <div 
-                    className="flex items-center gap-2 font-semibold cursor-pointer hover:text-blue-600 p-2"
-                    onClick={() => toggleSubject(subj.id)}
-                  >
-                    <div className="text-gray-400">
-                      {expandedSubjects.has(subj.id) ? '▼' : '▶'}
-                    </div>
-                    📚 {subj.name}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openChapterModal(subj.id)}>+ Thêm Chương</Button>
-                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteSubject(subj.id)}>Xóa</Button>
-                  </div>
-                </div>
-
-                {expandedSubjects.has(subj.id) && (
-                  <div className="ml-6 mt-2 border-l-2 border-blue-100 pl-4 space-y-2">
-                    {(!chaptersBySubject[subj.id] || chaptersBySubject[subj.id].length === 0) ? (
-                      <p className="text-sm text-gray-400 italic py-2">Chưa có chương nào.</p>
-                    ) : (
-                      chaptersBySubject[subj.id].map(chap => (
-                        <div key={chap.id} className="border rounded-md p-2 bg-gray-50">
-                          <div className="flex items-center justify-between">
-                            <div 
-                              className="flex items-center gap-2 font-medium cursor-pointer hover:text-blue-600 p-1"
-                              onClick={() => toggleChapter(chap.id)}
-                            >
-                              <div className="text-gray-400 text-xs">
-                                {expandedChapters.has(chap.id) ? '▼' : '▶'}
-                              </div>
-                              📖 {chap.name}
-                            </div>
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" onClick={() => openTopicModal(chap.id)}>+ Thêm Bài Học</Button>
-                              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteChapter(subj.id, chap.id)}>Xóa</Button>
-                            </div>
-                          </div>
-
-                          {expandedChapters.has(chap.id) && (
-                            <div className="ml-6 mt-2 border-l-2 border-green-100 pl-4 space-y-1">
-                              {(!topicsByChapter[chap.id] || topicsByChapter[chap.id].length === 0) ? (
-                                <p className="text-sm text-gray-400 italic py-1">Chưa có bài học nào.</p>
-                              ) : (
-                                topicsByChapter[chap.id].map(top => (
-                                  <div key={top.id} className="flex justify-between items-center bg-white p-2 border rounded text-sm">
-                                    <span>📄 {top.title}</span>
-                                    <Button variant="ghost" size="sm" className="text-red-400 h-6 px-2 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteTopic(chap.id, top.id)}>Xóa</Button>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {dialogType === 'subject' ? 'Thêm Môn Học' : dialogType === 'chapter' ? 'Thêm Chương' : 'Thêm Bài Học'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Label>Tên {dialogType === 'subject' ? 'Môn học' : dialogType === 'chapter' ? 'Chương' : 'Bài học'}</Label>
-            <Input 
-              value={inputValue} 
-              onChange={e => setInputValue(e.target.value)} 
-              placeholder="Nhập tên..." 
-              autoFocus
-              onKeyDown={e => e.key === 'Enter' && handleDialogSubmit()}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleDialogSubmit}>Lưu lại</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-}
-
-function TemplatesTab() {
-  const [templates, setTemplates] = useState<any[]>([]);
-  
-  // Dialog State
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [templateName, setTemplateName] = useState('');
-  const [templateDesc, setTemplateDesc] = useState('');
-
-  const loadTemplates = async () => {
-    try {
-      const res: any = await api.getCurriculumTemplates();
-      setTemplates(res || []);
-    } catch(e) { console.error(e); }
-  }
-
-  useEffect(() => { loadTemplates(); }, []);
-
-  const openTemplateModal = () => {
-    setTemplateName('');
-    setTemplateDesc('I. Mục tiêu\nII. Nội dung\nIII. Bài tập');
-    setDialogOpen(true);
-  };
-
-  const handleCreate = async () => {
-    if (!templateName.trim() || !templateDesc.trim()) return;
-
-    try {
-      await api.createCurriculumTemplate({ name: templateName, description: templateDesc, isActive: true });
-      setDialogOpen(false);
-      loadTemplates();
-    } catch (e) { alert("Lỗi tạo mẫu!"); }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Xóa mẫu này?")) return;
-    try {
-      await api.deleteCurriculumTemplate(id);
-      loadTemplates();
-    } catch (e) { alert("Lỗi"); }
-  }
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Mẫu Giáo Án (Templates)</CardTitle>
-          <CardDescription>Các khung giáo án chuẩn cho giáo viên sử dụng</CardDescription>
-        </div>
-        <Button onClick={openTemplateModal} className="bg-purple-600 hover:bg-purple-700">
-          <FileText className="w-4 h-4 mr-2" /> Thêm Mẫu Mới
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {templates.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">Chưa có mẫu giáo án nào.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {templates.map(t => (
-              <div key={t.id} className="border p-4 rounded-lg bg-white shadow-sm flex flex-col gap-2">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-lg text-purple-700">{t.name}</h3>
-                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(t.id)}>Xóa</Button>
-                </div>
-                <pre className="text-sm text-gray-600 bg-gray-50 p-3 rounded overflow-x-auto whitespace-pre-wrap font-sans">
-                  {t.description}
-                </pre>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Tạo Mẫu Giáo Án Mới</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div>
-              <Label>Tên Mẫu</Label>
-              <Input 
-                value={templateName} 
-                onChange={e => setTemplateName(e.target.value)} 
-                placeholder="Ví dụ: Mẫu Giáo Án 5 Bước" 
-                autoFocus
-              />
-            </div>
-            <div>
-              <Label>Nội dung khung sườn</Label>
-              <Textarea 
-                value={templateDesc}
-                onChange={e => setTemplateDesc(e.target.value)}
-                rows={10}
-                placeholder="Nhập nội dung mẫu..."
-                className="font-mono text-sm"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Hủy</Button>
-            <Button className="bg-purple-600 hover:bg-purple-700" onClick={handleCreate}>Lưu Mẫu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
   );
 }

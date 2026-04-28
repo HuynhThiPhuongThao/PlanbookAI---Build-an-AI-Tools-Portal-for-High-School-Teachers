@@ -33,6 +33,13 @@ public class LessonPlanController {
         return ResponseEntity.ok(lessonPlanService.getLessonPlansByTeacher(teacherId));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<LessonPlanResponse> getLessonPlanById(@PathVariable Long id,
+                                                                Authentication authentication) {
+        Long teacherId = authUtil.extractTeacherId(authentication);
+        return ResponseEntity.ok(lessonPlanService.getLessonPlanById(id, teacherId));
+    }
+
     // POST /api/lesson-plans
     @PostMapping
     public ResponseEntity<LessonPlanResponse> addLessonPlan(@RequestBody @Valid LessonPlanRequest request,

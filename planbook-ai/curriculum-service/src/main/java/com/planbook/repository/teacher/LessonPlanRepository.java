@@ -9,4 +9,5 @@ import java.util.List;
 public interface LessonPlanRepository extends JpaRepository<LessonPlan, Long> {
     List<LessonPlan> findByTeacherId(Long teacherId);
     List<LessonPlan> findByTopicId(Long topicId);
+    java.util.Optional<LessonPlan> findByIdAndTeacherId(Long id, Long teacherId);
 }

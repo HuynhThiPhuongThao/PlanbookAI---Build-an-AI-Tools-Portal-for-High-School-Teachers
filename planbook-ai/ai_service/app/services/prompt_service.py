@@ -7,7 +7,8 @@ from ai_service.app.models.prompt_model import Prompt
 def get_active_prompt_by_name(db: Session, name: str) -> Prompt:
     prompt = db.query(Prompt).filter(
         Prompt.name == name,
-        Prompt.is_active == True
+        Prompt.is_active == True,
+        Prompt.approval_status == "APPROVED",
     ).first()
 
     if not prompt:

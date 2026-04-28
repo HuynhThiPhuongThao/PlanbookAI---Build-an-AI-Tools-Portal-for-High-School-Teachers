@@ -107,9 +107,9 @@ export default function Register() {
     try {
       // Gọi API Gateway -> Auth Service
       const response = await authApi.register({
-        email,
+        email: email.trim(),
         password,
-        fullName,
+        fullName: fullName.trim(),
         // Role mặc định là TEACHER - chỉ admin có thể thay đổi role sau
       });
 

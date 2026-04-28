@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExerciseRequest(BaseModel):
@@ -12,6 +12,8 @@ class ExerciseRequest(BaseModel):
 
 
 class ExerciseItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     question: str
     options: List[str]
@@ -25,9 +27,11 @@ class ExerciseResponse(BaseModel):
 
 class LessonPlanRequest(BaseModel):
     topic: str
+    subject: str | None = None
     grade: str = Field(default="10")
     duration_minutes: int = Field(
         default=45, alias="durationMinutes", ge=15, le=180)
+    additional_context: str | None = Field(default=None, alias="additionalContext")
 
 
 class LessonActivity(BaseModel):

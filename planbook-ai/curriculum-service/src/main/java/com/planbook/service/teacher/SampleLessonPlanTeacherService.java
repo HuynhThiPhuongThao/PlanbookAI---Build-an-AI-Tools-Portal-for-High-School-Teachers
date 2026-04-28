@@ -22,7 +22,7 @@ public class SampleLessonPlanTeacherService {
 
         if (topicId != null && curriculumTemplateId != null) {
             sampleLessonPlans = sampleLessonPlanRepository
-                    .findByTopicIdAndCurriculumTemplateIdAndStatus(
+                    .findApprovedForTopicAndOptionalTemplate(
                             topicId,
                             curriculumTemplateId,
                             SampleLessonPlanStatus.APPROVED
@@ -64,7 +64,7 @@ public class SampleLessonPlanTeacherService {
                     )
             );
         }
-if (sampleLessonPlan.getTopic() != null) {
+        if (sampleLessonPlan.getTopic() != null) {
             response.setTopic(
                     new SampleLessonPlanResponse.TopicInfo(
                             sampleLessonPlan.getTopic().getId(),

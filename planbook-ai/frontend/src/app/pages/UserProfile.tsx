@@ -9,15 +9,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { userApi } from '../api/userApi';
 import { authApi } from '../api/authApi';
 import { Camera, Edit2, Save, X, Loader2, Lock } from 'lucide-react';
+import { getAccessTokenPayload } from '../utils/jwt';
 
 // Helper: giải mã JWT để lấy role mà thềm cần layout đúng khi chưa load xong profile
 function getRoleFromToken(): string {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return 'teacher';
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return (payload.role || 'teacher').toLowerCase();
-  } catch { return 'teacher'; }
+  const payload = getAccessTokenPayload();
+  return (payload.role || 'teacher').toLowerCase();
 }
 
 interface ProfileData {

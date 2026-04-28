@@ -13,8 +13,18 @@ import {
     type CreatePromptPayload,
     type PromptTemplate,
 } from '../api/promptApi';
+import { getFullNameFromToken } from '../utils/jwt';
+
+function getErrorMessage(error: any, fallback: string) {
+    return error?.response?.data?.detail || error?.response?.data?.message || fallback;
+}
+
+function getNameFromToken(): string {
+    return getFullNameFromToken();
+}
 
 export default function StaffPrompts() {
+    const userName = getNameFromToken();
     const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
     const [loading, setLoading] = useState(false);
     const [creating, setCreating] = useState(false);
@@ -33,7 +43,7 @@ export default function StaffPrompts() {
             const data = await promptApi.getAll();
             setPrompts(data);
         } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to load prompt templates.');
+            setError(getErrorMessage(err, 'Không tải được danh sách mẫu lời nhắc.'));
         } finally {
             setLoading(false);
         }
@@ -49,18 +59,18 @@ export default function StaffPrompts() {
         setMessage('');
         try {
             await promptApi.create(payload);
-            setMessage('Prompt created successfully.');
+            setMessage('Đã tạo mẫu lời nhắc và gửi Manager duyệt.');
             await loadPrompts();
         } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to create prompt.');
+            setError(getErrorMessage(err, 'Tạo mẫu lời nhắc thất bại.'));
         } finally {
             setCreating(false);
         }
     };
 
     const handleSaveContent = async (promptId: number, content: string) => {
-        if (!content) {
-            setError('Prompt content cannot be empty.');
+        if (!content.trim()) {
+            setError('Nội dung mẫu lời nhắc không được để trống.');
             return;
         }
 
@@ -69,25 +79,10 @@ export default function StaffPrompts() {
         setMessage('');
         try {
             await promptApi.update(promptId, { content });
-            setMessage('Prompt content updated.');
+            setMessage('Đã tạo phiên bản mới và gửi Manager duyệt.');
             await loadPrompts();
         } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to update prompt content.');
-        } finally {
-            setBusyPromptId(null);
-        }
-    };
-
-    const handleSetActive = async (promptId: number) => {
-        setBusyPromptId(promptId);
-        setError('');
-        setMessage('');
-        try {
-            await promptApi.update(promptId, { is_active: true });
-            setMessage('Prompt activated.');
-            await loadPrompts();
-        } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to activate prompt.');
+            setError(getErrorMessage(err, 'Cập nhật nội dung mẫu lời nhắc thất bại.'));
         } finally {
             setBusyPromptId(null);
         }
@@ -99,27 +94,27 @@ export default function StaffPrompts() {
         setMessage('');
         try {
             await promptApi.remove(promptId);
-            setMessage('Prompt deleted.');
+            setMessage('Đã xóa mẫu lời nhắc.');
             await loadPrompts();
         } catch (err: any) {
-            setError(err?.response?.data?.detail || 'Failed to delete prompt.');
+            setError(getErrorMessage(err, 'Xóa mẫu lời nhắc thất bại.'));
         } finally {
             setBusyPromptId(null);
         }
     };
 
     return (
-        <DashboardLayout role="staff" userName="Staff Nguyễn Lan">
+        <DashboardLayout role="staff" userName={userName || 'Nhân viên'}>
             <div className="space-y-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">AI Prompt Templates</h1>
+                        <h1 className="text-3xl font-bold text-gray-900">Quản lý mẫu lời nhắc AI</h1>
                         <p className="text-gray-600 mt-2">
-                            Staff can create, edit, activate, and remove prompt templates for AI services.
+                            Tạo, chỉnh sửa và xóa mẫu lời nhắc hướng dẫn AI sinh nội dung giáo dục.
                         </p>
                     </div>
                     <Button asChild variant="outline">
-                        <Link to="/staff">Back to Staff Dashboard</Link>
+                        <Link to="/staff">Quay lại trang nhân viên</Link>
                     </Button>
                 </div>
 
@@ -139,14 +134,13 @@ export default function StaffPrompts() {
                 <PromptForm isSubmitting={creating} onSubmit={handleCreate} />
 
                 {loading ? (
-                    <p className="text-sm text-gray-600">Loading prompt templates...</p>
+                    <p className="text-sm text-gray-600">Đang tải danh sách mẫu lời nhắc...</p>
                 ) : (
                     <PromptList
                         prompts={sortedPrompts}
                         busyPromptId={busyPromptId}
                         onRefresh={loadPrompts}
                         onSaveContent={handleSaveContent}
-                        onSetActive={handleSetActive}
                         onDelete={handleDelete}
                     />
                 )}

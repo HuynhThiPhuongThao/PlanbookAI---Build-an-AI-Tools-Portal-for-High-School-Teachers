@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from "react-router";
+import { decodeJwtPayload } from "../utils/jwt";
 
 // =====================================================================
 // ProtectedRoute — Chặn truy cập thẳng URL mà chưa đăng nhập
@@ -12,13 +13,9 @@ import { Navigate, Outlet } from "react-router";
 // =====================================================================
 
 function getTokenPayload(): { role?: string } | null {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return null;
-    return JSON.parse(atob(token.split('.')[1]));
-  } catch {
-    return null;
-  }
+  const token = localStorage.getItem('access_token');
+  if (!token) return null;
+  return decodeJwtPayload(token);
 }
 
 // Dùng cho tất cả route cần đăng nhập

@@ -12,6 +12,7 @@ import com.planbook.user.entity.UserProfile;
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
     Optional<UserProfile> findByEmail(String email);
     List<UserProfile> findByRole(Role role);
+    List<UserProfile> findByRoleAndActiveTrue(Role role);
     List<UserProfile> findByActive(boolean active);
     boolean existsByEmail(String email);
 }

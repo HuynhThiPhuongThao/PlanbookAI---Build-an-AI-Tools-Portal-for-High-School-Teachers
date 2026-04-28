@@ -1,19 +1,16 @@
 package com.planbook.dto.staff;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public class SampleLessonPlanRequest {
 
-    @NotBlank(message = "Tiêu đề không được để trống")
+    @NotBlank(message = "Title is required")
     private String title;
 
-    @NotBlank(message = "Nội dung không được để trống")
+    @NotBlank(message = "Content is required")
     private String content;
 
     private Long curriculumTemplateId;
-
-    @NotNull(message = "Bài học (Topic ID) không được để trống")
     private Long topicId;
 
     public SampleLessonPlanRequest() {

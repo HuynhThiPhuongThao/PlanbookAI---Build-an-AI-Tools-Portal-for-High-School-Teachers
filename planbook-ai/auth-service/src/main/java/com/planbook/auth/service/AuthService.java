@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -125,6 +126,10 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
+        if (!isUserProfileActive(user.getId())) {
+            throw new LockedException("Tài khoản đã bị khóa");
+        }
+
         return generateAuthResponse(user);
     }
 
@@ -164,6 +169,18 @@ public class AuthService {
     }
 
     // ===== PRIVATE HELPERS =====
+
+    private boolean isUserProfileActive(Long userId) {
+        try {
+            String statusUrl = userServiceUrl + "/api/users/internal/" + userId + "/active";
+            Map<?, ?> status = restTemplate.getForObject(statusUrl, Map.class);
+            Object active = status == null ? null : status.get("active");
+            return active == null || Boolean.parseBoolean(String.valueOf(active));
+        } catch (Exception e) {
+            log.warn("Không thể kiểm tra trạng thái khóa của userId={}: {}", userId, e.getMessage());
+            return true;
+        }
+    }
 
     private AuthResponse generateAuthResponse(User user) {
         String accessToken = jwtService.generateToken(user, user.getId(), user.getRole().name());

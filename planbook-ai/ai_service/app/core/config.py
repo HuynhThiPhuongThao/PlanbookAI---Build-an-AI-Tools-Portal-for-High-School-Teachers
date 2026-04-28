@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     log_level: str = Field(default="info", alias="LOG_LEVEL")
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
+    gemini_ocr_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_OCR_MODEL")
     db_host: str = Field(default="127.0.0.1", alias="MYSQL_HOST")
     db_port: int = Field(default=3306, alias="MYSQL_PORT")
     db_name: str = Field(default="db_ai", alias="MYSQL_DB")

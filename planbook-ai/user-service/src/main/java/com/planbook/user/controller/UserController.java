@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
+import java.util.Map;
 
 // @RestController = @Controller + tự convert return value thành JSON
 // @RequestMapping = tất cả endpoint trong class đều bắt đầu bằng /api/users
@@ -62,6 +63,18 @@ public class UserController {
         return token != null ? ResponseEntity.ok(token) : ResponseEntity.notFound().build();
     }
 
+    // GET /api/users/internal/managers/fcm-tokens → Curriculum Service gọi lấy token Manager đang active
+    @GetMapping("/internal/managers/fcm-tokens")
+    public ResponseEntity<List<String>> getManagerFcmTokensInternal() {
+        return ResponseEntity.ok(userService.getActiveManagerFcmTokens());
+    }
+
+    // GET /api/users/internal/{userId}/active → Auth Service kiểm tra trước khi cấp token
+    @GetMapping("/internal/{userId}/active")
+    public ResponseEntity<Map<String, Boolean>> isUserActiveInternal(@PathVariable Long userId) {
+        return ResponseEntity.ok(Map.of("active", userService.isUserActive(userId)));
+    }
+
     // GET /api/users → Admin lấy danh sách tất cả user
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
@@ -103,4 +116,4 @@ public class UserController {
         userService.initProfile(request);
         return ResponseEntity.ok("Profile initialized for userId=" + request.getUserId());
     }
-}
+}

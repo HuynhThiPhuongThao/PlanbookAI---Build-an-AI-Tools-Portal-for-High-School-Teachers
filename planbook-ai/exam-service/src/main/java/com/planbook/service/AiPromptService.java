@@ -5,6 +5,7 @@ import com.planbook.dto.PromptDTO.PromptResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.HttpClientErrorException;
 
 @Service
 public class AiPromptService {
@@ -29,10 +30,14 @@ public class AiPromptService {
 
     // Gọi API lấy prompt active theo name
     public PromptResponse getActivePrompt(String name) {
-        return restTemplate.getForObject(
-            aiServiceUrl + "/api/ai/prompts/active/" + name,
-            PromptResponse.class
-        );
+        try {
+            return restTemplate.getForObject(
+                    aiServiceUrl + "/api/ai/prompts/active/" + name,
+                    PromptResponse.class
+            );
+        } catch (HttpClientErrorException.NotFound ex) {
+            return null;
+        }
     }
 
     // Gọi API lấy tất cả prompt

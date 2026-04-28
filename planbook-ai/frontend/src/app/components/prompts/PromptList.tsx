@@ -17,14 +17,32 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 
 import type { PromptTemplate } from '../../api/promptApi';
+import {
+    formatPromptContentForDisplay,
+    getPromptNameLabel,
+    getPromptTypeLabel,
+    preparePromptContentForSave,
+} from '../../utils/promptDisplay';
 
 interface PromptListProps {
     prompts: PromptTemplate[];
     busyPromptId: number | null;
     onRefresh: () => Promise<void>;
     onSaveContent: (promptId: number, content: string) => Promise<void>;
-    onSetActive: (promptId: number) => Promise<void>;
     onDelete: (promptId: number) => Promise<void>;
+}
+
+function getReviewStatus(prompt: PromptTemplate) {
+    switch (prompt.approval_status) {
+        case 'PENDING_REVIEW':
+            return { label: 'Chờ Manager duyệt', className: 'bg-yellow-100 text-yellow-700' };
+        case 'REJECTED':
+            return { label: 'Bị từ chối', className: 'bg-red-100 text-red-700' };
+        case 'APPROVED':
+            return { label: 'Đã duyệt', className: 'bg-green-100 text-green-700' };
+        default:
+            return { label: prompt.is_active ? 'Đã duyệt' : 'Chờ Manager duyệt', className: 'bg-gray-100 text-gray-700' };
+    }
 }
 
 export default function PromptList({
@@ -32,7 +50,6 @@ export default function PromptList({
     busyPromptId,
     onRefresh,
     onSaveContent,
-    onSetActive,
     onDelete,
 }: PromptListProps) {
     const [editingContent, setEditingContent] = useState<Record<number, string>>({});
@@ -42,21 +59,29 @@ export default function PromptList({
     const [deleteCandidate, setDeleteCandidate] = useState<PromptTemplate | null>(null);
 
     const availableNames = useMemo(() => {
-        return [...new Set(prompts.map((prompt) => prompt.name))].sort((a, b) => a.localeCompare(b));
+        return [...new Set(prompts.map((prompt) => prompt.name))]
+            .sort((a, b) => getPromptNameLabel(a).localeCompare(getPromptNameLabel(b)));
     }, [prompts]);
 
     const availableTypes = useMemo(() => {
-        return [...new Set(prompts.map((prompt) => prompt.type))].sort((a, b) => a.localeCompare(b));
+        return [...new Set(prompts.map((prompt) => prompt.type))]
+            .sort((a, b) => getPromptTypeLabel(a).localeCompare(getPromptTypeLabel(b)));
     }, [prompts]);
 
     const filteredPrompts = useMemo(() => {
         const keyword = searchTerm.trim().toLowerCase();
 
         return prompts.filter((prompt) => {
+            const formattedContent = formatPromptContentForDisplay(prompt.content, prompt.name).toLowerCase();
+            const promptNameLabel = getPromptNameLabel(prompt.name).toLowerCase();
+            const promptTypeLabel = getPromptTypeLabel(prompt.type).toLowerCase();
             const matchesSearch = !keyword ||
                 prompt.name.toLowerCase().includes(keyword) ||
+                promptNameLabel.includes(keyword) ||
                 prompt.type.toLowerCase().includes(keyword) ||
-                prompt.content.toLowerCase().includes(keyword);
+                promptTypeLabel.includes(keyword) ||
+                prompt.content.toLowerCase().includes(keyword) ||
+                formattedContent.includes(keyword);
 
             const matchesName = nameFilter === 'all' || prompt.name === nameFilter;
             const matchesType = typeFilter === 'all' || prompt.type === typeFilter;
@@ -69,7 +94,12 @@ export default function PromptList({
         if (Object.prototype.hasOwnProperty.call(editingContent, prompt.id)) {
             return editingContent[prompt.id];
         }
-        return prompt.content;
+        return formatPromptContentForDisplay(prompt.content, prompt.name);
+    };
+
+    const handleSaveContent = (prompt: PromptTemplate) => {
+        const content = preparePromptContentForSave(prompt.name, getContent(prompt));
+        return onSaveContent(prompt.id, content);
     };
 
     const handleConfirmDelete = async () => {
@@ -87,65 +117,72 @@ export default function PromptList({
                 <div className="space-y-4">
                     <div className="flex items-center justify-between gap-4">
                         <div>
-                            <CardTitle>Prompt Templates</CardTitle>
-                            <CardDescription>Update content, switch active version, or delete prompt templates.</CardDescription>
+                            <CardTitle>Danh sách mẫu lời nhắc</CardTitle>
+                            <CardDescription>
+                                Chỉnh sửa nội dung, gửi Manager duyệt hoặc xóa mẫu lời nhắc.
+                            </CardDescription>
                         </div>
-                        <Button variant="outline" onClick={onRefresh}>Refresh</Button>
+                        <Button variant="outline" onClick={onRefresh}>Tải lại</Button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <Input
-                            placeholder="Search by name, type, content..."
+                            placeholder="Tìm theo tên, loại, nội dung..."
                             value={searchTerm}
                             onChange={(event) => setSearchTerm(event.target.value)}
                         />
 
                         <select
-                            title="Filter by prompt name"
-                            aria-label="Filter by prompt name"
+                            title="Lọc theo tên mẫu lời nhắc"
+                            aria-label="Lọc theo tên mẫu lời nhắc"
                             className="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm"
                             value={nameFilter}
                             onChange={(event) => setNameFilter(event.target.value)}
                         >
-                            <option value="all">All names</option>
+                            <option value="all">Tất cả tên</option>
                             {availableNames.map((name) => (
-                                <option key={name} value={name}>{name}</option>
+                                <option key={name} value={name}>{getPromptNameLabel(name)}</option>
                             ))}
                         </select>
 
                         <select
-                            title="Filter by prompt type"
-                            aria-label="Filter by prompt type"
+                            title="Lọc theo loại lời nhắc"
+                            aria-label="Lọc theo loại lời nhắc"
                             className="h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm"
                             value={typeFilter}
                             onChange={(event) => setTypeFilter(event.target.value)}
                         >
-                            <option value="all">All types</option>
+                            <option value="all">Tất cả loại</option>
                             {availableTypes.map((type) => (
-                                <option key={type} value={type}>{type}</option>
+                                <option key={type} value={type}>{getPromptTypeLabel(type)}</option>
                             ))}
                         </select>
                     </div>
 
                     <p className="text-xs text-gray-500">
-                        Showing {filteredPrompts.length} / {prompts.length} prompts
+                        Đang hiển thị {filteredPrompts.length} / {prompts.length} mẫu
                     </p>
                 </div>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
                     {filteredPrompts.length === 0 && (
-                        <p className="text-sm text-gray-600">No prompt templates match your filters.</p>
+                        <p className="text-sm text-gray-600">Không có mẫu lời nhắc phù hợp.</p>
                     )}
 
                     {filteredPrompts.map((prompt) => (
                         <div key={prompt.id} className="border rounded-lg p-4 space-y-3">
+                            {(() => {
+                                const status = getReviewStatus(prompt);
+                                return (
+                                    <>
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="font-semibold text-gray-900">{prompt.name}</h3>
-                                    <Badge variant="outline">type: {prompt.type}</Badge>
+                                    <h3 className="font-semibold text-gray-900">{getPromptNameLabel(prompt.name)}</h3>
+                                    <Badge variant="outline">Loại: {getPromptTypeLabel(prompt.type)}</Badge>
                                     <Badge variant="outline">v{prompt.version}</Badge>
-                                    {prompt.is_active && <Badge className="bg-green-600">active</Badge>}
+                                    <Badge className={status.className}>{status.label}</Badge>
+                                    {prompt.is_active && <Badge className="bg-green-600">Đang dùng</Badge>}
                                 </div>
                                 <div className="text-xs text-gray-500">ID: {prompt.id}</div>
                             </div>
@@ -164,25 +201,21 @@ export default function PromptList({
                             <div className="flex flex-wrap items-center gap-2">
                                 <Button
                                     disabled={busyPromptId === prompt.id}
-                                    onClick={() => onSaveContent(prompt.id, getContent(prompt).trim())}
+                                    onClick={() => handleSaveContent(prompt)}
                                 >
-                                    Save Content
-                                </Button>
-                                <Button
-                                    variant="secondary"
-                                    disabled={busyPromptId === prompt.id || prompt.is_active}
-                                    onClick={() => onSetActive(prompt.id)}
-                                >
-                                    Set Active
+                                    Lưu và gửi duyệt
                                 </Button>
                                 <Button
                                     variant="destructive"
                                     disabled={busyPromptId === prompt.id}
                                     onClick={() => setDeleteCandidate(prompt)}
                                 >
-                                    Delete
+                                    Xóa
                                 </Button>
                             </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     ))}
                 </div>
@@ -195,21 +228,21 @@ export default function PromptList({
             }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this prompt template?</AlertDialogTitle>
+                        <AlertDialogTitle>Xóa mẫu lời nhắc này?</AlertDialogTitle>
                         <AlertDialogDescription>
                             {deleteCandidate
-                                ? `This will permanently delete prompt #${deleteCandidate.id} (${deleteCandidate.name}). This action cannot be undone.`
-                                : 'This action cannot be undone.'}
+                                ? `Mẫu #${deleteCandidate.id} (${getPromptNameLabel(deleteCandidate.name)}) sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.`
+                                : 'Hành động này không thể hoàn tác.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={busyPromptId === deleteCandidate?.id}>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={busyPromptId === deleteCandidate?.id}>Hủy</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleConfirmDelete}
                             className="bg-red-600 hover:bg-red-700"
                             disabled={busyPromptId === deleteCandidate?.id}
                         >
-                            {busyPromptId === deleteCandidate?.id ? 'Deleting...' : 'Delete'}
+                            {busyPromptId === deleteCandidate?.id ? 'Đang xóa...' : 'Xóa'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

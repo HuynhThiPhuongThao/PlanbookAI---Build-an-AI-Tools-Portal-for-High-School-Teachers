@@ -27,6 +27,9 @@ public class Exam {
     @Column(columnDefinition = "TEXT")
     private String answerKey;   // ví dụ: 1:A,2:B,3:C
 
+    @Column(columnDefinition = "LONGTEXT")
+    private String questionsJson;
+
     private LocalDateTime createdAt;
 
     public Exam() {
@@ -52,6 +55,10 @@ public class Exam {
         return answerKey;
     }
 
+    public String getQuestionsJson() {
+        return questionsJson;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -74,6 +81,10 @@ public class Exam {
 
     public void setAnswerKey(String answerKey) {
         this.answerKey = answerKey;
+    }
+
+    public void setQuestionsJson(String questionsJson) {
+        this.questionsJson = questionsJson;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {

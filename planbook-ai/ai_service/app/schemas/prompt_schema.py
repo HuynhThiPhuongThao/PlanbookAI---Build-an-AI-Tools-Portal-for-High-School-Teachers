@@ -14,6 +14,11 @@ class PromptUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class PromptReview(BaseModel):
+    review_note: Optional[str] = None
+    reviewed_by: Optional[str] = None
+
+
 class PromptResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -23,4 +28,8 @@ class PromptResponse(BaseModel):
     content: str
     version: int
     is_active: bool
+    approval_status: str = "APPROVED"
+    review_note: Optional[str] = None
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
 

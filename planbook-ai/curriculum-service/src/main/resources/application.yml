@@ -17,6 +17,9 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
 
+  flyway:
+    enabled: false
+
 server:
   port: ${SERVER_PORT:8083}
 

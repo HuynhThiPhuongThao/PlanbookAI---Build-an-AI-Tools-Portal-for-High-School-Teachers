@@ -13,6 +13,11 @@ spring:
             allowedOrigins:
               - "http://localhost:3000"
               - "http://localhost:5173"
+              - "http://localhost:4173"
+              - "https://recursive-gastrohepatic-marquis.ngrok-free.dev"
+            allowedOriginPatterns:
+              - "https://*.ngrok-free.dev"
+              - "https://*.loca.lt"
             allowedMethods:
               - GET
               - POST
@@ -44,7 +49,7 @@ spring:
         - id: curriculum-service
           uri: ${CURRICULUM_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**,/api/lesson-templates/**
+            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**,/api/system-config/**,/api/lesson-templates/**
           filters:
             - StripPrefix=0
 
@@ -76,7 +81,7 @@ spring:
         - id: package-service
           uri: ${PACKAGE_SERVICE_URL:http://localhost:8087}
           predicates:
-            - Path=/api/packages/**,/api/subscriptions/**,/api/revenue/**,/api/internal/**
+            - Path=/api/packages/**,/api/subscriptions/**,/api/revenue/**,/api/internal/**,/api/payment/**
           filters:
             - StripPrefix=0
 

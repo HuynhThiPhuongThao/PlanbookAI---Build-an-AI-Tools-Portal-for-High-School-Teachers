@@ -12,6 +12,7 @@ import com.planbook.repository.staff.TopicRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -22,36 +23,34 @@ public class SampleLessonPlanService {
     private final CurriculumTemplateRepository curriculumTemplateRepository;
     private final TopicRepository topicRepository;
     private final com.planbook.service.FirebaseNotificationService firebaseNotificationService;
+    private final RestTemplate restTemplate;
 
-    public SampleLessonPlanService(SampleLessonPlanRepository sampleLessonPlanRepository,
-                                   CurriculumTemplateRepository curriculumTemplateRepository,
-                                   TopicRepository topicRepository,
-                                   com.planbook.service.FirebaseNotificationService firebaseNotificationService) {
+    public SampleLessonPlanService(
+            SampleLessonPlanRepository sampleLessonPlanRepository,
+            CurriculumTemplateRepository curriculumTemplateRepository,
+            TopicRepository topicRepository,
+            com.planbook.service.FirebaseNotificationService firebaseNotificationService,
+            RestTemplate restTemplate
+    ) {
         this.sampleLessonPlanRepository = sampleLessonPlanRepository;
         this.curriculumTemplateRepository = curriculumTemplateRepository;
         this.topicRepository = topicRepository;
         this.firebaseNotificationService = firebaseNotificationService;
+        this.restTemplate = restTemplate;
     }
 
     public SampleLessonPlanResponse createSample(SampleLessonPlanRequest request, Long staffId) {
-        // curriculumTemplateId là optional — staff có thể lưu không cần template
-        CurriculumTemplate curriculumTemplate = null;
-        if (request.getCurriculumTemplateId() != null) {
-            curriculumTemplate = curriculumTemplateRepository.findById(request.getCurriculumTemplateId())
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "Curriculum template not found with id: " + request.getCurriculumTemplateId()
-                    ));
+        if (request.getTopicId() == null) {
+            throw new IllegalArgumentException("Topic ID is required when creating a sample lesson plan");
         }
 
-        Topic topic = topicRepository.findById(request.getTopicId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Topic not found with id: " + request.getTopicId()
-                ));
+        CurriculumTemplate curriculumTemplate = resolveOptionalTemplate(request.getCurriculumTemplateId());
+        Topic topic = resolveTopic(request.getTopicId());
 
         SampleLessonPlan sampleLessonPlan = new SampleLessonPlan();
         sampleLessonPlan.setTitle(request.getTitle());
         sampleLessonPlan.setContent(request.getContent());
-        sampleLessonPlan.setCurriculumTemplate(curriculumTemplate); // null nếu không có
+        sampleLessonPlan.setCurriculumTemplate(curriculumTemplate);
         sampleLessonPlan.setTopic(topic);
         sampleLessonPlan.setStaffId(staffId);
         sampleLessonPlan.setStatus(SampleLessonPlanStatus.DRAFT);
@@ -60,17 +59,13 @@ public class SampleLessonPlanService {
         return toResponse(saved);
     }
 
-
     public List<SampleLessonPlanResponse> getMySamples(Long staffId) {
-        return sampleLessonPlanRepository.findByStaffId(staffId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return sampleLessonPlanRepository.findByStaffId(staffId).stream().map(this::toResponse).toList();
     }
 
     public SampleLessonPlanResponse getSampleById(Long id, Long staffId) {
         SampleLessonPlan sampleLessonPlan = sampleLessonPlanRepository.findById(id)
-.orElseThrow(() -> new EntityNotFoundException("Sample lesson plan not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Sample lesson plan not found with id: " + id));
 
         if (!sampleLessonPlan.getStaffId().equals(staffId)) {
             throw new AccessDeniedException("You do not have permission to view this sample lesson plan");
@@ -91,20 +86,16 @@ public class SampleLessonPlanService {
             throw new IllegalStateException("Cannot update sample lesson plan while it is pending review");
         }
 
-        CurriculumTemplate curriculumTemplate = curriculumTemplateRepository.findById(request.getCurriculumTemplateId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Curriculum template not found with id: " + request.getCurriculumTemplateId()
-                ));
-
-        Topic topic = topicRepository.findById(request.getTopicId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Topic not found with id: " + request.getTopicId()
-                ));
-
         sampleLessonPlan.setTitle(request.getTitle());
         sampleLessonPlan.setContent(request.getContent());
-        sampleLessonPlan.setCurriculumTemplate(curriculumTemplate);
-        sampleLessonPlan.setTopic(topic);
+
+        if (request.getCurriculumTemplateId() != null) {
+            sampleLessonPlan.setCurriculumTemplate(resolveOptionalTemplate(request.getCurriculumTemplateId()));
+        }
+
+        if (request.getTopicId() != null) {
+            sampleLessonPlan.setTopic(resolveTopic(request.getTopicId()));
+        }
 
         SampleLessonPlan updated = sampleLessonPlanRepository.save(sampleLessonPlan);
         return toResponse(updated);
@@ -118,9 +109,8 @@ public class SampleLessonPlanService {
             throw new AccessDeniedException("You do not have permission to delete this sample lesson plan");
         }
 
-        if (sampleLessonPlan.getStatus() == SampleLessonPlanStatus.PENDING_REVIEW ||
-            sampleLessonPlan.getStatus() == SampleLessonPlanStatus.APPROVED) {
-            throw new IllegalStateException("Cannot delete sample lesson plan in current status");
+        if (sampleLessonPlan.getStatus() == SampleLessonPlanStatus.APPROVED) {
+            throw new IllegalStateException("Cannot delete an approved sample lesson plan");
         }
 
         sampleLessonPlanRepository.delete(sampleLessonPlan);
@@ -129,27 +119,55 @@ public class SampleLessonPlanService {
     public SampleLessonPlanResponse submitForReview(Long id, Long staffId) {
         SampleLessonPlan sampleLessonPlan = sampleLessonPlanRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Sample lesson plan not found with id: " + id));
-if (!sampleLessonPlan.getStaffId().equals(staffId)) {
+
+        if (!sampleLessonPlan.getStaffId().equals(staffId)) {
             throw new AccessDeniedException("You do not have permission to submit this sample lesson plan");
         }
 
-        if (sampleLessonPlan.getStatus() != SampleLessonPlanStatus.DRAFT &&
-            sampleLessonPlan.getStatus() != SampleLessonPlanStatus.REJECTED) {
+        if (sampleLessonPlan.getStatus() != SampleLessonPlanStatus.DRAFT
+                && sampleLessonPlan.getStatus() != SampleLessonPlanStatus.REJECTED) {
             throw new IllegalStateException("Only draft or rejected sample lesson plans can be submitted for review");
         }
 
         sampleLessonPlan.setStatus(SampleLessonPlanStatus.PENDING_REVIEW);
         SampleLessonPlan updated = sampleLessonPlanRepository.save(sampleLessonPlan);
 
-        // TODO: Đoạn này lấy Token thật của Manager từ Database ra (hiện tại giả lập)
-        System.out.println("🔥 [Firebase] Chuẩn bị bắn Firebase tới Manager...");
-        String dummyManagerToken = "DUMMY_TOKEN_TU_FRONTEND_XUONG"; 
-        firebaseNotificationService.sendNotification(dummyManagerToken, 
-            "Giáo án cần duyệt mới!", 
-            "Staff vừa gửi duyệt: " + sampleLessonPlan.getTitle()
-        );
+        notifyManagersForReview(updated);
 
         return toResponse(updated);
+    }
+
+    private void notifyManagersForReview(SampleLessonPlan sampleLessonPlan) {
+        try {
+            String tokenUrl = "http://user-service:8082/api/users/internal/managers/fcm-tokens";
+            String[] managerTokens = restTemplate.getForObject(tokenUrl, String[].class);
+
+            if (managerTokens == null || managerTokens.length == 0) {
+                System.out.println("🔥 [Firebase] Chưa có Manager nào đăng ký FCM token.");
+                return;
+            }
+
+            firebaseNotificationService.sendNotificationToMany(
+                    List.of(managerTokens),
+                    "Có giáo án mẫu mới cần duyệt",
+                    "Staff vừa gửi duyệt giáo án: " + sampleLessonPlan.getTitle()
+            );
+        } catch (Exception e) {
+            System.err.println("❌ Không thể lấy danh sách FCM Token của Manager: " + e.getMessage());
+        }
+    }
+
+    private CurriculumTemplate resolveOptionalTemplate(Long templateId) {
+        if (templateId == null) {
+            return null;
+        }
+        return curriculumTemplateRepository.findById(templateId)
+                .orElseThrow(() -> new EntityNotFoundException("Curriculum template not found with id: " + templateId));
+    }
+
+    private Topic resolveTopic(Long topicId) {
+        return topicRepository.findById(topicId)
+                .orElseThrow(() -> new EntityNotFoundException("Topic not found with id: " + topicId));
     }
 
     private SampleLessonPlanResponse toResponse(SampleLessonPlan sampleLessonPlan) {
@@ -162,6 +180,8 @@ if (!sampleLessonPlan.getStaffId().equals(staffId)) {
         response.setReviewNote(sampleLessonPlan.getReviewNote());
         response.setCreatedAt(sampleLessonPlan.getCreatedAt());
         response.setUpdatedAt(sampleLessonPlan.getUpdatedAt());
+        response.setReviewedBy(sampleLessonPlan.getReviewedBy());
+        response.setReviewedAt(sampleLessonPlan.getReviewedAt());
 
         if (sampleLessonPlan.getCurriculumTemplate() != null) {
             response.setCurriculumTemplate(

@@ -1,251 +1,1103 @@
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
+import DashboardLayout from "../components/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import {
+  Package,
+  ShoppingCart,
+  Clock,
+  CheckCircle,
+  FileCheck,
+  Loader2,
+  XCircle,
+  History,
+  Eye,
+  X,
+  Plus,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import axiosClient from "../api/axiosClient";
+import { promptApi, type PromptTemplate } from "../api/promptApi";
+import {
+  formatPromptContentForDisplay,
+  getPromptNameLabel,
+  getPromptTypeLabel,
+} from "../utils/promptDisplay";
+import { getFullNameFromToken } from "../utils/jwt";
 
-const INIT_PACKAGES = [
+type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+type LessonPlan = {
+  id: number;
+  title: string;
+  content?: string;
+  topic?: { title?: string; name?: string };
+  staffId?: number;
+  status?: ReviewStatus;
+  reviewNote?: string;
+  reviewedAt?: string;
+};
+
+type ManagerPackage = {
+  id: number;
+  name: string;
+  price: number;
+  duration: number;
+  description: string;
+  features: string[];
+  usersCount: number;
+  isActive: boolean;
+  highlight: boolean;
+};
+
+type PackageEditor = {
+  isNew: boolean;
+  pkg: ManagerPackage;
+};
+
+type PackageToast = {
+  msg: string;
+  type: "success" | "warn" | "error";
+};
+
+type RecentOrder = {
+  id: string;
+  subscriptionId: number;
+  user: string;
+  pkg: string;
+  amount: number;
+  status: "SUCCESS" | "PENDING" | "FAILED";
+  rawStatus?: string;
+};
+
+type PackageApiDto = {
+  id: number;
+  name: string;
+  price: number | string;
+  durationDays: number;
+  description?: string;
+  active?: boolean;
+};
+
+type SubscriptionApiDto = {
+  id: number;
+  userId: number;
+  packageId: number;
+  packageName: string;
+  packagePrice?: number | string;
+  status: string;
+};
+
+const INITIAL_PACKAGES: ManagerPackage[] = [
   {
-    id: 1, name: "Free", price: 0, duration: 30, description: "Gói cơ bản dành cho giáo viên mới bắt đầu",
-    features: ["Tối đa 5 giáo án/tháng", "Ngân hàng câu hỏi hạn chế", "Xuất PDF cơ bản"],
-    usersCount: 342, isActive: true, highlight: false,
+    id: 1,
+    name: "Plus",
+    price: 99000,
+    duration: 30,
+    description: "Goi ca nhan cho giao vien muon su dung AI hang ngay",
+    features: ["Tao giao an AI 50 lan/thang", "Tao de thi va bai tap co ban", "Luu tru giao an va de thi da tao"],
+    usersCount: 128,
+    isActive: true,
+    highlight: false,
   },
   {
-    id: 2, name: "Pro AI", price: 99000, duration: 30, description: "Sức mạnh AI đầy đủ cho giáo viên chuyên nghiệp",
-    features: ["Giáo án không giới hạn", "AI sinh câu hỏi tự động", "OCR chấm điểm tự động", "Báo cáo phân tích học sinh", "Hỗ trợ ưu tiên 24/7"],
-    usersCount: 128, isActive: true, highlight: true,
+    id: 2,
+    name: "Team",
+    price: 299000,
+    duration: 30,
+    description: "Goi cho to chuyen mon hoac nhom giao vien",
+    features: ["Dung chung tai nguyen", "Quan ly thanh vien", "Chia se giao an va de thi", "Bao cao nhom"],
+    usersCount: 42,
+    isActive: true,
+    highlight: true,
   },
   {
-    id: 3, name: "School", price: 499000, duration: 30, description: "Giải pháp toàn trường, quản lý tập trung",
-    features: ["Tất cả tính năng Pro AI", "Quản lý nhiều lớp/giáo viên", "Dashboard trường học", "API tích hợp hệ thống", "Đào tạo & onboarding"],
-    usersCount: 12, isActive: true, highlight: false,
+    id: 3,
+    name: "Pro",
+    price: 499000,
+    duration: 30,
+    description: "Goi nang cao cho giao vien can day du cong cu AI",
+    features: ["AI khong gioi han", "Cham diem OCR nang cao", "Bao cao hoc sinh", "Uu tien xu ly"],
+    usersCount: 12,
+    isActive: true,
+    highlight: false,
   },
 ];
 
-const fmt = (n) => n === 0 ? "Miễn phí" : new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
+const RECENT_ORDERS: RecentOrder[] = [
+  { id: "ORD-2026-0421", subscriptionId: 0, user: "Nguyen Thi Lan", pkg: "Plus", amount: 99000, status: "SUCCESS" },
+  { id: "ORD-2026-0420", subscriptionId: 0, user: "Tran Van Minh", pkg: "Pro", amount: 499000, status: "SUCCESS" },
+  { id: "ORD-2026-0419", subscriptionId: 0, user: "Le Thi Hoa", pkg: "Team", amount: 299000, status: "SUCCESS" },
+  { id: "ORD-2026-0418", subscriptionId: 0, user: "Pham Duc Long", pkg: "Plus", amount: 99000, status: "PENDING" },
+];
 
-export default function PackageManage() {
-  const [packages, setPackages] = useState(INIT_PACKAGES);
-  const [editing, setEditing] = useState(null); // { pkg, isNew }
-  const [toast, setToast] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+function formatCurrency(value: number) {
+  if (value === 0) return "Mien phi";
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
+}
 
-  const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+function getNameFromToken(): string {
+  return getFullNameFromToken();
+}
 
-  const openNew = () => setEditing({
-    isNew: true,
-    pkg: { id: null, name: "", price: 0, duration: 30, description: "", features: [""], isActive: true, highlight: false, usersCount: 0 }
-  });
+function useRealUserName() {
+  const [name, setName] = React.useState(getNameFromToken());
+  React.useEffect(() => {
+    const h = (e: any) => {
+      if (e.detail?.fullName) setName(e.detail.fullName);
+    };
+    window.addEventListener("profileUpdated", h);
+    return () => window.removeEventListener("profileUpdated", h);
+  }, []);
+  return name;
+}
 
-  const openEdit = (pkg) => setEditing({ isNew: false, pkg: { ...pkg, features: [...pkg.features] } });
+function StatusBadge({ status }: { status?: string }) {
+  if (status === "APPROVED") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+        <CheckCircle className="w-3 h-3" /> Da duyet
+      </span>
+    );
+  }
 
-  const handleSave = async () => {
-    const { pkg, isNew } = editing;
-    if (!pkg.name.trim()) { showToast("Tên gói không được để trống", "error"); return; }
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 700));
-    if (isNew) {
-      setPackages(prev => [...prev, { ...pkg, id: Date.now() }]);
-      showToast("Gói mới đã được tạo thành công!");
-    } else {
-      setPackages(prev => prev.map(p => p.id === pkg.id ? pkg : p));
-      showToast("Cập nhật gói thành công!");
-    }
-    setSaving(false);
-    setEditing(null);
-  };
-
-  const handleToggle = async (id) => {
-    setPackages(prev => prev.map(p => p.id === id ? { ...p, isActive: !p.isActive } : p));
-    const pkg = packages.find(p => p.id === id);
-    showToast(`Gói "${pkg.name}" ${pkg.isActive ? "đã tắt" : "đã bật"}.`, "warn");
-  };
-
-  const handleDelete = async () => {
-    setPackages(prev => prev.filter(p => p.id !== deleteConfirm.id));
-    showToast(`Đã xoá gói "${deleteConfirm.name}".`, "warn");
-    setDeleteConfirm(null);
-  };
-
-  const updateFeature = (idx, val) => {
-    setEditing(prev => ({ ...prev, pkg: { ...prev.pkg, features: prev.pkg.features.map((f, i) => i === idx ? val : f) } }));
-  };
-
-  const addFeature = () => setEditing(prev => ({ ...prev, pkg: { ...prev.pkg, features: [...prev.pkg.features, ""] } }));
-  const removeFeature = (idx) => setEditing(prev => ({ ...prev, pkg: { ...prev.pkg, features: prev.pkg.features.filter((_, i) => i !== idx) } }));
-
-  const totalRevenue = packages.reduce((s, p) => s + p.price * p.usersCount, 0);
+  if (status === "REJECTED") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+        <XCircle className="w-3 h-3" /> Tu choi
+      </span>
+    );
+  }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0d1117", fontFamily: "'DM Sans', 'Segoe UI', sans-serif", color: "#f0f6fc" }}>
-      <div style={{ position: "fixed", inset: 0, background: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56,189,248,0.08) 0%, transparent 60%)", pointerEvents: "none", zIndex: 0 }} />
+    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
+      <Clock className="w-3 h-3" /> Cho duyet
+    </span>
+  );
+}
 
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", top: 20, right: 20, zIndex: 999, background: toast.type === "success" ? "#134e4a" : toast.type === "warn" ? "#431407" : "#450a0a", padding: "12px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 12px 32px rgba(0,0,0,0.5)", borderLeft: `4px solid ${toast.type === "success" ? "#14b8a6" : toast.type === "warn" ? "#fb923c" : "#ef4444"}` }}>
-          {toast.msg}
+function formatLessonPlanContent(content?: string) {
+  if (!content) {
+    return "Khong co noi dung chi tiet.";
+  }
+
+  try {
+    const parsed = JSON.parse(content);
+
+    if (typeof parsed === "string") {
+      return parsed;
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+      return String(parsed ?? "");
+    }
+
+    const lines: string[] = [];
+
+    if (parsed.title) lines.push(`Tieu de: ${parsed.title}`);
+    if (parsed.topic) lines.push(`Bai hoc: ${parsed.topic}`);
+    if (parsed.grade) lines.push(`Khoi lop: ${parsed.grade}`);
+    if (parsed.duration || parsed.durationMinutes) {
+      lines.push(`Thoi luong: ${parsed.duration || parsed.durationMinutes} phut`);
+    }
+
+    if (Array.isArray(parsed.objectives) && parsed.objectives.length > 0) {
+      lines.push("");
+      lines.push("Muc tieu:");
+      parsed.objectives.forEach((item: string, index: number) => lines.push(`${index + 1}. ${item}`));
+    }
+
+    if (Array.isArray(parsed.activities) && parsed.activities.length > 0) {
+      lines.push("");
+      lines.push("Hoat dong day hoc:");
+      parsed.activities.forEach((item: any, index: number) => {
+        const time = item?.time ? ` (${item.time} phut)` : "";
+        const name = item?.activity || item?.title || `Hoat dong ${index + 1}`;
+        lines.push(`${index + 1}. ${name}${time}`);
+        if (item?.description) {
+          lines.push(`   ${item.description}`);
+        }
+      });
+    }
+
+    if (parsed.assessment) {
+      lines.push("");
+      lines.push(`Danh gia: ${parsed.assessment}`);
+    }
+
+    if (parsed.homework) {
+      lines.push("");
+      lines.push(`Bai tap: ${parsed.homework}`);
+    }
+
+    if (parsed.notes) {
+      lines.push("");
+      lines.push(`Ghi chu: ${parsed.notes}`);
+    }
+
+    return lines.join("\n").trim() || JSON.stringify(parsed, null, 2);
+  } catch {
+    return content;
+  }
+}
+
+export default function ManagerDashboard() {
+  const realName = useRealUserName();
+
+  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [pendingPlans, setPendingPlans] = useState<LessonPlan[]>([]);
+  const [loadingPending, setLoadingPending] = useState(true);
+  const [actionMsg, setActionMsg] = useState("");
+
+  const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [historyPlans, setHistoryPlans] = useState<LessonPlan[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  const [fcmToast, setFcmToast] = useState<{ title: string; body: string } | null>(null);
+  const [pendingPrompts, setPendingPrompts] = useState<PromptTemplate[]>([]);
+  const [loadingPrompts, setLoadingPrompts] = useState(true);
+
+  const [packages, setPackages] = useState<ManagerPackage[]>(INITIAL_PACKAGES);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>(RECENT_ORDERS);
+  const [loadingPackages, setLoadingPackages] = useState(false);
+  const [packageEditor, setPackageEditor] = useState<PackageEditor | null>(null);
+  const [packageSaving, setPackageSaving] = useState(false);
+  const [packageDeleteTarget, setPackageDeleteTarget] = useState<ManagerPackage | null>(null);
+  const [packageToast, setPackageToast] = useState<PackageToast | null>(null);
+
+  const activePackageCount = packages.filter((pkg) => pkg.isActive).length;
+  const totalOrders = recentOrders.length;
+
+  const showPackageToast = (msg: string, type: PackageToast["type"] = "success") => {
+    setPackageToast({ msg, type });
+    setTimeout(() => setPackageToast(null), 3000);
+  };
+
+  const fetchPending = () => {
+    setLoadingPending(true);
+    axiosClient
+      .get("/sample-lesson-plans/review/pending")
+      .then((data: any) => setPendingPlans(Array.isArray(data) ? data : []))
+      .catch(() => setPendingPlans([]))
+      .finally(() => setLoadingPending(false));
+  };
+
+  const fetchPendingPrompts = () => {
+    setLoadingPrompts(true);
+    promptApi
+      .getPending()
+      .then((items) => setPendingPrompts(Array.isArray(items) ? items : []))
+      .catch(() => setPendingPrompts([]))
+      .finally(() => setLoadingPrompts(false));
+  };
+
+  const fetchHistory = () => {
+    setLoadingHistory(true);
+    axiosClient
+      .get("/sample-lesson-plans/review/history")
+      .then((data: any) => {
+        setHistoryPlans(Array.isArray(data) ? data : []);
+        setHistoryLoaded(true);
+      })
+      .catch(() => setHistoryPlans([]))
+      .finally(() => setLoadingHistory(false));
+  };
+
+  const fetchPackageData = async () => {
+    setLoadingPackages(true);
+    try {
+      const [packageRes, subscriptionRes] = await Promise.all([
+        axiosClient.get("/packages"),
+        axiosClient.get("/subscriptions"),
+      ]);
+
+      const packageList: PackageApiDto[] = Array.isArray(packageRes) ? packageRes : [];
+      const subscriptionList: SubscriptionApiDto[] = Array.isArray(subscriptionRes) ? subscriptionRes : [];
+
+      setPackages(packageList.map((pkg) => {
+        const usersCount = subscriptionList.filter((sub) => sub.packageId === pkg.id).length;
+        const description = pkg.description || "";
+        return {
+          id: pkg.id,
+          name: pkg.name,
+          price: Number(pkg.price || 0),
+          duration: pkg.durationDays,
+          description,
+          features: description ? [description] : ["Chua co mo ta"],
+          usersCount,
+          isActive: pkg.active !== false,
+          highlight: false,
+        };
+      }));
+
+      setRecentOrders(subscriptionList
+        .slice()
+        .sort((a, b) => b.id - a.id)
+        .slice(0, 8)
+        .map((order) => ({
+          id: `SUB-${order.id}`,
+          subscriptionId: order.id,
+          user: `User #${order.userId}`,
+          pkg: order.packageName,
+          amount: Number(order.packagePrice || 0),
+          status: order.status === "ACTIVE" ? "SUCCESS" : order.status === "PENDING" ? "PENDING" : "FAILED",
+          rawStatus: order.status,
+        })));
+    } catch {
+      showPackageToast("Khong tai duoc du lieu goi cuoc, dang dung du lieu tam", "warn");
+    } finally {
+      setLoadingPackages(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPending();
+    fetchPendingPrompts();
+    fetchPackageData();
+
+    import("../firebase")
+      .then(({ requestPermission, listenForMessage }) => {
+        requestPermission();
+        listenForMessage((payload: any) => {
+          if (payload?.notification) {
+            setFcmToast({ title: payload.notification.title, body: payload.notification.body });
+            const audio = new Audio("/notification-sound.mp3");
+            audio.play().catch(() => {});
+            setTimeout(() => setFcmToast(null), 5000);
+            fetchPending();
+          }
+        });
+      })
+      .catch((e) => console.error("Failed to load firebase:", e));
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "history" && !historyLoaded) fetchHistory();
+  }, [activeTab, historyLoaded]);
+
+  const handleApprove = async (id: number) => {
+    setIsSubmitting(true);
+    try {
+      await axiosClient.put(`/sample-lesson-plans/review/${id}/approve`, { reviewNote: "Duyet bai" });
+      setPendingPlans((prev) => prev.filter((item) => item.id !== id));
+      setActionMsg("Da duyet giao an");
+      setTimeout(() => setActionMsg(""), 3000);
+      setHistoryLoaded(false);
+      setSelectedPlan(null);
+    } catch {
+      setActionMsg("Loi khi duyet");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    setIsSubmitting(true);
+    try {
+      await axiosClient.put(`/sample-lesson-plans/review/${id}/reject`, { reviewNote: "Tu choi bai" });
+      setPendingPlans((prev) => prev.filter((item) => item.id !== id));
+      setActionMsg("Da tu choi giao an");
+      setTimeout(() => setActionMsg(""), 3000);
+      setHistoryLoaded(false);
+      setSelectedPlan(null);
+    } catch {
+      setActionMsg("Loi khi tu choi");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReviewPrompt = async (id: number, approved: boolean) => {
+    try {
+      if (approved) {
+        await promptApi.approve(id, "Duyet mau loi nhac");
+      } else {
+        await promptApi.reject(id, "Noi dung prompt can chinh sua");
+      }
+      setActionMsg(approved ? "Da duyet mau loi nhac" : "Da tu choi mau loi nhac");
+      setTimeout(() => setActionMsg(""), 3000);
+      fetchPendingPrompts();
+    } catch {
+      setActionMsg("Loi khi duyet mau loi nhac");
+      setTimeout(() => setActionMsg(""), 3000);
+    }
+  };
+
+  const openCreatePackage = () => {
+    setPackageEditor({
+      isNew: true,
+      pkg: {
+        id: 0,
+        name: "",
+        price: 0,
+        duration: 30,
+        description: "",
+        features: [""],
+        usersCount: 0,
+        isActive: true,
+        highlight: false,
+      },
+    });
+  };
+
+  const openEditPackage = (pkg: ManagerPackage) => {
+    setPackageEditor({
+      isNew: false,
+      pkg: { ...pkg, features: [...pkg.features] },
+    });
+  };
+
+  const updatePackageEditor = (updater: (pkg: ManagerPackage) => ManagerPackage) => {
+    setPackageEditor((prev) => {
+      if (!prev) return prev;
+      return { ...prev, pkg: updater(prev.pkg) };
+    });
+  };
+
+  const updatePackageFeature = (index: number, value: string) => {
+    updatePackageEditor((pkg) => ({
+      ...pkg,
+      features: pkg.features.map((item, idx) => (idx === index ? value : item)),
+    }));
+  };
+
+  const addPackageFeature = () => {
+    updatePackageEditor((pkg) => ({ ...pkg, features: [...pkg.features, ""] }));
+  };
+
+  const removePackageFeature = (index: number) => {
+    updatePackageEditor((pkg) => ({
+      ...pkg,
+      features: pkg.features.filter((_, idx) => idx !== index),
+    }));
+  };
+
+  const savePackage = async () => {
+    if (!packageEditor) return;
+    const normalizedName = packageEditor.pkg.name.trim();
+    if (!normalizedName) {
+      showPackageToast("Ten goi khong duoc de trong", "error");
+      return;
+    }
+
+    setPackageSaving(true);
+    try {
+      const cleanedFeatures = packageEditor.pkg.features.map((item) => item.trim()).filter(Boolean);
+      const normalizedPackage: ManagerPackage = {
+        ...packageEditor.pkg,
+        name: normalizedName,
+        description: packageEditor.pkg.description.trim(),
+        features: cleanedFeatures.length > 0 ? cleanedFeatures : ["Chua co tinh nang"],
+      };
+
+      const payload = {
+        name: normalizedPackage.name,
+        price: normalizedPackage.price,
+        durationDays: normalizedPackage.duration,
+        description: normalizedPackage.description || normalizedPackage.features.join("; "),
+        active: normalizedPackage.isActive,
+      };
+
+      if (packageEditor.isNew) {
+        await axiosClient.post("/packages", payload);
+      } else {
+        await axiosClient.put(`/packages/${normalizedPackage.id}`, payload);
+      }
+
+      showPackageToast(packageEditor.isNew ? "Da tao goi moi" : "Da cap nhat goi");
+      setPackageEditor(null);
+      await fetchPackageData();
+    } catch {
+      showPackageToast("Loi khi luu goi cuoc", "error");
+    } finally {
+      setPackageSaving(false);
+    }
+  };
+
+  const togglePackageActive = async (id: number) => {
+    const target = packages.find((item) => item.id === id);
+    if (!target) return;
+
+    try {
+      await axiosClient.put(`/packages/${id}`, {
+        name: target.name,
+        price: target.price,
+        durationDays: target.duration,
+        description: target.description,
+        active: !target.isActive,
+      });
+      showPackageToast("Da cap nhat trang thai goi", "warn");
+      await fetchPackageData();
+    } catch {
+      showPackageToast("Loi khi cap nhat trang thai goi", "error");
+    }
+  };
+
+  const deletePackage = async () => {
+    if (!packageDeleteTarget) return;
+    try {
+      await axiosClient.delete(`/packages/${packageDeleteTarget.id}`);
+      showPackageToast(`Da tat goi ${packageDeleteTarget.name}`, "warn");
+      setPackageDeleteTarget(null);
+      await fetchPackageData();
+    } catch {
+      showPackageToast("Loi khi xoa goi", "error");
+    }
+  };
+
+  const reviewSubscription = async (subscriptionId: number, approved: boolean) => {
+    if (!subscriptionId) return;
+
+    try {
+      await axiosClient.put(`/subscriptions/${subscriptionId}/${approved ? "approve" : "reject"}`);
+      showPackageToast(approved ? "Da kich hoat dang ky" : "Da tu choi dang ky", approved ? "success" : "warn");
+      await fetchPackageData();
+    } catch {
+      showPackageToast("Loi khi xu ly dang ky", "error");
+    }
+  };
+
+  return (
+    <DashboardLayout role="manager" userName={realName}>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bang dieu khien Manager</h1>
+          <p className="text-gray-600">Quan ly goi cuoc, don hang va duyet noi dung</p>
         </div>
-      )}
 
-      {/* Delete confirm */}
-      {deleteConfirm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 14, padding: 32, maxWidth: 380, width: "90%" }}>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, color: "#ef4444" }}>Xoá gói "{deleteConfirm.name}"?</div>
-            <p style={{ color: "#8b949e", marginBottom: 24 }}>Hành động này không thể hoàn tác. Hiện có {deleteConfirm.usersCount} người đang dùng gói này.</p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setDeleteConfirm(null)} style={{ padding: "8px 18px", border: "1px solid #30363d", borderRadius: 6, background: "transparent", color: "#8b949e", cursor: "pointer" }}>Huỷ</button>
-              <button onClick={handleDelete} style={{ padding: "8px 18px", border: "none", borderRadius: 6, background: "#ef4444", color: "#fff", cursor: "pointer", fontWeight: 700 }}>Xoá</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {editing && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 16, padding: 36, width: 520, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
-            <button onClick={() => setEditing(null)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "#8b949e", cursor: "pointer", fontSize: 18 }}>✕</button>
-            <h2 style={{ margin: "0 0 24px 0", fontSize: 18, fontWeight: 700, color: "#38bdf8" }}>
-              {editing.isNew ? "Tạo gói mới" : `Chỉnh sửa: ${editing.pkg.name}`}
-            </h2>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Tên gói *</label>
-                <input value={editing.pkg.name} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, name: e.target.value } }))}
-                  style={{ width: "100%", padding: "9px 12px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 7, color: "#f0f6fc", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Giá (VND/tháng)</label>
-                <input type="number" min="0" value={editing.pkg.price} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, price: Number(e.target.value) } }))}
-                  style={{ width: "100%", padding: "9px 12px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 7, color: "#f0f6fc", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>Mô tả</label>
-              <textarea value={editing.pkg.description} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, description: e.target.value } }))} rows={2}
-                style={{ width: "100%", padding: "9px 12px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 7, color: "#f0f6fc", fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }} />
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#8b949e", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Tính năng</label>
-              {editing.pkg.features.map((f, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
-                  <input value={f} onChange={e => updateFeature(i, e.target.value)}
-                    style={{ flex: 1, padding: "7px 10px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 6, color: "#f0f6fc", fontSize: 13, outline: "none" }} />
-                  <button onClick={() => removeFeature(i)} style={{ padding: "0 10px", border: "none", background: "#1f2937", color: "#ef4444", borderRadius: 6, cursor: "pointer", fontSize: 16 }}>−</button>
+        {selectedPlan && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedPlan.title}</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {(selectedPlan.topic?.title || selectedPlan.topic?.name) && `Chu de: ${selectedPlan.topic?.title || selectedPlan.topic?.name} · `}
+                    Nguoi tao (Staff ID): {selectedPlan.staffId}
+                  </p>
                 </div>
-              ))}
-              <button onClick={addFeature} style={{ marginTop: 6, padding: "6px 14px", border: "1px dashed #30363d", borderRadius: 6, background: "transparent", color: "#38bdf8", cursor: "pointer", fontSize: 12 }}>+ Thêm tính năng</button>
-            </div>
-
-            <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#8b949e" }}>
-                <input type="checkbox" checked={editing.pkg.highlight} onChange={e => setEditing(p => ({ ...p, pkg: { ...p.pkg, highlight: e.target.checked } }))} />
-                Đánh dấu nổi bật (Recommended)
-              </label>
-            </div>
-
-            <button onClick={handleSave} disabled={saving}
-              style={{ width: "100%", padding: 12, background: "linear-gradient(135deg, #0ea5e9, #38bdf8)", border: "none", borderRadius: 8, color: "#0d1117", fontWeight: 800, fontSize: 14, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Đang lưu..." : editing.isNew ? "Tạo gói" : "Lưu thay đổi"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 12, color: "#38bdf8", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>MANAGER › Packages</div>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em" }}>Quản lý gói cước</h1>
-            <p style={{ margin: "8px 0 0 0", color: "#8b949e", fontSize: 13 }}>Cấu hình giá và tính năng cho các gói dịch vụ PlanbookAI</p>
-          </div>
-          <button onClick={openNew}
-            style={{ padding: "10px 22px", background: "linear-gradient(135deg, #0ea5e9, #38bdf8)", border: "none", borderRadius: 9, color: "#0d1117", fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.03em" }}>
-            + Tạo gói mới
-          </button>
-        </div>
-
-        {/* Revenue banner */}
-        <div style={{ background: "linear-gradient(135deg, #0c2035, #0a1929)", border: "1px solid #1d4ed8", borderRadius: 14, padding: "20px 28px", marginBottom: 32, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 11, color: "#60a5fa", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>Doanh thu tháng này (ước tính)</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: "#38bdf8", letterSpacing: "-0.03em" }}>{fmt(totalRevenue)}</div>
-          </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            {packages.filter(p => p.isActive).map(p => (
-              <div key={p.id} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "#f0f6fc" }}>{p.usersCount}</div>
-                <div style={{ fontSize: 11, color: "#8b949e" }}>{p.name}</div>
+                <button
+                  onClick={() => !isSubmitting && setSelectedPlan(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Package Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
-          {packages.map(pkg => (
-            <div key={pkg.id} style={{ background: "#161b22", border: `1px solid ${pkg.highlight ? "#0ea5e9" : "#30363d"}`, borderRadius: 16, overflow: "hidden", position: "relative", opacity: pkg.isActive ? 1 : 0.55, transition: "all .2s" }}>
-              {pkg.highlight && (
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc)" }} />
-              )}
-              {!pkg.isActive && (
-                <div style={{ position: "absolute", top: 12, right: 12, padding: "3px 10px", background: "#1f2937", border: "1px solid #374151", borderRadius: 20, fontSize: 10, fontWeight: 700, color: "#6b7280", letterSpacing: "0.08em" }}>TẮT</div>
-              )}
-              {pkg.highlight && pkg.isActive && (
-                <div style={{ position: "absolute", top: 12, right: 12, padding: "3px 10px", background: "#0c2a3f", border: "1px solid #0ea5e9", borderRadius: 20, fontSize: 10, fontWeight: 700, color: "#38bdf8", letterSpacing: "0.08em" }}>⭐ NỔI BẬT</div>
-              )}
-
-              <div style={{ padding: 24 }}>
-                <div style={{ marginBottom: 4, fontSize: 11, color: "#8b949e", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Gói</div>
-                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 8 }}>{pkg.name}</div>
-                <div style={{ fontSize: 26, fontWeight: 900, color: pkg.highlight ? "#38bdf8" : "#f0f6fc", marginBottom: 8 }}>
-                  {fmt(pkg.price)}
-                  {pkg.price > 0 && <span style={{ fontSize: 13, fontWeight: 400, color: "#8b949e" }}>/tháng</span>}
+              <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                  <h3 className="font-semibold text-gray-800 border-b pb-3 mb-4">Noi dung giao an</h3>
+                  <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    {formatLessonPlanContent(selectedPlan.content)}
+                  </pre>
                 </div>
-                <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#8b949e", lineHeight: 1.5 }}>{pkg.description}</p>
+              </div>
 
-                <div style={{ marginBottom: 16 }}>
-                  {pkg.features.map((f, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
-                      <span style={{ color: "#38bdf8", flexShrink: 0, marginTop: 1, fontSize: 12 }}>✓</span>
-                      <span style={{ fontSize: 13, color: "#c9d1d9" }}>{f}</span>
+              <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-end gap-3">
+                <Button variant="outline" onClick={() => setSelectedPlan(null)} disabled={isSubmitting}>
+                  Dong
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  onClick={() => handleReject(selectedPlan.id)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                  Tu choi
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => handleApprove(selectedPlan.id)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                  Duyet bai
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {packageEditor && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center">
+            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">{packageEditor.isNew ? "Tao goi moi" : "Cap nhat goi"}</h2>
+                <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500" onClick={() => setPackageEditor(null)}>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ten goi</label>
+                    <input
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      value={packageEditor.pkg.name}
+                      onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, name: e.target.value }))}
+                      placeholder="VD: Pro AI"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Gia (VND / 30 ngay)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      value={packageEditor.pkg.price}
+                      onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, price: Number(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mo ta</label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px]"
+                    value={packageEditor.pkg.description}
+                    onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, description: e.target.value }))}
+                    placeholder="Mo ta ngan cho goi"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700">Tinh nang</label>
+                    <Button type="button" variant="outline" size="sm" onClick={addPackageFeature}>
+                      <Plus className="w-4 h-4 mr-1" /> Them dong
+                    </Button>
+                  </div>
+                  {packageEditor.pkg.features.map((feature, index) => (
+                    <div key={`feature-${index}`} className="flex items-center gap-2">
+                      <input
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        value={feature}
+                        onChange={(e) => updatePackageFeature(index, e.target.value)}
+                        placeholder="Nhap tinh nang"
+                      />
+                      <Button type="button" variant="outline" size="icon" onClick={() => removePackageFeature(index)}>
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ borderTop: "1px solid #21262d", paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, color: "#8b949e" }}>{pkg.usersCount} người dùng</span>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => handleToggle(pkg.id)}
-                      style={{ padding: "5px 12px", border: `1px solid ${pkg.isActive ? "#374151" : "#166534"}`, borderRadius: 6, background: "transparent", color: pkg.isActive ? "#6b7280" : "#22c55e", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
-                      {pkg.isActive ? "Tắt" : "Bật"}
-                    </button>
-                    <button onClick={() => openEdit(pkg)}
-                      style={{ padding: "5px 12px", border: "1px solid #30363d", borderRadius: 6, background: "transparent", color: "#38bdf8", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
-                      Sửa
-                    </button>
-                    <button onClick={() => setDeleteConfirm(pkg)}
-                      style={{ padding: "5px 12px", border: "1px solid #7f1d1d", borderRadius: 6, background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
-                      Xoá
-                    </button>
-                  </div>
+                <div className="flex items-center gap-6">
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={packageEditor.pkg.highlight}
+                      onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, highlight: e.target.checked }))}
+                    />
+                    Danh dau noi bat
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={packageEditor.pkg.isActive}
+                      onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, isActive: e.target.checked }))}
+                    />
+                    Dang kich hoat
+                  </label>
                 </div>
               </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setPackageEditor(null)} disabled={packageSaving}>
+                  Huy
+                </Button>
+                <Button type="button" onClick={savePackage} disabled={packageSaving}>
+                  {packageSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Luu goi
+                </Button>
+              </div>
             </div>
-          ))}
+          </div>
+        )}
+
+        {packageDeleteTarget && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Xoa goi dang ky</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Ban chac chan muon xoa goi <span className="font-semibold">{packageDeleteTarget.name}</span>?
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPackageDeleteTarget(null)}>
+                  Huy
+                </Button>
+                <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={deletePackage}>
+                  Xoa
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {actionMsg && <div className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg w-fit shadow-lg">{actionMsg}</div>}
+
+        {packageToast && (
+          <div
+            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm shadow-lg border ${
+              packageToast.type === "success"
+                ? "bg-green-50 text-green-700 border-green-200"
+                : packageToast.type === "warn"
+                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-red-50 text-red-700 border-red-200"
+            }`}
+          >
+            {packageToast.msg}
+          </div>
+        )}
+
+        {fcmToast && (
+          <div className="fixed top-20 right-4 z-50 bg-white border-l-4 border-orange-500 shadow-xl rounded-lg p-4">
+            <h3 className="font-bold text-orange-700">{fcmToast.title}</h3>
+            <p className="text-gray-600 text-sm mt-1">{fcmToast.body}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <Package className="w-8 h-8 text-purple-600" />
+                <span className="text-2xl font-bold text-purple-700">{loadingPackages ? "..." : activePackageCount}</span>
+              </div>
+              <p className="text-sm text-gray-600">Goi dang kich hoat</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <ShoppingCart className="w-8 h-8 text-blue-600" />
+                <span className="text-2xl font-bold text-blue-700">{loadingPackages ? "..." : totalOrders}</span>
+              </div>
+              <p className="text-sm text-gray-600">Don hang gan day</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-2">
+                <Clock className="w-8 h-8 text-orange-600" />
+                <span className="text-2xl font-bold text-orange-700">{loadingPending ? "..." : pendingPlans.length}</span>
+              </div>
+              <p className="text-sm text-gray-600">Giao an cho duyet</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-0">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-orange-600" />
+                  Duyet giao an
+                </CardTitle>
+                <CardDescription>Xem xet noi dung do staff gui len</CardDescription>
+              </div>
+              {!loadingPending && pendingPlans.length > 0 && activeTab === "pending" && (
+                <Badge className="bg-yellow-100 text-yellow-700">{pendingPlans.length} cho duyet</Badge>
+              )}
+            </div>
+
+            <div className="flex gap-1 border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab("pending")}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                  activeTab === "pending"
+                    ? "border-orange-500 text-orange-600 bg-orange-50"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                Cho duyet
+                {!loadingPending && pendingPlans.length > 0 && (
+                  <span className="ml-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {pendingPlans.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                  activeTab === "history"
+                    ? "border-indigo-500 text-indigo-600 bg-indigo-50"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <History className="w-4 h-4" />
+                Lich su
+              </button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-4">
+            {activeTab === "pending" &&
+              (loadingPending ? (
+                <div className="flex items-center justify-center py-10 text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Dang tai...
+                </div>
+              ) : pendingPlans.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="font-medium">Khong co giao an cho duyet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingPlans.map((plan) => (
+                    <div
+                      key={plan.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-orange-200 hover:bg-orange-50/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="bg-orange-100 p-2 rounded-lg shrink-0">
+                          <FileCheck className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{plan.title}</p>
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            {(plan.topic?.title || plan.topic?.name) && `Bai: ${plan.topic?.title || plan.topic?.name}`}
+                            {plan.staffId && ` · Staff ID: ${plan.staffId}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-4 shrink-0">
+                        <Button
+                          size="sm"
+                          className="bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-0"
+                          onClick={() => setSelectedPlan(plan)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" /> Xem va duyet
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+
+            {activeTab === "history" &&
+              (loadingHistory ? (
+                <div className="flex items-center justify-center py-10 text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Dang tai lich su...
+                </div>
+              ) : historyPlans.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <History className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p className="font-medium">Chua co giao an da xu ly</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {historyPlans.map((plan) => (
+                    <div key={plan.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className={`p-2 rounded-lg shrink-0 ${plan.status === "APPROVED" ? "bg-green-100" : "bg-red-100"}`}>
+                          <FileCheck className={`w-5 h-5 ${plan.status === "APPROVED" ? "text-green-600" : "text-red-500"}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{plan.title}</p>
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            {(plan.topic?.title || plan.topic?.name) && `Bai: ${plan.topic?.title || plan.topic?.name}`}
+                            {plan.staffId && ` · Staff ID: ${plan.staffId}`}
+                            {plan.reviewedAt && ` · ${new Date(plan.reviewedAt).toLocaleDateString("vi-VN")}`}
+                          </p>
+                          {plan.reviewNote && <p className="text-xs text-gray-400 mt-1 italic">"{plan.reviewNote}"</p>}
+                        </div>
+                      </div>
+                      <div className="ml-4 shrink-0">
+                        <StatusBadge status={plan.status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Duyet mau loi nhac AI</CardTitle>
+            <CardDescription>Prompt do Staff tao hoac chinh sua truoc khi duoc dung cho Gemini</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingPrompts ? (
+              <div className="flex items-center justify-center py-10 text-gray-500">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Dang tai...
+              </div>
+            ) : pendingPrompts.length === 0 ? (
+              <div className="text-center py-10 text-gray-500">
+                <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">Khong co mau loi nhac cho duyet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingPrompts.map((prompt) => (
+                  <div key={prompt.id} className="flex flex-col gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant="outline">{getPromptNameLabel(prompt.name)}</Badge>
+                          <Badge variant="outline">{getPromptTypeLabel(prompt.type)}</Badge>
+                          <Badge>v{prompt.version}</Badge>
+                        </div>
+                        <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans bg-white border rounded-lg p-3 max-h-44 overflow-y-auto">
+                          {formatPromptContentForDisplay(prompt.content, prompt.name)}
+                        </pre>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleReviewPrompt(prompt.id, true)}>
+                          Duyet
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => handleReviewPrompt(prompt.id, false)}
+                        >
+                          Tu choi
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-indigo-600" />
+                    Quan ly goi cuoc
+                  </CardTitle>
+                  <CardDescription>Them, sua, bat/tat va xoa goi dang ky</CardDescription>
+                </div>
+                <Button size="sm" onClick={openCreatePackage}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tao goi
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {packages.map((pkg) => (
+                  <div key={pkg.id} className="rounded-xl border border-gray-200 p-4 bg-white">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-gray-900">{pkg.name}</h3>
+                          {pkg.highlight ? <Badge className="bg-indigo-100 text-indigo-700">Noi bat</Badge> : null}
+                          <Badge className={pkg.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                            {pkg.isActive ? "Dang kich hoat" : "Tam tat"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">{pkg.description || "Khong co mo ta"}</p>
+                        <p className="text-sm font-medium text-gray-700 mt-2">
+                          {formatCurrency(pkg.price)} / {pkg.duration} ngay · {pkg.usersCount} user
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {pkg.features.map((feature, idx) => (
+                            <span key={`${pkg.id}-${idx}`} className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-700">
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditPackage(pkg)}>
+                          <Pencil className="w-4 h-4 mr-1" />
+                          Sua
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => togglePackageActive(pkg.id)}>
+                          {pkg.isActive ? "Tat" : "Bat"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => setPackageDeleteTarget(pkg)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Xoa
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-blue-600" />
+                Don hang gan day
+              </CardTitle>
+              <CardDescription>Danh sach giao dich moi nhat</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {recentOrders.map((order) => (
+                  <div key={order.id} className="rounded-lg border border-gray-200 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-sm text-gray-900">{order.id}</p>
+                      <Badge
+                        className={
+                          order.status === "SUCCESS"
+                            ? "bg-green-100 text-green-700"
+                            : order.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-red-100 text-red-700"
+                        }
+                      >
+                        {order.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{order.user}</p>
+                    <p className="text-sm text-gray-500">
+                      {order.pkg} · <span className="font-medium text-gray-700">{formatCurrency(order.amount)}</span>
+                    </p>
+                    {order.status === "PENDING" && order.subscriptionId > 0 ? (
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          size="sm"
+                          className="h-8 bg-green-600 px-3 text-xs text-white hover:bg-green-700"
+                          onClick={() => reviewSubscription(order.subscriptionId, true)}
+                        >
+                          Duyet thanh toan
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => reviewSubscription(order.subscriptionId, false)}
+                        >
+                          Tu choi
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap');
-        * { box-sizing: border-box; }
-        input, textarea { color-scheme: dark; }
-      `}</style>
-    </div>
+    </DashboardLayout>
   );
 }
+
+

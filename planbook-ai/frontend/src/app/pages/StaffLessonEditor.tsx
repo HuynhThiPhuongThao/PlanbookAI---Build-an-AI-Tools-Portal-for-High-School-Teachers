@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -11,24 +11,22 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../components/ui/select';
 import {
-  ArrowLeft, Sparkles, Save, Send, Loader2, BookOpen,
-  ChevronRight, CheckCircle, Clock, FileText, Pencil,
+  ArrowLeft, Sparkles, Save, Loader2, BookOpen,
+  ChevronRight, Clock, FileText, Pencil, Trash2,
 } from 'lucide-react';
 import React from 'react';
 import {
   getSubjects, getChaptersBySubject, getTopicsByChapter,
   createSampleLessonPlan, updateSampleLessonPlan,
-  submitForReview, aiGenerateLessonPlan,
-  getSampleLessonPlans, getSampleLessonPlanById,
+  aiGenerateLessonPlan,
+  getSampleLessonPlans, getSampleLessonPlanById, getActiveCurriculumTemplates, getTopicById,
+  deleteSampleLessonPlan,
 } from '../api/curriculumApi';
+import { getAccessTokenPayload } from '../utils/jwt';
 
 // ---- helpers ----
 function getFromToken(field: string): string {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return '';
-    return JSON.parse(atob(token.split('.')[1]))[field] || '';
-  } catch { return ''; }
+  return getAccessTokenPayload()[field] || '';
 }
 function useRealUserName() {
   const [name, setName] = React.useState(getFromToken('fullName'));
@@ -40,12 +38,26 @@ function useRealUserName() {
   return name;
 }
 
+function toList<T>(value: any): T[] {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.content)) return value.content;
+  return [];
+}
+
 // ---- types ----
 interface Subject { id: number; name: string; }
 interface Chapter { id: number; name: string; }
 interface Topic   { id: number; title: string; name?: string; }
+interface CurriculumTemplate {
+  id: number;
+  name: string;
+  description?: string;
+  gradeLevel?: string;
+  structureJson?: string;
+  subject?: { id: number; name: string };
+}
 interface SamplePlan {
-  id: number; title: string; status: string; topic?: { name: string };
+  id: number; title: string; status: string; topic?: { title?: string; name?: string };
 }
 
 // ---- status badge color ----
@@ -60,6 +72,7 @@ const statusColor: Record<string, string> = {
 export default function StaffLessonEditor() {
   const realName = useRealUserName();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // --- edit mode: đọc ?id= từ URL ---
   const editIdParam = searchParams.get('id');
@@ -75,15 +88,16 @@ export default function StaffLessonEditor() {
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedChapter, setSelectedChapter] = useState('');
   const [selectedTopic,   setSelectedTopic]   = useState('');
+  const [templates, setTemplates] = useState<CurriculumTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [templateError, setTemplateError] = useState('');
 
   // --- state: editor ---
   const [title,   setTitle]   = useState('');
   const [content, setContent] = useState('');
   const [isSaving,      setIsSaving]      = useState(false);
   const [isGenerating,  setIsGenerating]  = useState(false);
-  const [isSubmitting,  setIsSubmitting]  = useState(false);
-  // savedId: khi CREATE mới → backend trả về id. Khi EDIT → dùng editId luôn
-  const [savedId,       setSavedId]       = useState<number | null>(isEditMode ? editId : null);
   const [isLoadingEdit, setIsLoadingEdit] = useState(isEditMode);
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
 
@@ -91,26 +105,66 @@ export default function StaffLessonEditor() {
   const [myPlans, setMyPlans] = useState<SamplePlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
 
+  const filteredTemplates = templates;
+
+  const loadActiveTemplates = () => {
+    setIsLoadingTemplates(true);
+    setTemplateError('');
+
+    return getActiveCurriculumTemplates()
+      .then((data: any) => setTemplates(toList<CurriculumTemplate>(data)))
+      .catch(() => {
+        setTemplates([]);
+        setTemplateError('Không tải được khung giáo án');
+      })
+      .finally(() => setIsLoadingTemplates(false));
+  };
+
+  const hydrateTopicSelection = async (topicId: number) => {
+    const topicDetail: any = await getTopicById(topicId);
+    const subjectId = topicDetail?.chapter?.subject?.id;
+    const chapterId = topicDetail?.chapter?.id;
+
+    if (!subjectId || !chapterId) {
+      setSelectedTopic(String(topicId));
+      return;
+    }
+
+    setSelectedSubject(String(subjectId));
+
+    const chapterList: any = await getChaptersBySubject(Number(subjectId));
+    setChapters(toList<Chapter>(chapterList));
+    setSelectedChapter(String(chapterId));
+
+    const topicList: any = await getTopicsByChapter(Number(chapterId));
+    setTopics(toList<Topic>(topicList));
+    setSelectedTopic(String(topicId));
+  };
+
   // ---- load subjects + (nếu edit mode) load plan cũ ----
   useEffect(() => {
     getSubjects()
-      .then((data: any) => setSubjects(Array.isArray(data) ? data : []))
+      .then((data: any) => setSubjects(toList<Subject>(data)))
       .catch(() => setSubjects([]));
 
     getSampleLessonPlans()
-      .then((data: any) => setMyPlans(Array.isArray(data) ? data : []))
+      .then((data: any) => setMyPlans(toList<SamplePlan>(data)))
       .catch(() => setMyPlans([]))
       .finally(() => setLoadingPlans(false));
+
+    loadActiveTemplates();
 
     // Edit mode: fill dữ liệu cũ vào form
     if (isEditMode && editId) {
       setIsLoadingEdit(true);
       getSampleLessonPlanById(editId)
-        .then((data: any) => {
+        .then(async (data: any) => {
           setTitle(data.title || '');
           setContent(data.content || '');
-          // topic id nếu backend trả về
-          if (data.topic?.id) setSelectedTopic(String(data.topic.id));
+          if (data.curriculumTemplate?.id) setSelectedTemplate(String(data.curriculumTemplate.id));
+          if (data.topic?.id) {
+            await hydrateTopicSelection(Number(data.topic.id));
+          }
           showToast(`Đang chỉnh sửa: "${data.title}"`, 'ok');
         })
         .catch(() => showToast('Không tải được giáo án cũ — kiểm tra ID!', 'err'))
@@ -124,7 +178,7 @@ export default function StaffLessonEditor() {
     setChapters([]); setTopics([]);
     setSelectedChapter(''); setSelectedTopic('');
     getChaptersBySubject(Number(selectedSubject))
-      .then((data: any) => setChapters(Array.isArray(data) ? data : []))
+      .then((data: any) => setChapters(toList<Chapter>(data)))
       .catch(() => setChapters([]));
   }, [selectedSubject]);
 
@@ -133,73 +187,116 @@ export default function StaffLessonEditor() {
     if (!selectedChapter) { setTopics([]); return; }
     setTopics([]); setSelectedTopic('');
     getTopicsByChapter(Number(selectedChapter))
-      .then((data: any) => setTopics(Array.isArray(data) ? data : []))
+      .then((data: any) => setTopics(toList<Topic>(data)))
       .catch(() => setTopics([]));
   }, [selectedChapter]);
+
+  useEffect(() => {
+    if (filteredTemplates.length === 0) {
+      if (selectedTemplate) {
+        setSelectedTemplate('');
+      }
+      return;
+    }
+
+    const hasCurrentTemplate = filteredTemplates.some((template) => String(template.id) === selectedTemplate);
+    if (!hasCurrentTemplate && selectedTemplate) {
+      setSelectedTemplate('');
+    }
+  }, [filteredTemplates, selectedTemplate]);
 
   const showToast = (msg: string, type: 'ok' | 'err') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
+  const buildTemplateContext = () => {
+    const template = templates.find((item) => String(item.id) === selectedTemplate);
+
+    if (!template) return '';
+
+    const parts = [
+      `Tên khung: ${template.name}`,
+      template.subject?.name ? `Môn học: ${template.subject.name}` : '',
+      template.gradeLevel ? `Khối/lớp: ${template.gradeLevel}` : '',
+      template.description ? `Mô tả: ${template.description}` : '',
+    ].filter(Boolean);
+
+    if (template.structureJson) {
+      try {
+        const parsed = JSON.parse(template.structureJson);
+        parts.push(`Cấu trúc: ${JSON.stringify(parsed)}`);
+      } catch {
+        parts.push(`Cấu trúc: ${template.structureJson}`);
+      }
+    }
+
+    return parts.join('\n');
+  };
+
   // ---- Format: biến JSON Object từ AI thành văn bản dễ đọc cho textarea ----
   const formatLessonPlan = (data: any): string => {
-    // Nếu data không phải object hợp lệ → trả về chuỗi rỗng
     if (!data || typeof data !== 'object') return '';
 
-    let text = '';
+    const lines: string[] = [];
 
-    // 1. Tiêu đề bài học
-    if (data.title) {
-      text += `TIÊU ĐỀ: ${data.title}\n`;
-      text += '─'.repeat(50) + '\n\n';
+    lines.push(`GIÁO ÁN: ${data.title || 'Chưa có tiêu đề'}`);
+    lines.push('='.repeat(60));
+    lines.push('');
+    lines.push('I. THÔNG TIN CHUNG');
+    lines.push(`- Chủ đề/Bài học: ${data.topic || data.title || ''}`);
+    lines.push(`- Khối/lớp: ${data.grade || 'THPT'}`);
+    lines.push(`- Thời lượng: ${data.durationMinutes || 45} phút`);
+
+    const template = templates.find((item) => String(item.id) === selectedTemplate);
+    if (template) {
+      lines.push(`- Khung giáo án: ${template.name}`);
     }
 
-    // 2. Thông tin chung
-    if (data.grade || data.durationMinutes) {
-      if (data.grade)           text += `Lớp: ${data.grade}\n`;
-      if (data.durationMinutes) text += `Thời lượng: ${data.durationMinutes} phút\n`;
-      text += '\n';
-    }
-
-    // 3. Mục tiêu bài học — lặp qua mảng objectives
+    lines.push('');
+    lines.push('II. MỤC TIÊU BÀI HỌC');
     if (Array.isArray(data.objectives) && data.objectives.length > 0) {
-      text += 'MỤC TIÊU BÀI HỌC:\n';
-      data.objectives.forEach((obj: string, idx: number) => {
-        text += `  ${idx + 1}. ${obj}\n`;
-      });
-      text += '\n';
+      data.objectives.forEach((obj: string, idx: number) => lines.push(`${idx + 1}. ${obj}`));
+    } else {
+      lines.push('1. Học sinh nắm được kiến thức trọng tâm của bài học.');
+      lines.push('2. Vận dụng kiến thức để giải quyết câu hỏi/bài tập phù hợp.');
     }
 
-    // 4. Các hoạt động — lặp qua mảng activities
-    // Mỗi activity có: time (số phút) + activity (chuỗi mô tả)
-    if (Array.isArray(data.activities) && data.activities.length > 0) {
-      text += `CÁC HOẠT ĐỘNG:\n`;
-      data.activities.forEach((act: any) => {
-        const timeLabel = act.time ? `[${act.time} phút]` : '';
-        // Dòng đầu của activity.activity là tên hoạt động
-        const lines = (act.activity || '').split('\n');
-        const actTitle = lines[0]?.trim() || '';
-        const actDetail = lines.slice(1).join('\n').trim();
+    lines.push('');
+    lines.push('III. CHUẨN BỊ');
+    lines.push('- Giáo viên: Giáo án, học liệu, câu hỏi kiểm tra nhanh, thiết bị trình chiếu/thí nghiệm nếu có.');
+    lines.push('- Học sinh: Ôn kiến thức liên quan, chuẩn bị vở ghi và dụng cụ học tập.');
 
-        text += `\n+ ${timeLabel} ${actTitle}\n`;
+    lines.push('');
+    lines.push('IV. TIẾN TRÌNH DẠY HỌC');
+    if (Array.isArray(data.activities) && data.activities.length > 0) {
+      data.activities.forEach((act: any, idx: number) => {
+        const timeLabel = act.time ? `[${act.time} phút]` : '';
+        const activityLines = (act.activity || '').split('\n');
+        const actTitle = activityLines[0]?.trim() || '';
+        const actDetail = activityLines.slice(1).join('\n').trim();
+
+        lines.push(`${idx + 1}. ${timeLabel} ${actTitle}`.trim());
         if (actDetail) {
-          // Thụt lề nội dung chi tiết vào 2 spaces
-          actDetail.split('\n').forEach((line: string) => {
-            text += `  ${line}\n`;
-          });
+          actDetail.split('\n').forEach((line: string) => lines.push(`   - ${line}`));
         }
       });
-      text += '\n';
+    } else {
+      lines.push('1. Khởi động');
+      lines.push('2. Hình thành kiến thức');
+      lines.push('3. Luyện tập');
+      lines.push('4. Vận dụng');
     }
 
-    // 5. Đánh giá
-    if (data.assessment) {
-      text += 'ĐÁNH GIÁ:\n';
-      text += `  ${data.assessment}\n`;
-    }
+    lines.push('');
+    lines.push('V. ĐÁNH GIÁ VÀ PHẢN HỒI');
+    lines.push(data.assessment || '- Quan sát mức độ tham gia, kiểm tra câu trả lời và bài luyện tập của học sinh.');
 
-    return text.trim();
+    lines.push('');
+    lines.push('VI. GHI CHÚ SAU TIẾT DẠY');
+    lines.push('- Nội dung cần điều chỉnh/bổ sung:');
+
+    return lines.join('\n').trim();
   };
 
   // ---- AI generate ----
@@ -213,6 +310,8 @@ export default function StaffLessonEditor() {
         topic: topicObj.title || topicObj.name || '',
         subject: subjectObj?.name || '',
         grade: 'Trung học phổ thông',
+        durationMinutes: 45,
+        additionalContext: buildTemplateContext(),
       });
 
       // Bóc tách và format JSON → văn bản dễ đọc
@@ -243,22 +342,31 @@ export default function StaffLessonEditor() {
     }
     setIsSaving(true);
     try {
+      let savedPlanId = editId;
       if (isEditMode && editId) {
         // ── UPDATE (PUT) ──
-        await updateSampleLessonPlan(editId, { title, content });
-        setSavedId(editId); // unlock nút Gửi duyệt
-        showToast('Đã cập nhật giáo án!', 'ok');
+        await updateSampleLessonPlan(editId, {
+          title,
+          content,
+          topicId: selectedTopic ? Number(selectedTopic) : undefined,
+          curriculumTemplateId: selectedTemplate ? Number(selectedTemplate) : undefined,
+        });
       } else {
         // ── CREATE (POST) ──
         const res: any = await createSampleLessonPlan({
-          title, content, topicId: Number(selectedTopic),
+          title,
+          content,
+          topicId: Number(selectedTopic),
+          curriculumTemplateId: selectedTemplate ? Number(selectedTemplate) : undefined,
         });
-        setSavedId(res?.id || null);
-        showToast('Đã lưu thành công!', 'ok');
+        savedPlanId = res?.id || res?.data?.id || null;
       }
-      getSampleLessonPlans()
-        .then((d: any) => setMyPlans(Array.isArray(d) ? d : []))
-        .catch(() => {});
+      navigate('/staff', {
+        state: {
+          savedPlanId,
+          notice: 'Đã lưu giáo án vào trang lưu trữ. Bạn có thể gửi Manager duyệt tại danh sách.',
+        },
+      });
     } catch {
       showToast('Lưu thất bại — kiểm tra service đang chạy không!', 'err');
     } finally {
@@ -266,23 +374,25 @@ export default function StaffLessonEditor() {
     }
   };
 
-  // ---- Submit for review ----
-  const handleSubmit = async () => {
-    if (!savedId) { showToast('Bạn phải lưu trước đã rồi mới gửi duyệt được!', 'err'); return; }
-    setIsSubmitting(true);
+  const handleDeleteMyPlan = async (event: React.MouseEvent, planId: number) => {
+    event.stopPropagation();
+    const ok = window.confirm('Xóa giáo án mẫu này khỏi danh sách của bạn?');
+    if (!ok) return;
+
     try {
-      await submitForReview(savedId);
-      showToast('Đã gửi Manager duyệt! Chờ kết quả nhé.', 'ok');
-      setSavedId(null);
-      getSampleLessonPlans()
-        .then((d: any) => setMyPlans(Array.isArray(d) ? d : []))
-        .catch(() => {});
-    } catch {
-      showToast('Gửi duyệt thất bại!', 'err');
-    } finally {
-      setIsSubmitting(false);
+      await deleteSampleLessonPlan(planId);
+      setMyPlans((current) => current.filter((plan) => String(plan.id) !== String(planId)));
+      showToast('Đã xóa giáo án mẫu.', 'ok');
+      if (String(editId) === String(planId)) {
+        navigate('/staff/lesson-editor', { replace: true });
+      }
+    } catch (error: any) {
+      showToast(error?.response?.data?.message || error?.message || 'Xóa giáo án thất bại.', 'err');
     }
   };
+
+  const selectedTemplateObj = filteredTemplates.find((item) => String(item.id) === selectedTemplate)
+    || templates.find((item) => String(item.id) === selectedTemplate);
 
   // =====================================================================
   return (
@@ -317,8 +427,8 @@ export default function StaffLessonEditor() {
             </div>
             <p className="text-gray-600">
               {isEditMode
-                ? 'Cập nhật nội dung → Lưu → Gửi Manager duyệt lại'
-                : 'Chọn bài học → Gọi AI gợi ý → Chỉnh sửa → Gửi Manager duyệt'}
+                ? 'Cập nhật nội dung → Lưu vào trang lưu trữ → Gửi Manager duyệt lại'
+                : 'Chọn bài học → Gọi AI gợi ý → Chỉnh sửa → Lưu vào trang lưu trữ'}
             </p>
           </div>
         </div>
@@ -412,6 +522,44 @@ export default function StaffLessonEditor() {
                   </div>
                 )}
 
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">Khung giáo án</Label>
+                  <Select
+                    value={selectedTemplate || '__none'}
+                    onValueChange={(value) => setSelectedTemplate(value.startsWith('__') ? '' : value)}
+                  >
+                    <SelectTrigger id="select-template">
+                      <SelectValue placeholder="Chọn khung giáo án (không bắt buộc)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">Không dùng khung</SelectItem>
+                      {isLoadingTemplates ? (
+                        <SelectItem value="__loading" disabled>Đang tải khung giáo án...</SelectItem>
+                      ) : templateError ? (
+                        <SelectItem value="__error" disabled>{templateError}</SelectItem>
+                      ) : filteredTemplates.length === 0 ? (
+                        <SelectItem value="__empty" disabled>Chưa có khung ACTIVE từ Admin</SelectItem>
+                      ) : (
+                        filteredTemplates.map((template) => (
+                          <SelectItem key={template.id} value={String(template.id)}>
+                            {template.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {templateError && (
+                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={loadActiveTemplates}>
+                      Tải lại khung giáo án
+                    </Button>
+                  )}
+                  {selectedTemplateObj && (
+                    <p className="text-xs text-gray-500">
+                      AI sẽ bám theo khung "{selectedTemplateObj.name}" khi sinh nội dung.
+                    </p>
+                  )}
+                </div>
+
               </CardContent>
             </Card>
 
@@ -422,7 +570,7 @@ export default function StaffLessonEditor() {
                   <Sparkles className="w-4 h-4" /> Gọi AI Gemini gợi ý
                 </p>
                 <p className="text-xs text-purple-700">
-                  AI sẽ tự động sinh nội dung giáo án theo bài học mày đang chọn.
+                  AI sẽ tự động sinh nội dung giáo án theo bài học bạn đang chọn.
                 </p>
                 <Button
                   id="btn-ai-generate"
@@ -451,23 +599,9 @@ export default function StaffLessonEditor() {
                   : <><Save className="w-4 h-4 mr-2" />Lưu</>
                 }
               </Button>
-              <Button
-                id="btn-submit-review"
-                variant="outline"
-                className="w-full border-green-500 text-green-700 hover:bg-green-50"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !savedId}
-              >
-                {isSubmitting
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang gửi...</>
-                  : <><Send className="w-4 h-4 mr-2" />Gửi Manager duyệt</>
-                }
-              </Button>
-              {!savedId && (
-                <p className="text-xs text-gray-400 text-center">
-                  Hãy lưu bài trước, sau đó mới gửi duyệt được nhé!
-                </p>
-              )}
+              <p className="text-xs text-gray-500 text-center">
+                Sau khi lưu, bài sẽ nằm ở trang lưu trữ để bạn gửi Manager duyệt.
+              </p>
             </div>
 
           </div>
@@ -508,12 +642,6 @@ export default function StaffLessonEditor() {
                     className="font-mono text-sm resize-none"
                   />
                 </div>
-                {savedId && (
-                  <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-3 py-2 rounded-lg">
-                    <CheckCircle className="w-4 h-4" />
-                    Đã lưu bài (ID: #{savedId}) — sẵn sàng gửi duyệt!
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -541,13 +669,27 @@ export default function StaffLessonEditor() {
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{p.title}</p>
-                          {p.topic?.name && (
-                            <p className="text-xs text-gray-500">{p.topic.name}</p>
+                          {(p.topic?.title || p.topic?.name) && (
+                            <p className="text-xs text-gray-500">{p.topic?.title || p.topic?.name}</p>
                           )}
                         </div>
-                        <Badge className={statusColor[p.status] || 'bg-gray-100 text-gray-700'}>
-                          {p.status}
-                        </Badge>
+                        <div className="ml-3 flex items-center gap-2">
+                          <Badge className={statusColor[p.status] || 'bg-gray-100 text-gray-700'}>
+                            {p.status}
+                          </Badge>
+                          {p.status !== 'APPROVED' ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-700"
+                              onClick={(event) => handleDeleteMyPlan(event, Number(p.id))}
+                              title="Xóa giáo án"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                   </div>

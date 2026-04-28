@@ -5,9 +5,17 @@
 # Stop: docker compose down
 # Stop + xóa data: docker compose down -v
 # =====================================================================
-# docker compose up -d --build frontend
-services:
+# Sửa FE → Rebuild FE container:
+# docker compose build frontend && docker compose up -d frontend
+# Sửa BE (1 service cụ thể, ví dụ user-service) → Rebuild service đó:
+# docker compose build user-service && docker compose up -d user-service
+# Sửa nhiều thứ cùng lúc → Rebuild tất cả:
+# docker compose up -d --build
+# Terminal 2: FE chạy local với hot-reload
+# cd d:\XDOPP\planbook-ai\frontend
+# npm run dev
 
+services:
   # -------------------------------------------------------------------
   # DATABASE: MySQL duy nhất, hệ xương sống dữ liệu
   # -------------------------------------------------------------------
@@ -27,7 +35,14 @@ services:
       # Script 02: Tạo bảng + seed data tự động
       # CHỈ chạy khi volume mysql_data TRỐNG (lần đầu hoặc sau: docker compose down -v)
       - ./db/02-master-seed.sql:/docker-entrypoint-initdb.d/02-master-seed.sql
-
+      - ./db/03-chemistry-10-12-seed.sql:/docker-entrypoint-initdb.d/03-chemistry-10-12-seed.sql
+      - ./db/04-shared-lesson-template-seed.sql:/docker-entrypoint-initdb.d/04-shared-lesson-template-seed.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "planbook", "-pplanbook123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - planbook-network
 
@@ -61,16 +76,22 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8081
       - USER_SERVICE_URL=http://user-service:8082
       - CURRICULUM_SERVICE_URL=http://curriculum-service:8083
+      - QUESTION_BANK_SERVICE_URL=http://question-bank-service:8084
+      - EXAM_SERVICE_URL=http://exam-service:8085
       - AI_SERVICE_URL=http://ai-service:8086
+      - PACKAGE_SERVICE_URL=http://package-service:8087
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     depends_on:
       - auth-service
       - user-service
-      # ---- OSIN ĐÃ KHÓA CÁC RÂU RIÊNG Ở DƯỚI ----
-      # - curriculum-service
-      # - question-bank-service
-      # - exam-service
-      # - ai-service
-      # - packageservice
+      - question-bank-service
+      - exam-service
+      - package-service
     networks:
       - planbook-network
 
@@ -149,12 +170,49 @@ services:
     networks:
       - planbook-network
 
-  # question-bank-service:
-  #   build: ./question-bank-service
-  #   ... (ẩn vì tàng hình)
+  question-bank-service:
+    build: ./question-bank-service
+    container_name: planbook-question-bank
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_URL=jdbc:mysql://mysql:3306/db_question?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+      - DB_USER=planbook
+      - DB_PASS=planbook123
+      - JWT_SECRET=planbook-super-secret-key-change-in-production
+      - JWT_EXPIRATION=86400000
+      - AI_SERVICE_URL=http://ai-service:8086/api/ai
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - planbook-network
 
-  # exam-service:
-  #   build: ./exam-service
+  exam-service:
+    build: ./exam-service
+    container_name: planbook-exam
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_URL=jdbc:mysql://mysql:3306/db_exam?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+      - DB_USER=planbook
+      - DB_PASS=planbook123
+      - JWT_SECRET=planbook-super-secret-key-change-in-production
+      - AI_SERVICE_URL=http://ai-service:8086
+      - QUESTIONBANK_SERVICE_URL=http://question-bank-service:8084
+    depends_on:
+      mysql:
+        condition: service_healthy
+      question-bank-service:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    networks:
+      - planbook-network
   #   ... (ẩn vì nguy cơ lỗi nổ hầm)
 
   # -------------------------------------------------------------------
@@ -169,6 +227,7 @@ services:
     env_file: .env
     environment:
       - GEMINI_MODEL=gemini-2.5-flash
+      - GEMINI_OCR_MODEL=${GEMINI_OCR_MODEL:-gemini-2.5-flash}
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DB=db_ai
@@ -178,16 +237,29 @@ services:
       - LOG_LEVEL=info
     depends_on:
       mysql:
-        condition: service_started
+        condition: service_healthy
     networks:
       - planbook-network
 
-  # packageservice:
-  #   build: ./packageservice
-  #   ... (ẩn vì cha nội này chôn mẹ nó file Dockerfile)
+  package-service:
+    build: ./packageservice/packageservice
+    container_name: planbook-package
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/db_package?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=planbook
+      - SPRING_DATASOURCE_PASSWORD=planbook123
+      - APP_JWT_SECRET=planbook-super-secret-key-change-in-production
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - planbook-network
 
   # -------------------------------------------------------------------
-  # FRONTEND - Mặt tiền dát vàng chói lóa
+  # FRONTEND
   # -------------------------------------------------------------------
   frontend:
     build: ./frontend
@@ -196,7 +268,7 @@ services:
     ports:
       - "3000:5173"
     environment:
-      - VITE_API_BASE_URL=http://localhost:8080
+      - VITE_API_PROXY_TARGET=http://api-gateway:8080
     depends_on:
       - api-gateway
     networks:

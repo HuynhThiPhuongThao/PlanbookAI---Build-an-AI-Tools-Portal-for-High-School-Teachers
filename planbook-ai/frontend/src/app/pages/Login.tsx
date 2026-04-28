@@ -1,12 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { GraduationCap, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, GraduationCap, Sparkles, Eye, EyeOff, X } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { authApi } from '../api/authApi';
+
+type LoginNotice = {
+  type: 'locked' | 'expired';
+  title: string;
+  message: string;
+};
+
+const defaultLockedNotice: LoginNotice = {
+  type: 'locked',
+  title: 'Tài khoản đã bị khóa',
+  message: 'Tài khoản này đang bị khóa. Vui lòng liên hệ quản trị viên để được mở lại.',
+};
+
+const isLockedLoginError = (message: string, status?: number) => {
+  const text = String(message || '').toLowerCase();
+  return (
+    status === 403 ||
+    text.includes('khóa') ||
+    text.includes('khoa') ||
+    text.includes('vô hiệu') ||
+    text.includes('vo hieu') ||
+    text.includes('locked') ||
+    text.includes('disabled')
+  );
+};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,6 +41,23 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loginNotice, setLoginNotice] = useState<LoginNotice | null>(null);
+
+  useEffect(() => {
+    try {
+      const rawNotice = localStorage.getItem('auth_notice');
+      if (!rawNotice) return;
+      const parsed = JSON.parse(rawNotice);
+      setLoginNotice({
+        type: parsed.type === 'expired' ? 'expired' : 'locked',
+        title: parsed.title || defaultLockedNotice.title,
+        message: parsed.message || defaultLockedNotice.message,
+      });
+      localStorage.removeItem('auth_notice');
+    } catch {
+      localStorage.removeItem('auth_notice');
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,14 +91,60 @@ export default function Login() {
 
     } catch (error: any) {
       console.error('Lỗi đăng nhập:', error);
-      setErrorMsg(error.response?.data?.message || 'Sai email hoặc mật khẩu!');
+      const serverMessage = error.response?.data?.message || error.response?.data?.error || '';
+      if (isLockedLoginError(serverMessage, error.response?.status)) {
+        setLoginNotice(defaultLockedNotice);
+        setErrorMsg('Tài khoản đã bị khóa.');
+      } else {
+        setErrorMsg(serverMessage || 'Sai email hoặc mật khẩu!');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
+    <>
+      {loginNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className={`flex items-start gap-3 px-6 py-5 ${
+              loginNotice.type === 'locked'
+                ? 'bg-red-50 text-red-700'
+                : 'bg-amber-50 text-amber-700'
+            }`}>
+              <div className={`mt-0.5 rounded-full p-2 ${
+                loginNotice.type === 'locked' ? 'bg-red-100' : 'bg-amber-100'
+              }`}>
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-gray-900">{loginNotice.title}</h2>
+                <p className="mt-1 text-sm leading-6 text-gray-600">{loginNotice.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoginNotice(null)}
+                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-white/80 hover:text-gray-700"
+                aria-label="Đóng thông báo"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex justify-end px-6 py-4">
+              <Button
+                type="button"
+                onClick={() => setLoginNotice(null)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Đã hiểu
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen flex">
       {/* Left side - Login Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md">
@@ -210,6 +298,7 @@ export default function Login() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

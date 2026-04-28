@@ -92,8 +92,15 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
   };
 
   const getRoleDisplay = (roleOutput: string) => {
+    const roleLabels: Record<string, string> = {
+      admin: 'Quan tri vien',
+      manager: 'Quan ly',
+      staff: 'Nhan vien',
+      teacher: 'Giao vien',
+    };
+
     if (!roleOutput) return '';
-    return roleOutput.charAt(0).toUpperCase() + roleOutput.slice(1);
+    return roleLabels[roleOutput.toLowerCase()] || roleOutput;
   };
 
   return (
@@ -109,7 +116,7 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
               </div>
               <div>
                 <h1 className="font-bold text-gray-900">PlanbookAI</h1>
-                <p className="text-xs text-gray-500">{getRoleDisplay(realRole)} Portal</p>
+                <p className="text-xs text-gray-500">{getRoleDisplay(realRole)}</p>
               </div>
             </Link>
 
@@ -136,20 +143,20 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuLabel>Tai khoan cua toi</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
-                    Profile
+                    Ho so
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    Cai dat
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    Dang xuat
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

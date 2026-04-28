@@ -9,6 +9,9 @@ public class SubmissionResponse {
     private String status;
     private Double score;
     private String feedback;
+    private Integer totalQuestions;
+    private Integer correctCount;
+    private String wrongQuestionIds;
     private LocalDateTime submittedAt;
 
     public SubmissionResponse() {
@@ -43,6 +46,18 @@ public class SubmissionResponse {
         return feedback;
     }
 
+    public Integer getTotalQuestions() {
+        return totalQuestions;
+    }
+
+    public Integer getCorrectCount() {
+        return correctCount;
+    }
+
+    public String getWrongQuestionIds() {
+        return wrongQuestionIds;
+    }
+
     public LocalDateTime getSubmittedAt() {
         return submittedAt;
     }
@@ -65,6 +80,18 @@ public class SubmissionResponse {
 
     public void setFeedback(String feedback) {
         this.feedback = feedback;
+    }
+
+    public void setTotalQuestions(Integer totalQuestions) {
+        this.totalQuestions = totalQuestions;
+    }
+
+    public void setCorrectCount(Integer correctCount) {
+        this.correctCount = correctCount;
+    }
+
+    public void setWrongQuestionIds(String wrongQuestionIds) {
+        this.wrongQuestionIds = wrongQuestionIds;
     }
 
     public void setSubmittedAt(LocalDateTime submittedAt) {
