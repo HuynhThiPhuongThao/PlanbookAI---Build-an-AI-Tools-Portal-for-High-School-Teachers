@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 
@@ -36,7 +37,7 @@ public class SampleLessonPlanReviewService {
                 .toList();
     }
 
-    // Tiêu chí môn học: Dùng Redis Cache để cache lại lịch sử duyệt
+    // Cache review history to reduce repeated DB reads.
     @Cacheable(value = "reviewHistoryCache")
     public List<SampleLessonPlanResponse> getReviewHistory() {
         return sampleLessonPlanRepository.findByStatusInOrderByUpdatedAtDesc(
@@ -47,7 +48,7 @@ public class SampleLessonPlanReviewService {
                 .toList();
     }
 
-    // Khi duyệt bài, xóa cache lịch sử đi để nó lấy mới
+    // Clear review history cache after status changes.
     @CacheEvict(value = "reviewHistoryCache", allEntries = true)
     public SampleLessonPlanResponse approveSample(Long id, SampleLessonPlanReviewRequest request, Long managerId) {
         SampleLessonPlan sampleLessonPlan = sampleLessonPlanRepository.findById(id)
@@ -64,25 +65,30 @@ public class SampleLessonPlanReviewService {
 
         SampleLessonPlan updated = sampleLessonPlanRepository.save(sampleLessonPlan);
         
-        // Push Firebase: Báo cho Staff
-        System.out.println("🔥 [Firebase] thông báo Firebase Approve tới Staff...");
+        // Push Firebase notification to staff.
+        System.out.println("[Firebase] Sending approval notification to staff.");
         try {
             String tokenUrl = "http://user-service:8082/api/users/internal/" + updated.getStaffId() + "/fcm-token";
             String staffFcmToken = restTemplate.getForObject(tokenUrl, String.class);
             if (staffFcmToken != null && !staffFcmToken.trim().isEmpty()) {
-                firebaseNotificationService.sendNotification(staffFcmToken, 
-                    "Giáo án của bạn đã được duyệt! 🎉", 
-                    "Giáo án: " + updated.getTitle()
+                firebaseNotificationService.sendNotification(staffFcmToken,
+                    "[DA DUYET] Giao an cua ban",
+                    "Giao an da duoc duyet: " + updated.getTitle(),
+                    com.planbook.service.FirebaseNotificationService.TYPE_CONTENT_APPROVED,
+                    Map.of(
+                            "lessonPlanId", String.valueOf(updated.getId()),
+                            "lessonPlanTitle", updated.getTitle() == null ? "" : updated.getTitle()
+                    )
                 );
             }
         } catch (Exception e) {
-            System.err.println("❌ Không thể lấy FCM Token của Staff: " + e.getMessage());
+            System.err.println("[Firebase] Could not get staff FCM token: " + e.getMessage());
         }
 
         return toResponse(updated);
     }
 
-    // Khi từ chối bài, xóa cache lịch sử
+    // Clear review history cache after status changes.
     @CacheEvict(value = "reviewHistoryCache", allEntries = true)
     public SampleLessonPlanResponse rejectSample(Long id, SampleLessonPlanReviewRequest request, Long managerId) {
         SampleLessonPlan sampleLessonPlan = sampleLessonPlanRepository.findById(id)
@@ -99,19 +105,25 @@ public class SampleLessonPlanReviewService {
 
         SampleLessonPlan updated = sampleLessonPlanRepository.save(sampleLessonPlan);
         
-        // Push Firebase: Báo cho Staff
-        System.out.println("🔥 [Firebase] thông báo Firebase Reject tới Staff...");
+        // Push Firebase notification to staff.
+        System.out.println("[Firebase] Sending rejection notification to staff.");
         try {
             String tokenUrl = "http://user-service:8082/api/users/internal/" + updated.getStaffId() + "/fcm-token";
             String staffFcmToken = restTemplate.getForObject(tokenUrl, String.class);
             if (staffFcmToken != null && !staffFcmToken.trim().isEmpty()) {
-                firebaseNotificationService.sendNotification(staffFcmToken, 
-                    "Giáo án của bạn bị từ chối ❌", 
-                    "Lý do: " + request.getReviewNote() + " - Bài: " + updated.getTitle()
+                firebaseNotificationService.sendNotification(staffFcmToken,
+                    "[TU CHOI] Giao an can chinh sua",
+                    "Ly do: " + request.getReviewNote() + " - Bai: " + updated.getTitle(),
+                    com.planbook.service.FirebaseNotificationService.TYPE_CONTENT_REJECTED,
+                    Map.of(
+                            "lessonPlanId", String.valueOf(updated.getId()),
+                            "lessonPlanTitle", updated.getTitle() == null ? "" : updated.getTitle(),
+                            "reviewNote", request.getReviewNote() == null ? "" : request.getReviewNote()
+                    )
                 );
             }
         } catch (Exception e) {
-            System.err.println("❌ Không thể lấy FCM Token của Staff: " + e.getMessage());
+            System.err.println("[Firebase] Could not get staff FCM token: " + e.getMessage());
         }
 
         return toResponse(updated);
@@ -151,3 +163,4 @@ response.setId(sampleLessonPlan.getId());
         return response;
     }
 }
+

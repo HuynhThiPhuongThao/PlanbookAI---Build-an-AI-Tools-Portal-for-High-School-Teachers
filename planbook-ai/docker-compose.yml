@@ -162,6 +162,7 @@ services:
       - DB_USER=planbook
       - DB_PASS=planbook123
       - JWT_SECRET=planbook-super-secret-key-change-in-production
+      - FIREBASE_SERVICE_ACCOUNT_BASE64=${FIREBASE_SERVICE_ACCOUNT_BASE64:-}
     depends_on:
       mysql:
         condition: service_started

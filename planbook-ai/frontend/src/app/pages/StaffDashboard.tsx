@@ -64,6 +64,14 @@ export default function StaffDashboard() {
   const [submittingPlanId, setSubmittingPlanId] = useState<number | null>(null);
   const [notice, setNotice] = useState<{ message: string; type: 'ok' | 'err' } | null>(null);
 
+  const loadPlans = () => {
+    setLoadingPlans(true);
+    axiosClient.get('/sample-lesson-plans/my')
+      .then((data: any) => setPlans(Array.isArray(data) ? data : []))
+      .catch(() => setPlans([]))
+      .finally(() => setLoadingPlans(false));
+  };
+
   useEffect(() => {
     const state = location.state as { notice?: string } | null;
     if (state?.notice) {
@@ -71,10 +79,7 @@ export default function StaffDashboard() {
       navigate(location.pathname, { replace: true, state: null });
     }
 
-    axiosClient.get('/sample-lesson-plans/my')
-      .then((data: any) => setPlans(Array.isArray(data) ? data : []))
-      .catch(() => setPlans([]))
-      .finally(() => setLoadingPlans(false));
+    loadPlans();
 
     questionApi.getQuestions({ size: 200 })
       .then((data: any) => {
@@ -83,6 +88,17 @@ export default function StaffDashboard() {
         setQuestionCount(mine.length);
       })
       .catch(() => setQuestionCount(0));
+
+    const handleFirebaseNotification = (event: Event) => {
+      const payload = (event as CustomEvent<any>).detail;
+      const type = payload?.data?.type;
+      if (type === 'CONTENT_APPROVED' || type === 'CONTENT_REJECTED') {
+        loadPlans();
+      }
+    };
+
+    window.addEventListener('firebaseNotificationReceived', handleFirebaseNotification as EventListener);
+    return () => window.removeEventListener('firebaseNotificationReceived', handleFirebaseNotification as EventListener);
   }, []);
 
   useEffect(() => {

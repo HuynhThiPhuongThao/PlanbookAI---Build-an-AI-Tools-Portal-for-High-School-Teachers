@@ -37,7 +37,7 @@ export const requestPermission = async () => {
 
 // Lắng nghe thông báo khi người dùng đang mở web.
 export const listenForMessage = (onPayloadReceived) => {
-  onMessage(messaging, (payload) => {
+  return onMessage(messaging, (payload) => {
     console.log("Nhận thông báo Firebase:", payload);
     onPayloadReceived(payload);
   });

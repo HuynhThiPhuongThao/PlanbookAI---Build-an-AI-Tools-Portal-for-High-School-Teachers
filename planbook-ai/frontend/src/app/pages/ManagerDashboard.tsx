@@ -258,7 +258,6 @@ export default function ManagerDashboard() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  const [fcmToast, setFcmToast] = useState<{ title: string; body: string } | null>(null);
   const [pendingPrompts, setPendingPrompts] = useState<PromptTemplate[]>([]);
   const [loadingPrompts, setLoadingPrompts] = useState(true);
 
@@ -360,20 +359,15 @@ export default function ManagerDashboard() {
     fetchPendingPrompts();
     fetchPackageData();
 
-    import("../firebase")
-      .then(({ requestPermission, listenForMessage }) => {
-        requestPermission();
-        listenForMessage((payload: any) => {
-          if (payload?.notification) {
-            setFcmToast({ title: payload.notification.title, body: payload.notification.body });
-            const audio = new Audio("/notification-sound.mp3");
-            audio.play().catch(() => {});
-            setTimeout(() => setFcmToast(null), 5000);
-            fetchPending();
-          }
-        });
-      })
-      .catch((e) => console.error("Failed to load firebase:", e));
+    const handleFirebaseNotification = (event: Event) => {
+      const payload = (event as CustomEvent<any>).detail;
+      if (payload?.data?.type === "CONTENT_SUBMITTED") {
+        fetchPending();
+      }
+    };
+
+    window.addEventListener("firebaseNotificationReceived", handleFirebaseNotification as EventListener);
+    return () => window.removeEventListener("firebaseNotificationReceived", handleFirebaseNotification as EventListener);
   }, []);
 
   useEffect(() => {
@@ -754,13 +748,6 @@ export default function ManagerDashboard() {
             }`}
           >
             {packageToast.msg}
-          </div>
-        )}
-
-        {fcmToast && (
-          <div className="fixed top-20 right-4 z-50 bg-white border-l-4 border-orange-500 shadow-xl rounded-lg p-4">
-            <h3 className="font-bold text-orange-700">{fcmToast.title}</h3>
-            <p className="text-gray-600 text-sm mt-1">{fcmToast.body}</p>
           </div>
         )}
 
