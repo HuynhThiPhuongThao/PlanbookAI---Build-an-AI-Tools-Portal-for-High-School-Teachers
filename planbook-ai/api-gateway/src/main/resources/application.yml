@@ -49,15 +49,7 @@ spring:
         - id: curriculum-service
           uri: ${CURRICULUM_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**,/api/system-config/**
-          filters:
-            - StripPrefix=0
-
-        # =================== PACKAGE SERVICE (port 8087) ===================
-        - id: package-service
-          uri: ${PACKAGE_SERVICE_URL:http://localhost:8087}
-          predicates:
-            - Path=/api/packages/**,/api/subscriptions/**
+            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**,/api/system-config/**,/api/lesson-templates/**
           filters:
             - StripPrefix=0
 
@@ -77,14 +69,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        # =================== PACKAGE SERVICE — payment webhook (public) ===================
-        - id: payment-webhook
-          uri: ${PACKAGE_SERVICE_URL:http://localhost:8087}
-          predicates:
-            - Path=/api/payment/**
-          filters:
-            - StripPrefix=0
-
         # =================== AI SERVICE (port 8086) ===================
         - id: ai-service
           uri: ${AI_SERVICE_URL:http://localhost:8086}
@@ -93,8 +77,15 @@ spring:
           filters:
             - StripPrefix=0
 
+        # =================== PACKAGE SERVICE (port 8087) ===================
+        - id: package-service
+          uri: ${PACKAGE_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/packages/**,/api/subscriptions/**,/api/revenue/**,/api/internal/**,/api/payment/**
+          filters:
+            - StripPrefix=0
+
       default-filters:
-        # Deduplicate CORS headers
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
 
 management:
@@ -108,6 +99,6 @@ eureka:
   client:
     enabled: false
 
-# JWT configuration
+# JWT — phải GIỐNG HỆT secret trong auth-service (team_tasks.md)
 jwt:
-  secret: your-secret-key-here-change-in-production
+  secret: ${JWT_SECRET:planbook-ai-super-secret-key-change-this}

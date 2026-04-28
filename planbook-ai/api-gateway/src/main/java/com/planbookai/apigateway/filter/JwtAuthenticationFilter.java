@@ -28,15 +28,13 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
         String method = exchange.getRequest().getMethod().name();
 
-        // Allow CORS preflight requests (OPTIONS)
+        // Allow CORS preflight
         if ("OPTIONS".equals(method)) {
             return chain.filter(exchange);
         }
 
-        // Public endpoints: không cần token
-        if (path.startsWith("/api/auth/") ||
-                path.startsWith("/api/payment/webhook/") ||
-                (path.equals("/api/packages") && "GET".equals(method))) {
+        // Public endpoints do not require JWT.
+        if (isPublicEndpoint(path, method)) {
             return chain.filter(exchange);
         }
 
@@ -57,11 +55,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            // FIX: auth-service lưu "role" (không phải "roles")
-            String role = claims.get("role", String.class);
+            // auth-service lưu "role" và "userId"
+            String role   = claims.get("role", String.class);
             String userId = String.valueOf(claims.get("userId"));
 
-            // Forward thông tin xuống downstream services qua header
+            // Forward xuống downstream services
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                     .header("X-User-Id", userId)
                     .header("X-Role", role != null ? role : "")
@@ -70,14 +68,29 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
 
         } catch (Exception e) {
-            // Token invalid hoặc hết hạn
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
     }
 
+    /**
+     * Endpoints that are allowed without JWT.
+     */
+    private boolean isPublicEndpoint(String path, String method) {
+        if (path.startsWith("/api/auth/")) {
+            return true;
+        }
+        if (path.equals("/api/payment/webhook") || path.startsWith("/api/payment/webhook/")) {
+            return true;
+        }
+        if ("GET".equals(method) && path.startsWith("/api/packages")) {
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public int getOrder() {
-        return -1; // Chạy filter này sớm nhất
+        return -1; // run before other filters
     }
 }
