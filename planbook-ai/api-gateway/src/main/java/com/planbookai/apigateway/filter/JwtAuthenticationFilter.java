@@ -35,6 +35,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Public endpoints: không cần token
         if (path.startsWith("/api/auth/") ||
+                path.startsWith("/api/payment/webhook/") ||
                 (path.equals("/api/packages") && "GET".equals(method))) {
             return chain.filter(exchange);
         }

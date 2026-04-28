@@ -71,8 +71,10 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/actuator/health", "/actuator/health/**", "/error").permitAll()
                 // GET /api/packages – public (không có header X-Roles)
                 .requestMatchers(HttpMethod.GET, "/api/packages").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/payment/webhook/**").permitAll()
                 // Tất cả còn lại phải authenticated; role check dùng @PreAuthorize
                 .anyRequest().authenticated()
             )

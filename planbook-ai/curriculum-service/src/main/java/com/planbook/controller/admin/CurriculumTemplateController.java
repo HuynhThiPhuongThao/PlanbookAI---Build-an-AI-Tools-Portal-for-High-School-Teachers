@@ -44,6 +44,11 @@ public class CurriculumTemplateController {
         return ResponseEntity.ok(curriculumTemplateService.getAllTemplates(pageable));
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<CurriculumTemplateResponse>> getActiveTemplates() {
+        return ResponseEntity.ok(curriculumTemplateService.getActiveTemplates());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<CurriculumTemplateResponse> getTemplateById(@PathVariable Long id) {
         return ResponseEntity.ok(curriculumTemplateService.getTemplateById(id));
@@ -65,8 +70,4 @@ public class CurriculumTemplateController {
         return ResponseEntity.ok("Deleted curriculum template successfully");
     }
 
-    @GetMapping("/active")
-    public ResponseEntity<List<CurriculumTemplateResponse>> getActiveTemplates() {
-        return ResponseEntity.ok(curriculumTemplateService.getActiveTemplates());
-    }
 }

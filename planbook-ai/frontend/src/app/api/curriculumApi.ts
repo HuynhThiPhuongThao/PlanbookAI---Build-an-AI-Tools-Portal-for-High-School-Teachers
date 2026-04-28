@@ -5,16 +5,29 @@ import axiosClient from './axiosClient';
 // Port gateway: 8080 → route tới curriculum-service: 8083
 // =====================================================================
 
+function unwrapList<T>(value: any): T[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (Array.isArray(value?.content)) {
+    return value.content;
+  }
+  return [];
+}
+
 // --- Danh mục Môn / Chương / Bài ---
 
 export const getSubjects = () =>
-  axiosClient.get('/subjects');
+  axiosClient.get('/subjects', { params: { page: 0, size: 200 } }).then(unwrapList);
 
 export const getChaptersBySubject = (subjectId: number) =>
-  axiosClient.get(`/subjects/${subjectId}/chapters`);
+  axiosClient.get('/chapters/by-subject', { params: { subjectId } }).then(unwrapList);
 
 export const getTopicsByChapter = (chapterId: number) =>
-  axiosClient.get(`/chapters/${chapterId}/topics`);
+  axiosClient.get('/topics/by-chapter', { params: { chapterId } }).then(unwrapList);
+
+export const getTopicById = (topicId: number) =>
+  axiosClient.get(`/topics/${topicId}`);
 
 // --- Admin: Quản lý Cấu trúc môn học ---
 export const createSubject = (data: { name: string; description?: string }) => axiosClient.post('/subjects', data);
@@ -30,24 +43,48 @@ export const updateTopic = (id: number, data: { title: string; chapterId: number
 export const deleteTopic = (id: number) => axiosClient.delete(`/topics/${id}`);
 
 // --- Admin: Quản lý Khung Giáo Án (Templates) ---
-export const getCurriculumTemplates = () => axiosClient.get('/curriculum-templates');
+export const getCurriculumTemplates = () =>
+  axiosClient.get('/curriculum-templates', { params: { page: 0, size: 200 } }).then(unwrapList);
 export const getCurriculumTemplateById = (id: number) => axiosClient.get(`/curriculum-templates/${id}`);
-export const createCurriculumTemplate = (data: { name: string; description: string; isActive?: boolean }) => axiosClient.post('/curriculum-templates', data);
-export const updateCurriculumTemplate = (id: number, data: { name: string; description: string; isActive?: boolean }) => axiosClient.put(`/curriculum-templates/${id}`, data);
+export const getActiveCurriculumTemplates = () => axiosClient.get('/curriculum-templates/active').then(unwrapList);
+export const createCurriculumTemplate = (data: {
+  name: string;
+  description?: string;
+  gradeLevel: string;
+  subjectId?: number;
+  structureJson: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}) => axiosClient.post('/curriculum-templates', data);
+export const updateCurriculumTemplate = (id: number, data: {
+  name: string;
+  description?: string;
+  gradeLevel: string;
+  subjectId?: number;
+  structureJson: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+}) => axiosClient.put(`/curriculum-templates/${id}`, data);
 export const deleteCurriculumTemplate = (id: number) => axiosClient.delete(`/curriculum-templates/${id}`);
 
 // --- Teacher: Quản lý Giáo Án Cá Nhân (Lesson Plans) ---
-export const getMyLessonPlans = () => axiosClient.get('/lesson-plans');
+export const getMyLessonPlans = () => axiosClient.get('/lesson-plans').then(unwrapList);
 export const getLessonPlanById = (id: number) => axiosClient.get(`/lesson-plans/${id}`);
+export const getApprovedSampleLessonPlans = (params?: { topicId?: number; curriculumTemplateId?: number }) =>
+  axiosClient.get('/sample-lesson-plans/approved', { params }).then(unwrapList);
 export const createLessonPlan = (data: {
   title: string;
   content: string;
   topicId?: number;
   curriculumTemplateId?: number;
+  sampleLessonPlanId?: number;
+  status?: 'DRAFT' | 'DONE';
 }) => axiosClient.post('/lesson-plans', data);
 export const updateLessonPlan = (id: number, data: {
   title?: string;
   content?: string;
+  topicId?: number;
+  curriculumTemplateId?: number;
+  sampleLessonPlanId?: number;
+  status?: 'DRAFT' | 'DONE';
 }) => axiosClient.put(`/lesson-plans/${id}`, data);
 export const deleteLessonPlan = (id: number) => axiosClient.delete(`/lesson-plans/${id}`);
 
@@ -55,7 +92,7 @@ export const deleteLessonPlan = (id: number) => axiosClient.delete(`/lesson-plan
 // --- Sample Lesson Plans (STAFF tạo, gửi Manager duyệt) ---
 
 export const getSampleLessonPlans = () =>
-  axiosClient.get('/sample-lesson-plans/my');
+  axiosClient.get('/sample-lesson-plans/my').then(unwrapList);
 
 export const getSampleLessonPlanById = (id: number) =>
   axiosClient.get(`/sample-lesson-plans/${id}`);
@@ -70,7 +107,12 @@ export const createSampleLessonPlan = (data: {
 export const updateSampleLessonPlan = (id: number, data: {
   title?: string;
   content?: string;
+  topicId?: number;
+  curriculumTemplateId?: number;
 }) => axiosClient.put(`/sample-lesson-plans/${id}`, data);
+
+export const deleteSampleLessonPlan = (id: number) =>
+  axiosClient.delete(`/sample-lesson-plans/${id}`);
 
 export const submitForReview = (id: number) =>
   axiosClient.post(`/sample-lesson-plans/${id}/submit`);
@@ -81,6 +123,7 @@ export const aiGenerateLessonPlan = (data: {
   topic: string;
   subject: string;
   grade?: string;
+  durationMinutes?: number;
   additionalContext?: string;
 }) => axiosClient.post('/ai/generate-lesson-plan', data, {
   timeout: 60000,

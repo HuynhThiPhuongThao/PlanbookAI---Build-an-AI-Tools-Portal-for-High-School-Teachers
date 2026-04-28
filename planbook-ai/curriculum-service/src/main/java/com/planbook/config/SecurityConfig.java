@@ -62,8 +62,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/curriculum-templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/curriculum-templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/curriculum-templates/**").hasRole("ADMIN")
-                        //active template cho teacher/staff/manager/admin xem
-                        .requestMatchers(HttpMethod.POST, "/api/curriculum-templates/*/activate").hasAnyRole("ADMIN", "STAFF", "MANAGER", "TEACHER")
+                        .requestMatchers("/api/system-config/**").hasRole("ADMIN")
+                        // active templates can be read by all business roles
+                        .requestMatchers(HttpMethod.GET, "/api/curriculum-templates/active").hasAnyRole("ADMIN", "STAFF", "MANAGER", "TEACHER")
+                        // keep activate endpoint restricted to admin
+                        .requestMatchers(HttpMethod.POST, "/api/curriculum-templates/*/activate").hasRole("ADMIN")
                         //các GET template còn lại chỉ admin mới xem được
                         .requestMatchers(HttpMethod.GET, "/api/curriculum-templates/**").hasAnyRole("ADMIN")
 

@@ -10,6 +10,9 @@ import java.util.List;
 @Entity
 @Table(name = "questions", indexes = {
     @Index(name = "idx_subject_topic", columnList = "subject, topic"),
+    @Index(name = "idx_subject_id", columnList = "subject_id"),
+    @Index(name = "idx_chapter_id", columnList = "chapter_id"),
+    @Index(name = "idx_topic_id", columnList = "topic_id"),
     @Index(name = "idx_status", columnList = "status"),
     @Index(name = "idx_author_id", columnList = "author_id")
 })
@@ -27,6 +30,15 @@ public class Question {
     
     @Column(nullable = false)
     private String topic;
+
+    @Column(name = "subject_id")
+    private Long subjectId;
+
+    @Column(name = "chapter_id")
+    private Long chapterId;
+
+    @Column(name = "topic_id")
+    private Long topicId;
     
     @Column(nullable = false)
     private String difficultyLevel;
@@ -71,7 +83,7 @@ public class Question {
     // Constructors
     public Question() {}
     
-    public Question(Long id, String content, String subject, String topic, String difficultyLevel,
+    public Question(Long id, String content, String subject, String topic, Long subjectId, Long chapterId, Long topicId, String difficultyLevel,
                     String correctAnswer, List<String> options, String explanation, String status,
                     Long authorId, String authorName, Long approvedBy, LocalDateTime approvedAt,
                     String rejectionReason, LocalDateTime createdAt, LocalDateTime updatedAt) {
@@ -79,6 +91,9 @@ public class Question {
         this.content = content;
         this.subject = subject;
         this.topic = topic;
+        this.subjectId = subjectId;
+        this.chapterId = chapterId;
+        this.topicId = topicId;
         this.difficultyLevel = difficultyLevel;
         this.correctAnswer = correctAnswer;
         this.options = options;
@@ -98,6 +113,9 @@ public class Question {
     public String getContent() { return content; }
     public String getSubject() { return subject; }
     public String getTopic() { return topic; }
+    public Long getSubjectId() { return subjectId; }
+    public Long getChapterId() { return chapterId; }
+    public Long getTopicId() { return topicId; }
     public String getDifficultyLevel() { return difficultyLevel; }
     public String getCorrectAnswer() { return correctAnswer; }
     public List<String> getOptions() { return options; }
@@ -116,6 +134,9 @@ public class Question {
     public void setContent(String content) { this.content = content; }
     public void setSubject(String subject) { this.subject = subject; }
     public void setTopic(String topic) { this.topic = topic; }
+    public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
+    public void setChapterId(Long chapterId) { this.chapterId = chapterId; }
+    public void setTopicId(Long topicId) { this.topicId = topicId; }
     public void setDifficultyLevel(String difficultyLevel) { this.difficultyLevel = difficultyLevel; }
     public void setCorrectAnswer(String correctAnswer) { this.correctAnswer = correctAnswer; }
     public void setOptions(List<String> options) { this.options = options; }

@@ -6,23 +6,16 @@ public class ResultResponse {
 
     private Long resultId;
     private Long submissionId;
+    private String examTitle;
     private String studentName;
     private Double score;
+    private Integer totalQuestions;
+    private Integer correctCount;
     private String wrongQuestionIds;
     private String feedback;
     private LocalDateTime gradedAt;
 
     public ResultResponse() {
-    }
-
-    public ResultResponse(Long resultId, Long submissionId, String studentName, Double score, String wrongQuestionIds, String feedback, LocalDateTime gradedAt) {
-        this.resultId = resultId;
-        this.submissionId = submissionId;
-        this.studentName = studentName;
-        this.score = score;
-        this.wrongQuestionIds = wrongQuestionIds;
-        this.feedback = feedback;
-        this.gradedAt = gradedAt;
     }
 
     public Long getResultId() {
@@ -33,12 +26,24 @@ public class ResultResponse {
         return submissionId;
     }
 
+    public String getExamTitle() {
+        return examTitle;
+    }
+
     public String getStudentName() {
         return studentName;
     }
 
     public Double getScore() {
         return score;
+    }
+
+    public Integer getTotalQuestions() {
+        return totalQuestions;
+    }
+
+    public Integer getCorrectCount() {
+        return correctCount;
     }
 
     public String getWrongQuestionIds() {
@@ -61,12 +66,24 @@ public class ResultResponse {
         this.submissionId = submissionId;
     }
 
+    public void setExamTitle(String examTitle) {
+        this.examTitle = examTitle;
+    }
+
     public void setStudentName(String studentName) {
         this.studentName = studentName;
     }
 
     public void setScore(Double score) {
         this.score = score;
+    }
+
+    public void setTotalQuestions(Integer totalQuestions) {
+        this.totalQuestions = totalQuestions;
+    }
+
+    public void setCorrectCount(Integer correctCount) {
+        this.correctCount = correctCount;
     }
 
     public void setWrongQuestionIds(String wrongQuestionIds) {

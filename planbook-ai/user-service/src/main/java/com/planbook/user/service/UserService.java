@@ -116,6 +116,20 @@ public class UserService {
                 .orElse(null);
     }
 
+    public List<String> getActiveManagerFcmTokens() {
+        return userProfileRepository.findByRoleAndActiveTrue(com.planbook.user.entity.Role.MANAGER)
+                .stream()
+                .map(UserProfile::getFcmToken)
+                .filter(token -> token != null && !token.isBlank())
+                .collect(Collectors.toList());
+    }
+
+    public boolean isUserActive(Long userId) {
+        return userProfileRepository.findById(userId)
+                .map(UserProfile::isActive)
+                .orElse(true);
+    }
+
     // === KHÓA / MỞ TÀI KHOẢN ===
     @Transactional
     public void deactivateUser(Long userId) {

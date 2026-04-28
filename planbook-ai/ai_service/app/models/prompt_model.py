@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from sqlalchemy import String, Text, Integer, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -25,6 +26,16 @@ class Prompt(Base):
 
     # chỉ 1 prompt active cho mỗi name
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # review workflow: PENDING_REVIEW / APPROVED / REJECTED
+    approval_status: Mapped[str] = mapped_column(
+        String(30), default="APPROVED", nullable=False
+    )
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # audit
     created_by: Mapped[str] = mapped_column(String(100), nullable=True)

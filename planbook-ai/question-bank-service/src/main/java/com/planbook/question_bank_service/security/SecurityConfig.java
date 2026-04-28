@@ -22,17 +22,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health").permitAll()
-                 .requestMatchers("/questions/**").permitAll()
-                .requestMatchers("/questions/pending").hasRole("MANAGER")
-                .requestMatchers("/questions/*/approve").hasRole("MANAGER")
-                .requestMatchers("/questions/**").authenticated()
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        .requestMatchers("/questions/pending").hasRole("MANAGER")
+                        .requestMatchers("/questions/*/approve").hasRole("MANAGER")
+
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/questions/**").hasRole("ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/questions/**").hasRole("STAFF")
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/questions/**").hasRole("STAFF")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/questions/**").authenticated()
+
+                        .anyRequest().authenticated()
+                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

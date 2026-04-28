@@ -45,6 +45,14 @@ public class ExamController {
         return ResponseEntity.ok(examService.getExamsByTeacher(principal.getUserId()));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteExam(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        examService.deleteExam(id, principal.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/submissions")
     public ResponseEntity<SubmissionResponse> submitExam(
             @PathVariable Long id,

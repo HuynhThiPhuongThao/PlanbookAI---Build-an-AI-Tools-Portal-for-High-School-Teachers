@@ -1,6 +1,5 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -19,7 +18,6 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 export const messaging = getMessaging(app);
 
 // Xin quyền bật thông báo từ trình duyệt
@@ -28,11 +26,8 @@ export const requestPermission = async () => {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       console.log('User đã cho phép gửi thông báo!');
-      // ⚠️ Đổi cái chuỗi VAPID_KEY kia lấy từ Web Firebase phần Cloud Messaging nhé
       const token = await getToken(messaging, { vapidKey: "BD3ka1DgeqSOMs9Y9cPZgWcnc2P1mw1L48fMPmxWn177qtg4FxP6gY5KiUrrl-60WUOV96Dg3JyoDYAGq0ZLjfo" });
       console.log('Firebase Token:', token);
-      
-      // Tương lai: Lấy token này gửi gọi API lưu vào Backend để Backend biết mày là ai!
       return token;
     }
   } catch (error) {
@@ -40,10 +35,10 @@ export const requestPermission = async () => {
   }
 };
 
-// Hàm cài lính canh bắt thông báo khi mày ĐANG MỞ WEB
+// Lắng nghe thông báo khi người dùng đang mở web.
 export const listenForMessage = (onPayloadReceived) => {
   onMessage(messaging, (payload) => {
-    console.log("Tin nhắn bay tới nè:", payload);
+    console.log("Nhận thông báo Firebase:", payload);
     onPayloadReceived(payload);
   });
 };

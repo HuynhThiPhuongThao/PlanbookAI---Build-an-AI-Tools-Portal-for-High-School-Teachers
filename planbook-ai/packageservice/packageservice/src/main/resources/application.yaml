@@ -22,3 +22,8 @@ spring:
 app:
   jwt:
     secret: planbookai-very-secure-jwt-secret-key-2025-minimum-32-chars!!!
+
+sepay:
+  # Set this to the webhook token configured in SePay.
+  # SePay must send: Authorization: Bearer <token>
+  webhook-token: ${SEPAY_WEBHOOK_TOKEN:}

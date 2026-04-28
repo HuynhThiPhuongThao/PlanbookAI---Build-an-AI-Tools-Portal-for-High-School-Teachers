@@ -5,6 +5,9 @@ import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
+import java.util.Objects;
+
 @Service
 public class FirebaseNotificationService {
 
@@ -30,5 +33,19 @@ public class FirebaseNotificationService {
             System.err.println("❌ [Firebase FCM] Lỗi khi gửi thông báo: " + e.getMessage());
             // e.printStackTrace();
         }
+    }
+
+    public void sendNotificationToMany(Collection<String> targetTokens, String title, String body) {
+        if (targetTokens == null || targetTokens.isEmpty()) {
+            System.out.println("🔥 [Firebase FCM] Không có token nhận thông báo.");
+            return;
+        }
+
+        targetTokens.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(token -> !token.isEmpty())
+                .distinct()
+                .forEach(token -> sendNotification(token, title, body));
     }
 }

@@ -7,13 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../components/ui/label';
 import { BookOpen } from 'lucide-react';
 import * as api from '../api/curriculumApi';
+import { getFullNameFromToken } from '../utils/jwt';
 
 function getNameFromToken(): string {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return '';
-    return JSON.parse(atob(token.split('.')[1])).fullName || '';
-  } catch { return ''; }
+  return getFullNameFromToken();
 }
 
 function toList(value: any): any[] {

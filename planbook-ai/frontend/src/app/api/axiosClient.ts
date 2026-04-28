@@ -3,16 +3,53 @@ import axios from 'axios';
 // Gọi qua API GATEWAY (port 8080)
 // Gateway sẽ route đến services (auth: 8081, user: 8082, ...)
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 10000, // 10 seconds timeout
 });
 
+const readErrorMessage = (payload: any) => {
+  if (!payload) return '';
+  if (typeof payload === 'string') return payload;
+  return payload.message || payload.error || payload.detail || '';
+};
+
+const isLockedAccountMessage = (message: string) => {
+  const text = String(message || '').toLowerCase();
+  return (
+    text.includes('khóa') ||
+    text.includes('khoa') ||
+    text.includes('vô hiệu') ||
+    text.includes('vo hieu') ||
+    text.includes('locked') ||
+    text.includes('disabled')
+  );
+};
+
+const saveAuthNotice = (notice: { type: 'locked' | 'expired'; title: string; message: string }) => {
+  try {
+    localStorage.setItem('auth_notice', JSON.stringify(notice));
+  } catch {
+    // Browser storage can fail in private mode; redirect still works.
+  }
+};
+
 // Interceptor: Trước khi gửi request đi
 axiosClient.interceptors.request.use((config) => {
   console.log(`[Axios] Sending ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData && config.headers) {
+    const headers: any = config.headers;
+    if (typeof headers.delete === 'function') {
+      headers.delete('Content-Type');
+      headers.delete('content-type');
+    } else {
+      delete headers['Content-Type'];
+      delete headers['content-type'];
+    }
+  }
 
   // Lấy token từ localStorage (sau khi login xong)
   const token = localStorage.getItem('access_token');
@@ -49,6 +86,15 @@ axiosClient.interceptors.response.use((response) => {
     // Tránh vòng lặp: login 401 → redirect về / → lại gọi → 401 → ...
     const isLoginRequest = error.config?.url?.includes('/auth/login');
     if (!isLoginRequest) {
+      const message = readErrorMessage(error.response?.data);
+      const isLocked = isLockedAccountMessage(message);
+      saveAuthNotice({
+        type: isLocked ? 'locked' : 'expired',
+        title: isLocked ? 'Tài khoản đã bị khóa' : 'Phiên đăng nhập đã hết hạn',
+        message: isLocked
+          ? 'Tài khoản này đang bị khóa. Vui lòng liên hệ quản trị viên để được mở lại.'
+          : 'Vui lòng đăng nhập lại để tiếp tục sử dụng hệ thống.',
+      });
       localStorage.removeItem('access_token');
       window.location.href = '/';
     }

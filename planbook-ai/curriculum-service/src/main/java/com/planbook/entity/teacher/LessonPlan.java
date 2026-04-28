@@ -18,6 +18,7 @@ public class LessonPlan {
     @NotBlank(message = "Lesson plan title is required")
     private String title;
 
+    @Column(columnDefinition = "LONGTEXT")
     private String content;
 
     @Enumerated(EnumType.STRING)

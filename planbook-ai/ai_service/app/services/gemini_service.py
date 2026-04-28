@@ -67,6 +67,10 @@ def _normalize_correct_answer(correct_answer: Any, options: list[str]) -> str:
     if raw.isdigit() and 1 <= int(raw) <= 4:
         return options[int(raw) - 1]
 
+    # Some model responses use zero-based indexes.
+    if raw == "0":
+        return options[0]
+
     # Accept exact option text (case-insensitive compare, return canonical option).
     lowered = raw.casefold()
     for option in options:
@@ -75,6 +79,37 @@ def _normalize_correct_answer(correct_answer: Any, options: list[str]) -> str:
 
     raise ValueError(
         "correctAnswer must be one of the 4 options or use A-D/1-4 format")
+
+
+def _is_retryable_gemini_error(exc: Exception) -> bool:
+    error_str = str(exc)
+    lowered = error_str.lower()
+
+    return (
+        "503" in error_str
+        or "429" in error_str
+        or "UNAVAILABLE" in error_str
+        or "RESOURCE_EXHAUSTED" in error_str
+        or "quota" in lowered
+        or "high demand" in lowered
+        or "overloaded" in lowered
+    )
+
+
+def _format_retryable_gemini_error(exc: Exception, max_retries: int) -> str:
+    error_str = str(exc)
+    lowered = error_str.lower()
+
+    if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "quota" in lowered:
+        return (
+            "Gemini API key da het quota hoac dang bi gioi han tan suat. "
+            "Vui long doi API key/model hoac thu lai sau khi quota reset."
+        )
+
+    return (
+        f"Gemini dang qua tai sau {max_retries} lan thu. "
+        "Vui long thu lai sau it phut hoac doi sang model khac."
+    )
 
 
 # =========================
@@ -132,22 +167,22 @@ async def _call_gemini(prompt: str) -> Dict[str, Any]:
 
         except Exception as exc:
             last_error = exc
-            error_str = str(exc)
 
             # Chỉ retry nếu là lỗi 503 (server overloaded) hoặc 429 (rate limit)
-            if "503" in error_str or "UNAVAILABLE" in error_str or "429" in error_str or "quota" in error_str.lower():
+            if _is_retryable_gemini_error(exc):
                 if attempt < max_retries - 1:
                     wait = retry_delays[attempt]
                     await asyncio.sleep(wait)
                     continue  # thử lại
+                break
             # Lỗi khác (400, 401...) → không retry, ném ngay
             raise
 
     # Hết retry vẫn lỗi
-    raise RuntimeError(
-        f"Gemini API đang quá tải sau {max_retries} lần thử. "
-        f"Vui lòng thử lại sau vài phút. Chi tiết: {last_error}"
-    )
+    if last_error is not None:
+        raise RuntimeError(_format_retryable_gemini_error(last_error, max_retries)) from last_error
+
+    raise RuntimeError("Gemini API did not return a response")
 
 
 # =========================
@@ -181,7 +216,21 @@ async def generate_exercise(request: ExerciseRequest, db: Session):
 
         question = q.get("question")
         raw_options = q.get("options")
-        correct_answer = q.get("correctAnswer", q.get("answer"))
+        correct_answer = next(
+            (
+                q.get(key)
+                for key in (
+                    "correctAnswer",
+                    "correct_answer",
+                    "answer",
+                    "answerKey",
+                    "correctOption",
+                    "correct_option",
+                )
+                if q.get(key) is not None and str(q.get(key)).strip()
+            ),
+            None,
+        )
 
         if not question:
             raise ValueError("Invalid question format")
@@ -220,10 +269,20 @@ async def generate_lesson_plan(request: LessonPlanRequest, db: Session):
         "generate_lesson_plan",
         {
             "topic": request.topic,
+            "subject": request.subject or "",
             "grade": request.grade,
             "duration_minutes": request.duration_minutes,
         },
     )
+
+    if request.additional_context:
+        prompt = (
+            f"{prompt}\n\n"
+            "Admin lesson-template context:\n"
+            f"{request.additional_context}\n"
+            "Use this structure when organizing objectives, activities, assessment, and notes. "
+            "Still return only valid JSON with the required schema."
+        )
 
     data = await _call_gemini(prompt)
 

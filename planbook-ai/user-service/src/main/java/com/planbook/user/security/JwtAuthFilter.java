@@ -1,5 +1,6 @@
 package com.planbook.user.security;
 
+import com.planbook.user.repository.UserProfileRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
+    private final UserProfileRepository userProfileRepository;
 
     @Override
     protected void doFilterInternal(
@@ -44,7 +46,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             if (tokenBlacklistService.isTokenBlacklisted(jwt)) {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-                response.getWriter().write("{\"error\": \"Token đã bị thu hồi\"}");
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"TOKEN_REVOKED\",\"message\":\"Token đã bị thu hồi\"}");
                 return; // Dừng lại, không cho đi tiếp!
             }
 
@@ -54,9 +57,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String email = jwtUtil.extractEmail(jwt);
                 String fullName = jwtUtil.extractFullName(jwt);
 
-                if (tokenBlacklistService.isUserBlacklisted(userId)) {
+                boolean lockedInRedis = tokenBlacklistService.isUserBlacklisted(userId);
+                boolean lockedInDatabase = userProfileRepository.findById(userId)
+                        .map(profile -> !profile.isActive())
+                        .orElse(false);
+                if (lockedInRedis || lockedInDatabase) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("{\"error\": \"Tài khoản đã bị khóa\"}");
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"error\":\"ACCOUNT_LOCKED\",\"message\":\"Tài khoản đã bị khóa\"}");
                     return;
                 }
                 // Lưu metadata vào request → Controller/Service dùng để Lazy Create Profile

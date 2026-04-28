@@ -22,7 +22,7 @@ public class SampleLessonPlan {
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "curriculum_template_id", nullable = false)
+    @JoinColumn(name = "curriculum_template_id", nullable = true)
     private CurriculumTemplate curriculumTemplate;
 
     @ManyToOne(fetch = FetchType.LAZY)

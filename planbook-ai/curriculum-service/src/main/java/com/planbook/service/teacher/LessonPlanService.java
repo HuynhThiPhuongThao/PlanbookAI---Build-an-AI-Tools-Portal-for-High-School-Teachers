@@ -50,6 +50,12 @@ public class LessonPlanService {
                 .toList();
     }
 
+    public LessonPlanResponse getLessonPlanById(Long id, Long teacherId) {
+        LessonPlan lessonPlan = lessonPlanRepository.findByIdAndTeacherId(id, teacherId)
+                .orElseThrow(() -> new EntityNotFoundException("LessonPlan not found with id " + id));
+        return toResponse(lessonPlan);
+    }
+
     public List<LessonPlanResponse> getLessonPlansByTopic(Long topicId) {
         return lessonPlanRepository.findByTopicId(topicId)
                 .stream()

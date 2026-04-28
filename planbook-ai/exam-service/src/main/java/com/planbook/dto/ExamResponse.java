@@ -1,6 +1,7 @@
 package com.planbook.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class ExamResponse {
 
@@ -9,6 +10,8 @@ public class ExamResponse {
     private Long teacherId;
     private String questionIds;
     private String answerKey;
+    private Integer questionCount;
+    private List<QuestionDTO> questions;
     private LocalDateTime createdAt;
 
     public ExamResponse() {
@@ -43,6 +46,14 @@ public class ExamResponse {
         return answerKey;
     }
 
+    public Integer getQuestionCount() {
+        return questionCount;
+    }
+
+    public List<QuestionDTO> getQuestions() {
+        return questions;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -65,6 +76,14 @@ public class ExamResponse {
 
     public void setAnswerKey(String answerKey) {
         this.answerKey = answerKey;
+    }
+
+    public void setQuestionCount(Integer questionCount) {
+        this.questionCount = questionCount;
+    }
+
+    public void setQuestions(List<QuestionDTO> questions) {
+        this.questions = questions;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {

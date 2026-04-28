@@ -10,6 +10,7 @@ import {
   X, Eye, EyeOff, UserPlus,
 } from 'lucide-react';
 import React from 'react';
+import { getFullNameFromToken } from '../utils/jwt';
 
 interface UserData {
   userId: number;
@@ -29,11 +30,7 @@ interface CreateAccountForm {
 
 /* ─── helper: lấy tên từ JWT ─── */
 function getNameFromToken(): string {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (!token) return '';
-    return JSON.parse(atob(token.split('.')[1])).fullName || '';
-  } catch { return ''; }
+  return getFullNameFromToken();
 }
 function useRealUserName() {
   const [name, setName] = React.useState(getNameFromToken());
@@ -343,6 +340,15 @@ export default function AdminUsers() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorOption, setErrorOption] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [statusNotice, setStatusNotice] = useState<{
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  } | null>(null);
+
+  const showStatusNotice = (type: 'success' | 'warning' | 'error', message: string) => {
+    setStatusNotice({ type, message });
+    window.setTimeout(() => setStatusNotice(null), 3200);
+  };
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -351,9 +357,8 @@ export default function AdminUsers() {
       // axiosClient interceptor đã unwrap response.data rồi
       // nên `data` ở đây là array trực tiếp, không cần .data nữa
       const data = await userApi.getAllUsers();
-      // Chỉ lấy danh sách nhân sự nội bộ (ADMIN, MANAGER, STAFF), ẩn TEACHER đi
-      const internalUsers = (Array.isArray(data) ? data : []).filter(u => u.role !== 'TEACHER');
-      setUsers(internalUsers);
+      // Admin xem toàn bộ tài khoản trong hệ thống, bao gồm cả TEACHER.
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Lỗi khi tải danh sách users:', error);
       setErrorOption(error.response?.data?.message || 'Không thể tải danh sách tài khoản');
@@ -368,12 +373,14 @@ export default function AdminUsers() {
     try {
       if (user.active) {
         await userApi.deactivateUser(user.userId);
+        showStatusNotice('warning', `Đã khóa tài khoản ${user.email}. Người dùng sẽ được đưa về màn hình đăng nhập.`);
       } else {
         await userApi.activateUser(user.userId);
+        showStatusNotice('success', `Đã mở khóa tài khoản ${user.email}.`);
       }
       await fetchUsers();
     } catch (error: any) {
-      alert('Thay đổi trạng thái thất bại: ' + (error.response?.data?.message || error.message));
+      showStatusNotice('error', 'Thay đổi trạng thái thất bại: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -385,6 +392,25 @@ export default function AdminUsers() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchUsers}
       />
+
+      {statusNotice && (
+        <div className={`fixed right-6 top-6 z-[60] flex max-w-md items-start gap-3 rounded-xl border px-4 py-3 shadow-xl ${
+          statusNotice.type === 'success'
+            ? 'border-green-200 bg-green-50 text-green-700'
+            : statusNotice.type === 'warning'
+              ? 'border-amber-200 bg-amber-50 text-amber-700'
+              : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
+          {statusNotice.type === 'error' ? (
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          ) : statusNotice.type === 'success' ? (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+          ) : (
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
+          )}
+          <p className="text-sm font-semibold leading-6">{statusNotice.message}</p>
+        </div>
+      )}
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -432,6 +458,7 @@ export default function AdminUsers() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b-2 border-gray-100 text-gray-600">
+                      <th className="p-4 font-semibold w-16">STT</th>
                       <th className="p-4 font-semibold">ID</th>
                       <th className="p-4 font-semibold">Họ và Tên</th>
                       <th className="p-4 font-semibold">Email</th>
@@ -441,8 +468,9 @@ export default function AdminUsers() {
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user) => (
+                    {users.map((user, index) => (
                       <tr key={user.userId} className="border-b border-gray-50 hover:bg-slate-50 transition-colors">
+                        <td className="p-4 font-semibold text-gray-700">{index + 1}</td>
                         <td className="p-4 font-medium text-gray-500">#{user.userId}</td>
                         <td className="p-4 font-semibold text-gray-900">{user.fullName || 'Chưa cập nhật'}</td>
                         <td className="p-4 text-gray-600">{user.email}</td>

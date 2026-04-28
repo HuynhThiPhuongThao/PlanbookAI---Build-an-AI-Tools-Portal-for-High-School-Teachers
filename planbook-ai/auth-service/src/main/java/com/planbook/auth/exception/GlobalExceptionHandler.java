@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -62,13 +63,13 @@ public class GlobalExceptionHandler {
     }
 
     // Tài khoản bị vô hiệu hóa
-    @ExceptionHandler(DisabledException.class)
-    public ResponseEntity<Map<String, Object>> handleDisabled(DisabledException ex) {
+    @ExceptionHandler({DisabledException.class, LockedException.class})
+    public ResponseEntity<Map<String, Object>> handleDisabled(Exception ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "timestamp", LocalDateTime.now().toString(),
                 "status", 403,
                 "error", "Forbidden",
-                "message", "Tài khoản đã bị vô hiệu hóa"
+                "message", "Tài khoản đã bị khóa"
         ));
     }
 

@@ -48,11 +48,28 @@ public class JwtTokenProvider {
 
     public Long getUserIdFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
-        return Long.parseLong(claims.getSubject());
+        Object userId = claims.get("userId");
+        if (userId instanceof Number number) {
+            return number.longValue();
+        }
+        if (userId instanceof String value && !value.isBlank()) {
+            return Long.parseLong(value);
+        }
+
+        String subject = claims.getSubject();
+        if (subject != null && subject.matches("\\d+")) {
+            return Long.parseLong(subject);
+        }
+
+        throw new IllegalArgumentException("JWT does not contain numeric userId claim");
     }
 
     public String getUserRoleFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("role", String.class);
+    }
+
+    public String getUsernameFromToken(String token) {
+        return getClaimsFromToken(token).getSubject();
     }
 }
