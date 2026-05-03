@@ -157,8 +157,8 @@ export default function AdminSystemConfig() {
       color: 'text-green-600',
       bg: 'bg-green-50',
       border: 'border-green-100',
-      title: 'Giới hạn người dùng',
-      desc: 'Kiểm soát mức sử dụng và đăng ký',
+      title: 'Đăng ký người dùng',
+      desc: 'Kiểm soát luồng đăng ký giáo viên',
       content: (
         <div className="space-y-5">
           <div className="flex items-center justify-between border-b border-gray-100 py-2">
@@ -167,36 +167,6 @@ export default function AdminSystemConfig() {
               <p className="text-xs text-gray-400">Nếu bật, cho phép mọi giáo viên tự đăng ký mà không cần phê duyệt</p>
             </div>
             <Toggle checked={config.allowTeacherRegister} onChange={() => update('allowTeacherRegister', !config.allowTeacherRegister)} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Số giáo án AI tối đa mỗi ngày: <span className="font-bold text-purple-600">{config.maxLessonPlansPerDay}</span>
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={50}
-              step={1}
-              value={config.maxLessonPlansPerDay}
-              onChange={(e) => update('maxLessonPlansPerDay', Number(e.target.value))}
-              className="w-full accent-purple-600"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Số câu hỏi AI tối đa mỗi ngày: <span className="font-bold text-purple-600">{config.maxQuestionsPerDay}</span>
-            </label>
-            <input
-              type="range"
-              min={5}
-              max={200}
-              step={5}
-              value={config.maxQuestionsPerDay}
-              onChange={(e) => update('maxQuestionsPerDay', Number(e.target.value))}
-              className="w-full accent-purple-600"
-            />
           </div>
         </div>
       ),
