@@ -49,7 +49,7 @@ spring:
         - id: curriculum-service
           uri: ${CURRICULUM_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/subjects/**,/api/chapters/**,/api/topics/**,/api/sample-lesson-plans/**,/api/lesson-plans/**,/api/curriculum-templates/**,/api/system-config/**,/api/lesson-templates/**
+            - Path=/api/subjects,/api/subjects/**,/api/chapters,/api/chapters/**,/api/topics,/api/topics/**,/api/sample-lesson-plans,/api/sample-lesson-plans/**,/api/lesson-plans,/api/lesson-plans/**,/api/curriculum-templates,/api/curriculum-templates/**,/api/system-config,/api/system-config/**,/api/lesson-templates,/api/lesson-templates/**
           filters:
             - StripPrefix=0
 

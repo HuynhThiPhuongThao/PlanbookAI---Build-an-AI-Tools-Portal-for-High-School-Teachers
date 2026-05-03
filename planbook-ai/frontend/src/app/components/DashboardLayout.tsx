@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import { Bell, CheckCircle, Clock, GraduationCap, LogOut, Settings, User, XCircle } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle, Clock, GraduationCap, LogOut, Settings, User, XCircle } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -32,6 +32,13 @@ type FirebaseNotificationItem = FirebaseToast & {
   id: string;
   receivedAt: string;
   read: boolean;
+};
+
+type SystemPublicConfig = {
+  allowTeacherRegister: boolean;
+  systemBanner: string;
+  bannerEnabled: boolean;
+  maintenanceMode: boolean;
 };
 
 const firebaseToastStyles: Record<FirebaseToastType, {
@@ -97,6 +104,7 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
   const [realAvatar, setRealAvatar] = React.useState<string | null>(null);
   const [firebaseToast, setFirebaseToast] = React.useState<FirebaseToast | null>(null);
   const [notifications, setNotifications] = React.useState<FirebaseNotificationItem[]>([]);
+  const [systemConfig, setSystemConfig] = React.useState<SystemPublicConfig | null>(null);
   const firebaseToastTimer = React.useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const unreadNotificationCount = notifications.filter((item) => !item.read).length;
 
@@ -189,6 +197,12 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
       unsubscribeFirebase?.();
       if (firebaseToastTimer.current) window.clearTimeout(firebaseToastTimer.current);
     };
+  }, []);
+
+  React.useEffect(() => {
+    axiosClient.get('/system-config/public')
+      .then((config: any) => setSystemConfig(config as SystemPublicConfig))
+      .catch(() => setSystemConfig(null));
   }, []);
 
   const handleLogout = () => {
@@ -346,6 +360,24 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
           </div>
         </div>
       </nav>
+
+      {systemConfig?.bannerEnabled && systemConfig.systemBanner?.trim() ? (
+        <div className="border-b border-amber-200 bg-amber-50">
+          <div className="mx-auto flex max-w-7xl items-start gap-2 px-4 py-3 text-sm font-medium text-amber-800 sm:px-6 lg:px-8">
+            <Bell className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{systemConfig.systemBanner}</span>
+          </div>
+        </div>
+      ) : null}
+
+      {systemConfig?.maintenanceMode ? (
+        <div className="border-b border-red-200 bg-red-50">
+          <div className="mx-auto flex max-w-7xl items-start gap-2 px-4 py-3 text-sm font-medium text-red-700 sm:px-6 lg:px-8">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Hệ thống đang ở chế độ bảo trì. Một số chức năng có thể tạm thời bị giới hạn.</span>
+          </div>
+        </div>
+      ) : null}
 
       {firebaseToast && (() => {
         const cfg = firebaseToastStyles[firebaseToast.type];

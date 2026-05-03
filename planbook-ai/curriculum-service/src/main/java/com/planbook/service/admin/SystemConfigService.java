@@ -1,6 +1,7 @@
 package com.planbook.service.admin;
 
 import com.planbook.dto.admin.SystemConfigRequest;
+import com.planbook.dto.admin.SystemConfigPublicResponse;
 import com.planbook.dto.admin.SystemConfigResponse;
 import com.planbook.entity.admin.SystemConfig;
 import com.planbook.repository.admin.SystemConfigRepository;
@@ -19,6 +20,16 @@ public class SystemConfigService {
 
     public SystemConfigResponse getConfig() {
         return toResponse(getOrCreate());
+    }
+
+    public SystemConfigPublicResponse getPublicConfig() {
+        SystemConfig config = getOrCreate();
+        SystemConfigPublicResponse response = new SystemConfigPublicResponse();
+        response.setAllowTeacherRegister(config.getAllowTeacherRegister());
+        response.setSystemBanner(config.getSystemBanner());
+        response.setBannerEnabled(config.getBannerEnabled());
+        response.setMaintenanceMode(config.getMaintenanceMode());
+        return response;
     }
 
     public SystemConfigResponse updateConfig(SystemConfigRequest request, Long adminId) {

@@ -62,6 +62,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/curriculum-templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/curriculum-templates/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/curriculum-templates/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/system-config/public").permitAll()
+                        .requestMatchers("/api/system-config").hasRole("ADMIN")
                         .requestMatchers("/api/system-config/**").hasRole("ADMIN")
                         // active templates can be read by all business roles
                         .requestMatchers(HttpMethod.GET, "/api/curriculum-templates/active").hasAnyRole("ADMIN", "STAFF", "MANAGER", "TEACHER")

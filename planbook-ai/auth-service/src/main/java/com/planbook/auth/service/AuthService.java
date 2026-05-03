@@ -51,6 +51,9 @@ public class AuthService {
     @Value("${user-service.internal-url:http://user-service:8082}")
     private String userServiceUrl;
 
+    @Value("${curriculum-service.internal-url:http://curriculum-service:8083}")
+    private String curriculumServiceUrl;
+
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
@@ -61,6 +64,10 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        if (!isTeacherRegistrationAllowed()) {
+            throw new RuntimeException("Hệ thống đang tắt đăng ký giáo viên mới. Vui lòng liên hệ quản trị viên.");
+        }
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email đã tồn tại: " + request.getEmail());
         }
@@ -183,6 +190,18 @@ public class AuthService {
             return active == null || Boolean.parseBoolean(String.valueOf(active));
         } catch (Exception e) {
             log.warn("Không thể kiểm tra trạng thái khóa của userId={}: {}", userId, e.getMessage());
+            return true;
+        }
+    }
+
+    private boolean isTeacherRegistrationAllowed() {
+        try {
+            String configUrl = curriculumServiceUrl + "/api/system-config/public";
+            Map<?, ?> config = restTemplate.getForObject(configUrl, Map.class);
+            Object allowed = config == null ? null : config.get("allowTeacherRegister");
+            return allowed == null || Boolean.parseBoolean(String.valueOf(allowed));
+        } catch (Exception e) {
+            log.warn("Không thể đọc cấu hình đăng ký giáo viên từ curriculum-service: {}", e.getMessage());
             return true;
         }
     }
