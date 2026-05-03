@@ -83,7 +83,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         if (path.equals("/api/payment/webhook") || path.startsWith("/api/payment/webhook/")) {
             return true;
         }
-        if ("GET".equals(method) && path.startsWith("/api/packages")) {
+        if ("GET".equals(method) && (path.equals("/api/packages") || path.equals("/api/packages/"))) {
             return true;
         }
         return false;

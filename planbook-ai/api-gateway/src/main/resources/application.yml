@@ -81,7 +81,7 @@ spring:
         - id: package-service
           uri: ${PACKAGE_SERVICE_URL:http://localhost:8087}
           predicates:
-            - Path=/api/packages/**,/api/subscriptions/**,/api/revenue/**,/api/internal/**,/api/payment/**
+            - Path=/api/packages,/api/packages/**,/api/subscriptions,/api/subscriptions/**,/api/revenue,/api/revenue/**,/api/internal,/api/internal/**,/api/payment,/api/payment/**
           filters:
             - StripPrefix=0
 

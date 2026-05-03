@@ -267,7 +267,7 @@ export default function AdminSystemConfig() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="gap-1">
-                <ArrowLeft className="w-4 h-4" /> Về Dashboard
+                <ArrowLeft className="w-4 h-4" /> Về lại bảng điều khiển
               </Button>
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Cấu hình hệ thống</h1>
