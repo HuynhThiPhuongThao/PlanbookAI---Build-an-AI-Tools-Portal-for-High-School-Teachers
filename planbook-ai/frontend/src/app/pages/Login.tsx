@@ -160,18 +160,18 @@ export default function Login() {
               </div>
               <div className="text-left">
                 <h1 className="text-3xl font-bold text-gray-900">PlanbookAI</h1>
-                <p className="text-sm text-gray-500">AI Tools Portal for Teachers</p>
+                <p className="text-sm text-gray-500">Cổng công cụ AI dành cho giáo viên</p>
               </div>
             </div>
             <p className="text-gray-600">
-              Empowering high school teachers with intelligent tools for lesson planning, assessment creation, and grading.
+              Trao quyền cho giáo viên trung học phổ thông với các công cụ thông minh phục vụ lập kế hoạch bài giảng, tạo đề kiểm tra và chấm điểm.
             </p>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Welcome Back</CardTitle>
-              <CardDescription>Sign in to access your dashboard</CardDescription>
+              <CardTitle>Chào mừng bạn trở lại</CardTitle>
+              <CardDescription>Hãy đăng nhập để truy cập bảng điều khiển</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
@@ -181,7 +181,7 @@ export default function Login() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="your.email@school.edu"
+                    placeholder="emailcuaban@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="off"
@@ -190,7 +190,7 @@ export default function Login() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Mật khẩu</Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -217,10 +217,10 @@ export default function Login() {
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 text-sm">
                     <input type="checkbox" className="rounded" />
-                    Remember me
+                    Ghi nhớ đăng nhập
                   </label>
                   <a href="#" className="text-sm text-blue-600 hover:underline">
-                    Forgot password?
+                    Quên mật khẩu?
                   </a>
                 </div>
 
@@ -229,7 +229,7 @@ export default function Login() {
                   disabled={isLoading}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
                 >
-                  {isLoading ? 'Đang kiểm tra...' : 'Sign In'}
+                  {isLoading ? 'Đang kiểm tra...' : 'Đăng nhập'}
                 </Button>
 
                 {/* Hiển thị lỗi nếu có */}
@@ -258,9 +258,9 @@ export default function Login() {
             <div className="flex items-start gap-3">
               <Sparkles className="w-5 h-5 text-blue-600 mt-0.5" />
               <div className="text-sm text-blue-900">
-                <p className="font-semibold mb-1">Powered by AI</p>
+                <p className="font-semibold mb-1">Được hỗ trợ bởi AI</p>
                 <p className="text-blue-700">
-                  PlanbookAI uses Gemini AI to help you create lesson plans, generate exam questions, and automate grading tasks.
+                  PlanbookAI sử dụng Gemini AI để giúp bạn tạo kế hoạch bài giảng, sinh câu hỏi thi và tự động hóa việc chấm điểm.
                 </p>
               </div>
             </div>
@@ -278,26 +278,26 @@ export default function Login() {
         />
         <div className="absolute inset-0 flex items-center justify-center p-12">
           <div className="text-white text-center max-w-2xl">
-            <h2 className="text-5xl font-bold mb-6">Transform Your Teaching Experience</h2>
+            <h2 className="text-5xl font-bold mb-6">Chuyển đổi trải nghiệm giảng dạy của bạn</h2>
             <p className="text-xl text-blue-100 mb-8">
-              Save hours every week with AI-powered lesson planning, automated grading, and intelligent question bank management.
+              Tiết kiệm hàng giờ mỗi tuần nhờ lập kế hoạch bài giảng bằng AI, chấm điểm tự động và quản lý ngân hàng câu hỏi thông minh.
             </p>
             <div className="grid grid-cols-2 gap-4 text-left">
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
                 <div className="text-3xl font-bold mb-2">90%</div>
-                <div className="text-blue-100">Time saved on grading</div>
+                <div className="text-blue-100">Thời gian chấm điểm được tiết kiệm</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
                 <div className="text-3xl font-bold mb-2">1000+</div>
-                <div className="text-blue-100">Questions in database</div>
+                <div className="text-blue-100">Câu hỏi trong ngân hàng dữ liệu</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
                 <div className="text-3xl font-bold mb-2">50+</div>
-                <div className="text-blue-100">Sample lesson plans</div>
+                <div className="text-blue-100">Kế hoạch bài giảng mẫu</div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg">
                 <div className="text-3xl font-bold mb-2">OCR</div>
-                <div className="text-blue-100">Automated grading</div>
+                <div className="text-blue-100">Chấm điểm tự động</div>
               </div>
             </div>
           </div>

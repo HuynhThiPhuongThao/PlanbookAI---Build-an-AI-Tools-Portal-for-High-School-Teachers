@@ -143,7 +143,7 @@ function CreateAccountModal({
                 <UserPlus className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Tạo Tài Khoản Mới</h2>
+                <h2 className="text-lg font-bold text-white">Tạo tài khoản mới</h2>
                 <p className="text-blue-100 text-xs">Dành cho STAFF hoặc MANAGER</p>
               </div>
             </div>
@@ -179,7 +179,7 @@ function CreateAccountModal({
           {/* Họ và Tên */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Họ và Tên <span className="text-red-500">*</span>
+              Họ và tên <span className="text-red-500">*</span>
             </label>
             <input
               ref={firstInputRef}
@@ -201,7 +201,7 @@ function CreateAccountModal({
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="nhanvien@planbook.edu.vn"
+              placeholder="nhanvien@gmail.com"
               disabled={isSubmitting || success}
               className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 transition-shadow"
             />
@@ -210,14 +210,14 @@ function CreateAccountModal({
           {/* Mật khẩu */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Mật Khẩu <span className="text-red-500">*</span>
+              Mật khẩu <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Nhập mật khẩu ít nhất 6 ký tự"
                 disabled={isSubmitting || success}
                 className="w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 transition-shadow"
               />
@@ -235,7 +235,7 @@ function CreateAccountModal({
           {/* Phân quyền */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Phân Quyền <span className="text-red-500">*</span>
+              Phân quyền <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
               {(['STAFF', 'MANAGER'] as const).map((r) => (
@@ -279,7 +279,7 @@ function CreateAccountModal({
                       {r}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {r === 'STAFF' ? 'Soạn giáo án' : 'Duyệt giáo án'}
+                      {r === 'STAFF' ? 'Soạn giáo án mẫu' : 'Duyệt giáo án mẫu'}
                     </p>
                   </div>
                 </label>
@@ -311,7 +311,7 @@ function CreateAccountModal({
               ) : (
                 <>
                   <UserPlus className="w-4 h-4" />
-                  Tạo Tài Khoản
+                  Tạo tài khoản
                 </>
               )}
             </Button>
@@ -418,10 +418,10 @@ export default function AdminUsers() {
             <div className="flex items-center gap-2 mb-2">
               <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="gap-1">
                 <ArrowLeft className="w-4 h-4" />
-                Về lại Dashboard
+                Về lại bảng điều khiển
               </Button>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Quản Lý Người Dùng</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Quản lý người dùng</h1>
             <p className="text-gray-600">Toàn quyền kiểm soát tài khoản giáo viên, nhân viên trên hệ thống</p>
           </div>
           <Button
@@ -435,7 +435,7 @@ export default function AdminUsers() {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle>Danh Sách Tài Khoản</CardTitle>
+            <CardTitle>Danh sách tài khoản</CardTitle>
             <CardDescription>Cập nhật tự động theo thời gian thực</CardDescription>
           </CardHeader>
           <CardContent>
@@ -460,11 +460,11 @@ export default function AdminUsers() {
                     <tr className="border-b-2 border-gray-100 text-gray-600">
                       <th className="p-4 font-semibold w-16">STT</th>
                       <th className="p-4 font-semibold">ID</th>
-                      <th className="p-4 font-semibold">Họ và Tên</th>
+                      <th className="p-4 font-semibold">Họ và tên</th>
                       <th className="p-4 font-semibold">Email</th>
-                      <th className="p-4 font-semibold">Quyền (Role)</th>
-                      <th className="p-4 font-semibold text-center">Trạng Thái</th>
-                      <th className="p-4 font-semibold text-right">Hành Động</th>
+                      <th className="p-4 font-semibold">Vai trò</th>
+                      <th className="p-4 font-semibold text-center">Trạng thái</th>
+                      <th className="p-4 font-semibold text-right">Hành động</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -488,12 +488,12 @@ export default function AdminUsers() {
                           {user.active ? (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
-                              Hoạt Động
+                              Hoạt động
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                              Bị Khóa
+                              Bị khóa
                             </span>
                           )}
                         </td>
@@ -505,7 +505,7 @@ export default function AdminUsers() {
                             className={!user.active ? 'border-green-600 text-green-600 hover:bg-green-50' : ''}
                             disabled={user.role === 'ADMIN'}
                           >
-                            {user.active ? 'Khóa TK' : 'Mở Khóa'}
+                            {user.active ? 'Khóa tài khoản' : 'Mở khóa'}
                           </Button>
                         </td>
                       </tr>

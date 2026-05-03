@@ -90,11 +90,11 @@ export default function AdminRevenue() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="gap-1">
-              <ArrowLeft className="w-4 h-4" /> Về Dashboard
+              <ArrowLeft className="w-4 h-4" /> Về bảng điều khiển
             </Button>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Theo dõi doanh thu</h1>
-          <p className="text-gray-600 mt-1">Dữ liệu gói dịch vụ, đăng ký và doanh thu từ package-service.</p>
+          <h1 className="text-3xl font-bold text-gray-900">Doanh thu & Gói dịch vụ</h1>
+          <p className="text-gray-600 mt-1">Dữ liệu gói dịch vụ, đăng ký và doanh thu</p>
         </div>
 
         {loading ? (
@@ -124,7 +124,7 @@ export default function AdminRevenue() {
                     <Package className="h-8 w-8 text-purple-600" />
                     <span className="text-3xl font-bold text-purple-700">{summary?.activePackages || 0}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Gói đang kích hoạt</p>
+                  <p className="text-sm text-gray-600">Gói đăng ký đang hoạt động</p>
                 </CardContent>
               </Card>
               <Card>
@@ -142,7 +142,7 @@ export default function AdminRevenue() {
                     <TrendingUp className="h-8 w-8 text-green-600" />
                     <span className="text-3xl font-bold text-green-700">{summary?.pendingSubscriptions || 0}</span>
                   </div>
-                  <p className="text-sm text-gray-600">Đơn đang chờ</p>
+                  <p className="text-sm text-gray-600">Đơn đăng ký chờ xử lý</p>
                 </CardContent>
               </Card>
               <Card>
@@ -162,7 +162,7 @@ export default function AdminRevenue() {
                   <Package className="h-5 w-5 text-purple-600" />
                   Danh sách gói dịch vụ
                 </CardTitle>
-                <CardDescription>Gói dịch vụ hiện có trong package-service.</CardDescription>
+                <CardDescription>Các gói dịch vụ hiện có</CardDescription>
               </CardHeader>
               <CardContent>
                 {packages.length === 0 ? (

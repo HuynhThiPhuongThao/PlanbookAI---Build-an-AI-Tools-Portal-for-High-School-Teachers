@@ -113,31 +113,31 @@ export default function AdminDashboard() {
 
   const adminActions = [
     {
-      title: 'Quản lý Người Dùng',
-      description: 'Tạo, chỉnh sửa và phân quyền tài khoản (Teacher, Staff, Manager)',
+      title: 'Quản lý người dùng',
+      description: 'Tạo, chỉnh sửa và phân quyền tài khoản',
       icon: Users,
-      action: 'Mở quản lý',
+      action: 'Quản lý',
       onClick: () => navigate('/admin/users'),
     },
     {
-      title: 'Chương Trình Giảng Dạy',
-      description: 'Thiết kế và quản lý khung chương trình (Môn, Chương, Bài) cùng Mẫu giáo án',
+      title: 'Chương trình giảng dạy',
+      description: 'Thiết kế và quản lý khung chương trình cho giáo án mẫu',
       icon: FileText,
-      action: 'Quản lý',
+      action: 'Thiết kế',
       onClick: () => navigate('/admin/curriculum'),
     },
     {
-      title: 'Theo Dõi Doanh Thu',
+      title: 'Doanh thu & Gói dịch vụ',
       description: 'Xem doanh thu, đăng ký gói dịch vụ và tăng trưởng người dùng theo tháng',
       icon: TrendingUp,
-      action: 'Xem báo cáo',
+      action: 'Theo dõi',
       onClick: () => navigate('/admin/revenue'),
     },
     {
-      title: 'Cấu Hình Hệ Thống',
-      description: 'Điều chỉnh AI model, giới hạn sử dụng, thông báo và chế độ bảo trì',
+      title: 'Cấu hình hệ thống',
+      description: 'Điều chỉnh mô hình AI, giới hạn sử dụng, thông báo và chế độ bảo trì',
       icon: Settings,
-      action: 'Cấu hình',
+      action: 'Cài đặt',
       onClick: () => navigate('/admin/system-config'),
     },
   ];
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
 
         {/* Admin Actions */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Công cụ Quản Trị</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Công Cụ Quản Trị</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {adminActions.map((action) => (
               <Card key={action.title} className="hover:shadow-md transition-shadow">

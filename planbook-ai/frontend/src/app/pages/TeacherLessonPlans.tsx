@@ -61,7 +61,7 @@ export default function TeacherLessonPlans() {
           </div>
         `).join('')}` : ''}
         ${content.assessment ? `<h2>IV. Đánh giá</h2><p>${escapeHtml(content.assessment)}</p>` : ''}
-        ${content.homework ? `<h2>V. Bài tập / dặn dò</h2><p>${escapeHtml(content.homework)}</p>` : ''}
+        ${content.homework ? `<h2>V. Bài tập/Dặn dò</h2><p>${escapeHtml(content.homework)}</p>` : ''}
       `;
     }
 
@@ -92,13 +92,13 @@ export default function TeacherLessonPlans() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Giáo Án Của Tôi</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Giáo án của tôi</h1>
               <p className="text-gray-600">Quản lý các giáo án bạn đã tạo</p>
             </div>
           </div>
           <Link to="/lesson-planner">
             <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" /> Tạo Giáo Án Mới
+              <Plus className="w-4 h-4 mr-2" /> Tạo giáo án mới
             </Button>
           </Link>
         </div>
@@ -107,7 +107,7 @@ export default function TeacherLessonPlans() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-600" />
-              Danh sách Giáo Án
+              Danh sách giáo án
             </CardTitle>
             <CardDescription>
               Hiển thị tất cả giáo án bạn đang sở hữu
@@ -122,7 +122,7 @@ export default function TeacherLessonPlans() {
               <div className="text-center py-10 text-gray-500">
                 <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p className="font-medium">Chưa có giáo án nào.</p>
-                <p className="text-sm mt-1">Hãy bấm "Tạo Giáo Án Mới" để bắt đầu.</p>
+                <p className="text-sm mt-1">Hãy bấm "Tạo giáo án mới" để bắt đầu.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -103,12 +103,12 @@ export default function StaffCurriculum() {
   };
 
   const handleDeleteSubject = async (id: number) => {
-    if (!window.confirm('Xóa môn học này sẽ xóa cả chương và bài học. Chắc chưa?')) return;
+    if (!window.confirm('Xóa môn học này sẽ xóa cả chương và bài học. Bạn có chắc chắn muốn xóa?')) return;
     try { await api.deleteSubject(id); loadSubjects(); } catch { alert('Lỗi'); }
   };
 
   const handleDeleteChapter = async (subjId: number, chapId: number) => {
-    if (!window.confirm('Xóa chương này?')) return;
+    if (!window.confirm('Xác nhận xóa chương này?')) return;
     try {
       await api.deleteChapter(chapId);
       const res: any = await api.getChaptersBySubject(subjId);
@@ -117,7 +117,7 @@ export default function StaffCurriculum() {
   };
 
   const handleDeleteTopic = async (chapId: number, topicId: number) => {
-    if (!window.confirm('Xóa bài học này?')) return;
+    if (!window.confirm('Xác nhận xóa bài học này?')) return;
     try {
       await api.deleteTopic(topicId);
       const res: any = await api.getTopicsByChapter(chapId);
@@ -140,7 +140,7 @@ export default function StaffCurriculum() {
               <CardDescription>Hệ thống Môn học - Chương - Bài học</CardDescription>
             </div>
             <Button onClick={openSubjectModal} className="bg-blue-600 hover:bg-blue-700">
-              <BookOpen className="w-4 h-4 mr-2" /> Thêm Môn Học
+              <BookOpen className="w-4 h-4 mr-2" /> Thêm môn học
             </Button>
           </CardHeader>
           <CardContent>
@@ -159,7 +159,7 @@ export default function StaffCurriculum() {
                         📚 {subj.name}
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openChapterModal(subj.id)}>+ Thêm Chương</Button>
+                        <Button variant="outline" size="sm" onClick={() => openChapterModal(subj.id)}>+ Thêm chương</Button>
                         <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteSubject(subj.id)}>Xóa</Button>
                       </div>
                     </div>
@@ -180,7 +180,7 @@ export default function StaffCurriculum() {
                                   📖 {chap.name}
                                 </div>
                                 <div className="flex gap-2">
-                                  <Button variant="outline" size="sm" onClick={() => openTopicModal(chap.id)}>+ Thêm Bài Học</Button>
+                                  <Button variant="outline" size="sm" onClick={() => openTopicModal(chap.id)}>+ Thêm bài học</Button>
                                   <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteChapter(subj.id, chap.id)}>Xóa</Button>
                                 </div>
                               </div>
@@ -214,11 +214,11 @@ export default function StaffCurriculum() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {dialogType === 'subject' ? 'Thêm Môn Học' : dialogType === 'chapter' ? 'Thêm Chương' : 'Thêm Bài Học'}
+                  {dialogType === 'subject' ? 'Thêm môn học' : dialogType === 'chapter' ? 'Thêm chương' : 'Thêm bài học'}
                 </DialogTitle>
               </DialogHeader>
               <div className="py-4">
-                <Label>Tên {dialogType === 'subject' ? 'Môn học' : dialogType === 'chapter' ? 'Chương' : 'Bài học'}</Label>
+                <Label>Tên {dialogType === 'subject' ? 'môn học' : dialogType === 'chapter' ? 'chương' : 'bài học'}</Label>
                 <Input
                   value={inputValue}
                   onChange={e => setInputValue(e.target.value)}

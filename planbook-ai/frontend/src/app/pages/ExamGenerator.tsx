@@ -304,8 +304,8 @@ export default function ExamGenerator() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Tạo đề thi trắc nghiệm</h1>
-            <p className="text-gray-600">Lấy câu hỏi đã duyệt từ ngân hàng câu hỏi để tạo đề thi thật.</p>
+            <h1 className="text-3xl font-bold text-gray-900">Tạo đề kiểm tra trắc nghiệm</h1>
+            <p className="text-gray-600">Lấy câu hỏi đã được duyệt từ ngân hàng câu hỏi để tạo đề kiểm tra</p>
           </div>
         </div>
 
@@ -314,13 +314,13 @@ export default function ExamGenerator() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
-                Cấu hình đề thi
+                Cấu hình đề kiểm tra
               </CardTitle>
               <CardDescription>Chọn bài học và độ khó để hệ thống trộn câu hỏi tự động.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Tiêu đề đề thi</Label>
+                <Label>Tiêu đề đề kiểm tra</Label>
                 <Input
                   placeholder="Ví dụ: Kiểm tra 15 phút - Bài phản ứng oxi hóa khử"
                   value={examTitle}

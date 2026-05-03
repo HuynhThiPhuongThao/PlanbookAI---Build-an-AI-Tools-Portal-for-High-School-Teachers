@@ -32,13 +32,13 @@ interface ProfileData {
 export default function UserProfile() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // State quản lý Edit Mode
   const [isEditing, setIsEditing] = useState(false);
   // State copy ra để chứa data đang edit (FormData)
@@ -98,17 +98,17 @@ export default function UserProfile() {
       setSaving(true);
       setError('');
       setSuccess('');
-      
+
       // Gửi request cập nhật (avatarPreview chính là ảnh Base64)
       const data = await userApi.updateProfile({
-         fullName: editForm.fullName,
-         phoneNumber: editForm.phoneNumber,
-         schoolName: editForm.schoolName,
-         subjectSpecialty: editForm.subjectSpecialty,
-         bio: editForm.bio,
-         avatarUrl: avatarPreview || profile.avatarUrl || null
+        fullName: editForm.fullName,
+        phoneNumber: editForm.phoneNumber,
+        schoolName: editForm.schoolName,
+        subjectSpecialty: editForm.subjectSpecialty,
+        bio: editForm.bio,
+        avatarUrl: avatarPreview || profile.avatarUrl || null
       });
-      
+
       // Backend trả về profile đã lưu
       setProfile(data as any);
       setIsEditing(false);
@@ -116,11 +116,11 @@ export default function UserProfile() {
 
       // Báo hiệu cho DashboardLayout cập nhật tên và avatar ngay lập tức
       const updatedData = data as any;
-      window.dispatchEvent(new CustomEvent('profileUpdated', { 
-         detail: { 
-            fullName: updatedData.fullName || editForm.fullName,
-            avatarUrl: updatedData.avatarUrl || avatarPreview || null
-         } 
+      window.dispatchEvent(new CustomEvent('profileUpdated', {
+        detail: {
+          fullName: updatedData.fullName || editForm.fullName,
+          avatarUrl: updatedData.avatarUrl || avatarPreview || null
+        }
       }));
 
       setAvatarPreview(null);
@@ -144,7 +144,7 @@ export default function UserProfile() {
 
     // Giả lập hiệu ứng tải ảnh
     setIsUploading(true);
-    
+
     // Đọc file thành Data URL (Base64) để lưu vào DB và preview
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -152,7 +152,7 @@ export default function UserProfile() {
       setTimeout(() => {
         setAvatarPreview(result); // Hiển thị preview ngay lập tức
         setIsUploading(false);
-      }, 500); 
+      }, 500);
     };
     reader.readAsDataURL(file);
   };
@@ -185,69 +185,69 @@ export default function UserProfile() {
   return (
     <DashboardLayout role={profile.role.toLowerCase() as any} userName={profile.fullName}>
       <div className="max-w-3xl mx-auto space-y-6">
-        
+
         {/* Banner + Avatar Section */}
         <div className="relative">
           {/* Cover background */}
           <div className="h-32 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-sm" />
-          
+
           <div className="absolute -bottom-12 left-8 flex items-end gap-4">
             <div className="relative group">
-               <Avatar className="w-24 h-24 border-4 border-white shadow-md bg-white">
-                 <AvatarImage src={currentDisplayAvatar} className="object-cover" />
-                 <AvatarFallback className="text-3xl font-bold bg-blue-100 text-blue-700">
-                    {userInitial}
-                 </AvatarFallback>
-               </Avatar>
-               
-               {/* Icon đổi ảnh hiển thị khi đang Edit Mode */}
-               {isEditing && (
-                 <div 
-                   onClick={handleAvatarClick}
-                   className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                 >
-                   {isUploading ? (
-                      <Loader2 className="w-6 h-6 text-white animate-spin" />
-                   ) : (
-                      <Camera className="w-6 h-6 text-white" />
-                   )}
-                 </div>
-               )}
+              <Avatar className="w-24 h-24 border-4 border-white shadow-md bg-white">
+                <AvatarImage src={currentDisplayAvatar} className="object-cover" />
+                <AvatarFallback className="text-3xl font-bold bg-blue-100 text-blue-700">
+                  {userInitial}
+                </AvatarFallback>
+              </Avatar>
+
+              {/* Icon đổi ảnh hiển thị khi đang Edit Mode */}
+              {isEditing && (
+                <div
+                  onClick={handleAvatarClick}
+                  className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  {isUploading ? (
+                    <Loader2 className="w-6 h-6 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-white" />
+                  )}
+                </div>
+              )}
             </div>
-            
+
             <div className="mb-2">
               <h1 className="text-2xl font-bold text-gray-900">{profile.fullName}</h1>
               <p className="text-sm font-medium text-gray-500">{profile.role}</p>
             </div>
           </div>
-          
+
           {/* Nút bật tắt chế độ Edit góc phải */}
           <div className="absolute top-4 right-4">
-             {!isEditing ? (
-                <Button variant="secondary" size="sm" onClick={handleEditClick} className="shadow-sm">
-                  <Edit2 className="w-4 h-4 mr-2" /> Chỉnh sửa
+            {!isEditing ? (
+              <Button variant="secondary" size="sm" onClick={handleEditClick} className="shadow-sm">
+                <Edit2 className="w-4 h-4 mr-2" /> Chỉnh sửa
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleCancelClick} className="bg-white/90">
+                  <X className="w-4 h-4 mr-2" /> Hủy
                 </Button>
-             ) : (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCancelClick} className="bg-white/90">
-                    <X className="w-4 h-4 mr-2" /> Hủy
-                  </Button>
-                  <Button size="sm" onClick={handleSave} disabled={saving} className="shadow-sm bg-blue-600 hover:bg-blue-700">
-                    {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} 
-                    Lưu
-                  </Button>
-                </div>
-             )}
+                <Button size="sm" onClick={handleSave} disabled={saving} className="shadow-sm bg-blue-600 hover:bg-blue-700">
+                  {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Lưu
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Cục để chọn file (ẩn) */}
-        <input 
-           type="file" 
-           ref={fileInputRef} 
-           className="hidden" 
-           accept="image/*" 
-           onChange={handleFileChange} 
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
+          onChange={handleFileChange}
         />
 
         {/* Thông báo */}
@@ -262,75 +262,75 @@ export default function UserProfile() {
               <CardDescription>Cập nhật thông tin của bạn để thuận tiện liên lạc.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                
-                {/* Hàng 1: Email (Luôn khóa) & Tên */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email đăng nhập</Label>
-                    <Input id="email" value={profile.email} disabled className="bg-gray-100 cursor-not-allowed text-gray-500" />
-                    <p className="text-xs text-gray-400">Email không thể thay đổi</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Họ và Tên</Label>
-                    <Input 
-                       id="fullName" 
-                       name="fullName"
-                       value={isEditing ? editForm.fullName || '' : profile.fullName || ''} 
-                       onChange={handleChange}
-                       readOnly={!isEditing}
-                       className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
-                    />
-                  </div>
+
+              {/* Hàng 1: Email (Luôn khóa) & Tên */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email đăng nhập</Label>
+                  <Input id="email" value={profile.email} disabled className="bg-gray-100 cursor-not-allowed text-gray-500" />
+                  <p className="text-xs text-gray-400">Email không thể thay đổi</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Họ và tên</Label>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    value={isEditing ? editForm.fullName || '' : profile.fullName || ''}
+                    onChange={handleChange}
+                    readOnly={!isEditing}
+                    className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
+                  />
+                </div>
+              </div>
+
+              {/* Hàng 2: SĐT và Trường học (Ẩn trường học nếu không phải Teacher/Student) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Số điện thoại</Label>
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    value={isEditing ? editForm.phoneNumber || '' : profile.phoneNumber || ''}
+                    onChange={handleChange}
+                    readOnly={!isEditing}
+                    placeholder="Nhập số điện thoại..."
+                    className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
+                  />
                 </div>
 
-                {/* Hàng 2: SĐT và Trường học (Ẩn trường học nếu không phải Teacher/Student) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">Số điện thoại</Label>
-                    <Input 
-                       id="phoneNumber" 
-                       name="phoneNumber"
-                       value={isEditing ? editForm.phoneNumber || '' : profile.phoneNumber || ''} 
-                       onChange={handleChange}
-                       readOnly={!isEditing}
-                       placeholder="Nhập số điện thoại..."
-                       className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
-                    />
-                  </div>
-                  
-                  {['TEACHER', 'STUDENT'].includes(profile.role) && (
-                    <div className="space-y-2">
-                      <Label htmlFor="schoolName">Tên trường công tác</Label>
-                      <Input 
-                         id="schoolName" 
-                         name="schoolName"
-                         value={isEditing ? editForm.schoolName || '' : profile.schoolName || ''} 
-                         onChange={handleChange}
-                         readOnly={!isEditing}
-                         placeholder="Nhập tên trường..."
-                         className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Hàng 3: Chuyên môn (Ẩn nếu không phải Teacher/Student) */}
                 {['TEACHER', 'STUDENT'].includes(profile.role) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="subjectSpecialty">Môn giảng dạy / Chuyên môn</Label>
-                      <Input 
-                         id="subjectSpecialty" 
-                         name="subjectSpecialty"
-                         value={isEditing ? editForm.subjectSpecialty || '' : profile.subjectSpecialty || ''} 
-                         onChange={handleChange}
-                         readOnly={!isEditing}
-                         placeholder="Ví dụ: Toán, Lý, Hóa..."
-                         className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="schoolName">Tên trường công tác</Label>
+                    <Input
+                      id="schoolName"
+                      name="schoolName"
+                      value={isEditing ? editForm.schoolName || '' : profile.schoolName || ''}
+                      onChange={handleChange}
+                      readOnly={!isEditing}
+                      placeholder="Nhập tên trường..."
+                      className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
+                    />
                   </div>
                 )}
+              </div>
+
+              {/* Hàng 3: Chuyên môn (Ẩn nếu không phải Teacher/Student) */}
+              {['TEACHER', 'STUDENT'].includes(profile.role) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="subjectSpecialty">Môn giảng dạy/Chuyên môn</Label>
+                    <Input
+                      id="subjectSpecialty"
+                      name="subjectSpecialty"
+                      value={isEditing ? editForm.subjectSpecialty || '' : profile.subjectSpecialty || ''}
+                      onChange={handleChange}
+                      readOnly={!isEditing}
+                      placeholder="Ví dụ: Toán, Lý, Hóa..."
+                      className={!isEditing ? "bg-gray-50 border-transparent focus-visible:ring-0" : ""}
+                    />
+                  </div>
+                </div>
+              )}
 
             </CardContent>
           </Card>
@@ -357,7 +357,7 @@ export default function UserProfile() {
                     type="password"
                     placeholder="Nhập mật khẩu hiện tại..."
                     value={pwForm.currentPassword}
-                    onChange={e => setPwForm({...pwForm, currentPassword: e.target.value})}
+                    onChange={e => setPwForm({ ...pwForm, currentPassword: e.target.value })}
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -368,7 +368,7 @@ export default function UserProfile() {
                       type="password"
                       placeholder="Tối thiểu 6 ký tự..."
                       value={pwForm.newPassword}
-                      onChange={e => setPwForm({...pwForm, newPassword: e.target.value})}
+                      onChange={e => setPwForm({ ...pwForm, newPassword: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -378,7 +378,7 @@ export default function UserProfile() {
                       type="password"
                       placeholder="Nhập lại mật khẩu mới..."
                       value={pwForm.confirmPassword}
-                      onChange={e => setPwForm({...pwForm, confirmPassword: e.target.value})}
+                      onChange={e => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
                     />
                   </div>
                 </div>

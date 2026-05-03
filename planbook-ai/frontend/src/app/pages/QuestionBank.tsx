@@ -177,17 +177,17 @@ export default function QuestionBank() {
 
   const handleSaveQuestion = async () => {
     if (!selectedSubjectObj || !selectedTopicObj) {
-      alert('Chon mon/chuong/bai truoc khi tao cau hoi');
+      alert('Chọn môn/chương/bài trước khi tạo câu hỏi');
       return;
     }
     if (!formData.content.trim() || !formData.correctAnswer.trim()) {
-      alert('Nhap noi dung cau hoi va dap an dung');
+      alert('Nhập nội dung câu hỏi và đáp án đúng');
       return;
     }
 
     const cleanOptions = formData.options.map((o) => o.trim()).filter(Boolean);
     if (cleanOptions.length < 4) {
-      alert('Can it nhat 4 dap an');
+      alert('Cần ít nhất 4 đáp án');
       return;
     }
 
@@ -216,7 +216,7 @@ export default function QuestionBank() {
       setNotice('Đã lưu câu hỏi vào danh sách câu hỏi.');
       fetchQuestions();
     } catch {
-      alert('Luu cau hoi that bai');
+      alert('Lưu câu hỏi thất bại');
     } finally {
       setSaving(false);
     }
@@ -224,7 +224,7 @@ export default function QuestionBank() {
 
   const handleAiSuggest = async () => {
     if (!selectedTopicObj) {
-      alert('Chon bai hoc truoc khi goi AI');
+      alert('Chọn bài học trước khi gọi AI');
       return;
     }
     setAiLoading(true);
@@ -244,7 +244,7 @@ export default function QuestionBank() {
         explanation: aiQuestion?.explanation || prev.explanation,
       }));
     } catch {
-      alert('AI goi y that bai');
+      alert('AI gợi ý thất bại');
     } finally {
       setAiLoading(false);
     }
@@ -261,8 +261,8 @@ export default function QuestionBank() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Ngan hang Cau hoi</h1>
-              <p className="text-gray-600">Quan ly cau hoi theo Mon -&gt; Chuong -&gt; Bai</p>
+              <h1 className="text-3xl font-bold text-gray-900">Ngân hàng Câu hỏi</h1>
+              <p className="text-gray-600">Quản lý câu hỏi theo Môn -&gt; Chương -&gt; Bài</p>
             </div>
           </div>
 
@@ -270,27 +270,27 @@ export default function QuestionBank() {
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700">
                 <Plus className="w-4 h-4 mr-2" />
-                Them cau hoi
+                Thêm câu hỏi
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Tao cau hoi moi</DialogTitle>
-                <DialogDescription>Cau hoi se duoc luu truc tiep vao danh sach cau hoi</DialogDescription>
+                <DialogTitle>Tạo câu hỏi mới</DialogTitle>
+                <DialogDescription>Câu hỏi sẽ được lưu trực tiếp vào danh sách câu hỏi</DialogDescription>
               </DialogHeader>
 
               <div className="flex gap-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
                 <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={aiLoading}>
                   {aiLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  AI goi y
+                  AI gợi ý
                 </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                 <div className="space-y-1">
-                  <Label>Mon hoc</Label>
+                  <Label>Môn học</Label>
                   <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                    <SelectTrigger><SelectValue placeholder="Chon mon" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Chọn môn học" /></SelectTrigger>
                     <SelectContent>
                       {subjects.map((subject) => (
                         <SelectItem key={subject.id} value={String(subject.id)}>{subject.name}</SelectItem>
@@ -299,9 +299,9 @@ export default function QuestionBank() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Chuong</Label>
+                  <Label>Chương</Label>
                   <Select value={selectedChapter} onValueChange={setSelectedChapter} disabled={!selectedSubject}>
-                    <SelectTrigger><SelectValue placeholder="Chon chuong" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Chọn chương" /></SelectTrigger>
                     <SelectContent>
                       {chapters.map((chapter) => (
                         <SelectItem key={chapter.id} value={String(chapter.id)}>{chapter.name}</SelectItem>
@@ -310,9 +310,9 @@ export default function QuestionBank() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Bai hoc</Label>
+                  <Label>Bài học</Label>
                   <Select value={selectedTopic} onValueChange={setSelectedTopic} disabled={!selectedChapter}>
-                    <SelectTrigger><SelectValue placeholder="Chon bai" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Chọn bài học" /></SelectTrigger>
                     <SelectContent>
                       {topics.map((topic) => (
                         <SelectItem key={topic.id} value={String(topic.id)}>
@@ -325,19 +325,19 @@ export default function QuestionBank() {
               </div>
 
               <div className="space-y-2 mt-3">
-                <Label>Do kho</Label>
+                <Label>Độ khó</Label>
                 <Select value={formData.difficultyLevel} onValueChange={(value) => setFormData((prev) => ({ ...prev, difficultyLevel: value }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="EASY">De</SelectItem>
-                    <SelectItem value="MEDIUM">Trung binh</SelectItem>
-                    <SelectItem value="HARD">Kho</SelectItem>
+                    <SelectItem value="EASY">Dễ</SelectItem>
+                    <SelectItem value="MEDIUM">Trung bình</SelectItem>
+                    <SelectItem value="HARD">Khó</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2 mt-3">
-                <Label>Noi dung cau hoi</Label>
+                <Label> Nội dung câu hỏi</Label>
                 <Textarea
                   rows={3}
                   value={formData.content}
@@ -346,14 +346,14 @@ export default function QuestionBank() {
               </div>
 
               <div className="space-y-2 mt-3">
-                <Label>Dap an</Label>
+                <Label>Đáp án</Label>
                 {formData.options.map((option, idx) => (
                   <Input key={idx} value={option} onChange={(e) => handleOptionChange(idx, e.target.value)} placeholder={`Lua chon ${idx + 1}`} />
                 ))}
               </div>
 
               <div className="space-y-2 mt-3">
-                <Label>Dap an dung</Label>
+                <Label>Đáp án đúng</Label>
                 <Input
                   value={formData.correctAnswer}
                   onChange={(e) => setFormData((prev) => ({ ...prev, correctAnswer: e.target.value }))}
@@ -361,7 +361,7 @@ export default function QuestionBank() {
               </div>
 
               <div className="space-y-2 mt-3">
-                <Label>Giai thich</Label>
+                <Label>Giải thích</Label>
                 <Textarea
                   rows={2}
                   value={formData.explanation}
@@ -372,10 +372,10 @@ export default function QuestionBank() {
               <div className="flex gap-2 pt-4 border-t mt-4">
                 <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleSaveQuestion} disabled={saving}>
                   {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Luu cau hoi
+                  Lưu câu hỏi
                 </Button>
                 <Button variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>
-                  Huy
+                  Hủy
                 </Button>
               </div>
             </DialogContent>
@@ -384,32 +384,32 @@ export default function QuestionBank() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Tim kiem & Loc</CardTitle>
+            <CardTitle>Tìm kiếm & lọc</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2 md:col-span-2">
-                <Label>Tu khoa</Label>
+                <Label>Từ khóa</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                  <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" placeholder="Tim noi dung..." />
+                  <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" placeholder="Tìm nội dung..." />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Do kho</Label>
+                <Label>Độ khó</Label>
                 <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tat ca</SelectItem>
-                    <SelectItem value="EASY">De</SelectItem>
-                    <SelectItem value="MEDIUM">Trung binh</SelectItem>
-                    <SelectItem value="HARD">Kho</SelectItem>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="EASY">Dễ</SelectItem>
+                    <SelectItem value="MEDIUM">Trung bình</SelectItem>
+                    <SelectItem value="HARD">Khó</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-end">
                 <Button variant="outline" className="w-full" onClick={fetchQuestions}>
-                  Tai lai
+                  Tải lại
                 </Button>
               </div>
             </div>
@@ -424,15 +424,15 @@ export default function QuestionBank() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Danh sach cau hoi ({filteredQuestions.length})</CardTitle>
+            <CardTitle>Danh sách câu hỏi ({filteredQuestions.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="py-10 flex items-center justify-center text-gray-500">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Dang tai...
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải...
               </div>
             ) : filteredQuestions.length === 0 ? (
-              <p className="py-10 text-center text-gray-500">Khong co cau hoi nao</p>
+              <p className="py-10 text-center text-gray-500">Không có câu hỏi nào</p>
             ) : (
               <div className="space-y-3">
                 {filteredQuestions.map((question) => (
@@ -462,7 +462,7 @@ export default function QuestionBank() {
           <Dialog open={!!selectedQuestion} onOpenChange={() => setSelectedQuestion(null)}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Chi tiet cau hoi</DialogTitle>
+                <DialogTitle>Chi tiết câu hỏi</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="flex gap-2">
@@ -471,12 +471,12 @@ export default function QuestionBank() {
                   <Badge className={getDifficultyColor(selectedQuestion.difficultyLevel)}>{selectedQuestion.difficultyLevel}</Badge>
                 </div>
                 <div>
-                  <Label className="font-semibold">Cau hoi</Label>
+                  <Label className="font-semibold">Câu hỏi</Label>
                   <p className="mt-2 p-3 bg-gray-50 border rounded">{selectedQuestion.content}</p>
                 </div>
                 {Array.isArray(selectedQuestion.options) && (
                   <div>
-                    <Label className="font-semibold">Lua chon</Label>
+                    <Label className="font-semibold">Lựa chọn</Label>
                     <div className="mt-2 space-y-2">
                       {selectedQuestion.options.map((option: string, index: number) => {
                         const isCorrect = option.trim().toLowerCase() === String(selectedQuestion.correctAnswer || '').trim().toLowerCase();
@@ -491,7 +491,7 @@ export default function QuestionBank() {
                 )}
                 {selectedQuestion.explanation ? (
                   <div>
-                    <Label className="font-semibold">Giai thich</Label>
+                    <Label className="font-semibold">Giải thích</Label>
                     <p className="mt-2 p-3 bg-orange-50 border border-orange-100 rounded">{selectedQuestion.explanation}</p>
                   </div>
                 ) : null}

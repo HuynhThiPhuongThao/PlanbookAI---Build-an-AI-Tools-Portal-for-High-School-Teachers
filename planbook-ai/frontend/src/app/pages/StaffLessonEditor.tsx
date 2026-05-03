@@ -303,7 +303,7 @@ export default function StaffLessonEditor() {
   const handleAI = async () => {
     const topicObj = topics.find(t => String(t.id) === selectedTopic);
     const subjectObj = subjects.find(s => String(s.id) === selectedSubject);
-    if (!topicObj) { showToast('Vui lòng chọn bài (Topic) trước!', 'err'); return; }
+    if (!topicObj) { showToast('Vui lòng chọn bài học trước!', 'err'); return; }
     setIsGenerating(true);
     try {
       const res: any = await aiGenerateLessonPlan({
@@ -324,7 +324,7 @@ export default function StaffLessonEditor() {
       if (!title) setTitle(`Giáo án mẫu: ${topicObj.title || topicObj.name}`);
       showToast('AI đã sinh nội dung! Kiểm tra và chỉnh sửa trước khi lưu.', 'ok');
     } catch (e: any) {
-      showToast('AI đang bận — thử lại sau hoặc nhập tay nha!', 'err');
+      showToast('AI đang bận — vui lòng thử lại sau hoặc tự soạn giáo án!', 'err');
     } finally {
       setIsGenerating(false);
     }
@@ -334,11 +334,11 @@ export default function StaffLessonEditor() {
   // ---- Save draft (CREATE hoặc UPDATE tuỳ mode) ----
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
-      showToast('Điền tiêu đề và nội dung trước đã!', 'err'); return;
+      showToast('Vui lòng điền tiêu đề và nội dung trước!', 'err'); return;
     }
     // Khi tạo mới bắt buộc phải chọn topic
     if (!isEditMode && !selectedTopic) {
-      showToast('Chọn bài (Topic) để gán giáo án!', 'err'); return;
+      showToast('Chọn bài học để tạo giáo án!', 'err'); return;
     }
     setIsSaving(true);
     try {
@@ -364,7 +364,7 @@ export default function StaffLessonEditor() {
       navigate('/staff', {
         state: {
           savedPlanId,
-          notice: 'Đã lưu giáo án vào trang lưu trữ. Bạn có thể gửi Manager duyệt tại danh sách.',
+          notice: 'Đã lưu giáo án vào trang lưu trữ. Bạn có thể gửi Manager (Quản lý) duyệt tại danh sách.',
         },
       });
     } catch {
@@ -376,7 +376,7 @@ export default function StaffLessonEditor() {
 
   const handleDeleteMyPlan = async (event: React.MouseEvent, planId: number) => {
     event.stopPropagation();
-    const ok = window.confirm('Xóa giáo án mẫu này khỏi danh sách của bạn?');
+    const ok = window.confirm('Xóa mẫu giáo án này khỏi danh sách của bạn?');
     if (!ok) return;
 
     try {
@@ -417,7 +417,7 @@ export default function StaffLessonEditor() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold text-gray-900">
-                {isEditMode ? 'Chỉnh Sửa Giáo Án' : 'Soạn Giáo Án Mẫu'}
+                {isEditMode ? 'Chỉnh sửa giáo án' : 'Soạn giáo án mẫu'}
               </h1>
               {isEditMode && (
                 <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
@@ -451,9 +451,9 @@ export default function StaffLessonEditor() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BookOpen className="w-4 h-4 text-blue-600" />
-                  Chọn Nội Dung
+                  Chọn nội dung
                 </CardTitle>
-                <CardDescription>Môn → Chương → Bài</CardDescription>
+                <CardDescription>Môn học (Hóa) → Chương → Bài học</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
 
@@ -508,7 +508,7 @@ export default function StaffLessonEditor() {
                     </div>
                     <Select value={selectedTopic} onValueChange={setSelectedTopic}>
                       <SelectTrigger id="select-topic">
-                        <SelectValue placeholder="Chọn bài..." />
+                        <SelectValue placeholder="Chọn bài học..." />
                       </SelectTrigger>
                       <SelectContent>
                         {topics.length === 0
@@ -567,10 +567,10 @@ export default function StaffLessonEditor() {
             <Card className="border-purple-200 bg-purple-50">
               <CardContent className="pt-4 space-y-3">
                 <p className="text-sm font-medium text-purple-800 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" /> Gọi AI Gemini gợi ý
+                  <Sparkles className="w-4 h-4" /> Gọi Gemini AI gợi ý
                 </p>
                 <p className="text-xs text-purple-700">
-                  AI sẽ tự động sinh nội dung giáo án theo bài học bạn đang chọn.
+                  AI sẽ tự động sinh nội dung giáo án theo bài học bạn chọn.
                 </p>
                 <Button
                   id="btn-ai-generate"
@@ -614,7 +614,7 @@ export default function StaffLessonEditor() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="w-4 h-4 text-blue-600" />
-                  Nội dung Giáo Án
+                  Nội dung giáo Án
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -650,7 +650,7 @@ export default function StaffLessonEditor() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Clock className="w-4 h-4 text-gray-500" />
-                  Giáo án do tôi tạo
+                  Giáo án của bạn
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -660,7 +660,7 @@ export default function StaffLessonEditor() {
                   </div>
                 ) : myPlans.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">
-                    Chưa có giáo án nào. Soạn giáo án đầu tiên đi!
+                    Chưa có giáo án. Hãy soạn giáo án đầu tiên nào!
                   </p>
                 ) : (
                   <div className="space-y-2">

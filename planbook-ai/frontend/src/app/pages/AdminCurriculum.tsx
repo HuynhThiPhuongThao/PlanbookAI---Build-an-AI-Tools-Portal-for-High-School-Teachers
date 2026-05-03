@@ -14,12 +14,12 @@ type Section = { title: string; fields: string[] };
 type Subject = { id: number; name: string };
 
 const DEFAULT_SECTIONS: Section[] = [
-  { title: 'I. Thong tin bai hoc', fields: ['Mon hoc', 'Lop', 'Chu de / Bai hoc', 'Thoi luong'] },
-  { title: 'II. Muc tieu bai hoc', fields: ['Kien thuc', 'Nang luc', 'Pham chat'] },
-  { title: 'III. Hoc lieu', fields: ['Giao vien chuan bi', 'Hoc sinh chuan bi'] },
-  { title: 'IV. Tien trinh day hoc', fields: ['Khoi dong', 'Hinh thanh kien thuc', 'Luyen tap', 'Van dung'] },
-  { title: 'V. Danh gia', fields: ['Cau hoi danh gia', 'Tieu chi', 'Hinh thuc'] },
-  { title: 'VI. Phu luc', fields: ['Phieu hoc tap', 'Bai tap', 'Dap an / Goi y'] },
+  { title: 'I. Thông tin bài học', fields: ['Môn học', 'Lớp', 'Chủ đề / Bài học', 'Thời lượng'] },
+  { title: 'II. Mục tiêu bài học', fields: ['Kiến thức', 'Năng lực', 'Phẩm chất'] },
+  { title: 'III. Hoc liệu', fields: ['Giáo viên chuẩn bị', 'Học sinh chuẩn bị'] },
+  { title: 'IV. Tiến trình dạy học', fields: ['Khởi động', 'Hình thành kiến thức', 'Luyện tập', 'Vận dụng'] },
+  { title: 'V. Đánh giá', fields: ['Câu hỏi đánh giá', 'Tiêu chí', 'Hình thức'] },
+  { title: 'VI. Phụ lục', fields: ['Phiếu học tập', 'Bài tập', 'Đáp án / Gợi ý'] },
 ];
 
 function getNameFromToken(): string {
@@ -69,7 +69,7 @@ function TemplateCard({ template, onDelete }: { template: any; onDelete: () => v
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            {expanded ? 'Thu gon' : 'Xem cau truc'}
+            {expanded ? 'Thu gọn' : 'Xem cấu trúc'}
           </Button>
           <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
             <Trash2 className="w-4 h-4" />
@@ -121,7 +121,7 @@ function CreateTemplateDialog({
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!name.trim()) return alert('Vui long nhap ten mau');
+    if (!name.trim()) return alert('Vui lòng nhập tên mẫu');
 
     setSaving(true);
     try {
@@ -140,7 +140,7 @@ function CreateTemplateDialog({
       setSubjectId('');
       setSections(DEFAULT_SECTIONS.map((s) => ({ ...s, fields: [...s.fields] })));
     } catch {
-      alert('Tao template that bai');
+      alert('Tạo khung chương trình thất bại');
     } finally {
       setSaving(false);
     }
@@ -172,23 +172,23 @@ function CreateTemplateDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Tao mau giao an moi</DialogTitle>
+          <DialogTitle>Tạo mẫu giáo án mới</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label>Ten mau</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Mau THPT Co Ban" />
+              <Label>Tên mẫu</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Mẫu THPT Cơ Bản" />
             </div>
             <div>
-              <Label>Cap hoc</Label>
+              <Label>Cấp học</Label>
               <Input value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} />
             </div>
           </div>
 
           <div>
-            <Label>Pham vi khung</Label>
+            <Label>Phạm vi khung</Label>
             <Select
               value={subjectId || '__shared'}
               onValueChange={(value) => setSubjectId(value === '__shared' ? '' : value)}
@@ -227,7 +227,7 @@ function CreateTemplateDialog({
                 ))}
                 <Button variant="ghost" size="sm" onClick={() => addField(secIdx)} className="text-purple-600">
                   <Plus className="w-3 h-3 mr-1" />
-                  Them muc
+                  Thêm mục
                 </Button>
               </div>
             </div>
@@ -239,7 +239,7 @@ function CreateTemplateDialog({
             Huy
           </Button>
           <Button onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
-            {saving ? 'Dang luu...' : 'Luu mau'}
+            {saving ? 'Đang lưu...' : 'Lưu mẫu'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -279,12 +279,12 @@ export default function AdminCurriculum() {
   }, []);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Xoa template nay?')) return;
+    if (!window.confirm('Xoá khung chương trình này?')) return;
     try {
       await api.deleteCurriculumTemplate(id);
       loadTemplates();
     } catch {
-      alert('Xoa that bai');
+      alert('Xóa thất bại');
     }
   };
 
@@ -292,26 +292,26 @@ export default function AdminCurriculum() {
     <DashboardLayout role="admin" userName={userName}>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Mau Giao An</h1>
-          <p className="text-gray-600">Admin tao khung, Staff dua vao do de soan giao an mau</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Mẫu Giáo Án</h1>
+          <p className="text-gray-600">Admin tạo khung, Staff đưa vào để soạn giáo án mẫu</p>
         </div>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Danh sach template</CardTitle>
-              <CardDescription>Template dang ACTIVE se duoc Staff nhin thay trong man hinh soan bai</CardDescription>
+              <CardTitle>Danh sách khung chương trình</CardTitle>
+              <CardDescription>Khung chương trình đang ACTIVE (hoạt động) sẽ được STAFF nhìn thấy trong màn hình soạn bài</CardDescription>
             </div>
             <Button onClick={() => setDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
               <FileText className="w-4 h-4 mr-2" />
-              Tao mau moi
+              Tạo mẫu mới
             </Button>
           </CardHeader>
           <CardContent>
             {templates.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>Chua co template nao</p>
+                <p>Chưa có khung chương trình nào</p>
               </div>
             ) : (
               <div className="space-y-3">

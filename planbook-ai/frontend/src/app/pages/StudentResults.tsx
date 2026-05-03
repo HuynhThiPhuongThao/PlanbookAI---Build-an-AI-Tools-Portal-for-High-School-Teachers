@@ -129,7 +129,7 @@ export default function StudentResults() {
 
   const handleExportReport = () => {
     const rows = [
-      ['Học sinh', 'Đề thi', 'Điểm', 'Tỷ lệ %', 'Đúng', 'Tổng câu', 'Sai câu', 'Nhận xét'],
+      ['Học sinh', 'Đề thi', 'Điểm', 'Tỷ lệ %', 'Số câu đúng', 'Tổng câu', 'Số câu sai', 'Nhận xét'],
       ...results.map((result) => [
         result.studentName || '',
         result.examTitle || '',
@@ -185,7 +185,7 @@ export default function StudentResults() {
                 </Select>
               </div>
               <Badge variant="outline" className="text-sm">
-                {results.length} kết quả
+                {results.length} Kết quả
               </Badge>
             </div>
           </CardContent>
@@ -310,9 +310,9 @@ export default function StudentResults() {
                           <div className="flex items-center gap-3">
                             <Badge className={getGrade(
                               grade === 'A' ? 95 :
-                              grade === 'B' ? 85 :
-                              grade === 'C' ? 75 :
-                              grade === 'D' ? 60 : 40,
+                                grade === 'B' ? 85 :
+                                  grade === 'C' ? 75 :
+                                    grade === 'D' ? 60 : 40,
                             ).color}>
                               Mức {grade}
                             </Badge>

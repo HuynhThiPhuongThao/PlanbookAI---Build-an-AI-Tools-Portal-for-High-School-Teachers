@@ -214,10 +214,10 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
 
   const getRoleDisplay = (roleOutput: string) => {
     const roleLabels: Record<string, string> = {
-      admin: 'Quan tri vien',
-      manager: 'Quan ly',
-      staff: 'Nhan vien',
-      teacher: 'Giao vien',
+      admin: 'Quản trị viên',
+      manager: 'Quản lý',
+      staff: 'Nhân viên',
+      teacher: 'Giáo viên',
     };
 
     if (!roleOutput) return '';
@@ -325,20 +325,20 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Tai khoan cua toi</DropdownMenuLabel>
+                  <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
-                    Ho so
+                    Hồ sơ
                   </DropdownMenuItem>
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
-                    Cai dat
+                    Cài đặt
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Dang xuat
+                    Đăng xuất
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

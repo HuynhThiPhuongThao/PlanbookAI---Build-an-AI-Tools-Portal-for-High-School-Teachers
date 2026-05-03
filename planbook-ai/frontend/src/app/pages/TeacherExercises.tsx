@@ -146,13 +146,13 @@ export default function TeacherExercises() {
               </Button>
             </Link>
             <div>
-              <h1 className="mb-2 text-3xl font-bold text-gray-900">Bài Tập Của Tôi</h1>
+              <h1 className="mb-2 text-3xl font-bold text-gray-900">Bài tập của tôi</h1>
               <p className="text-gray-600">Quản lý các bài tập bạn đã tạo hoặc lưu</p>
             </div>
           </div>
           <Link to="/exercise-creator">
             <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="mr-2 h-4 w-4" /> Tạo Bài Tập Mới
+              <Plus className="mr-2 h-4 w-4" /> Tạo bài tập mới
             </Button>
           </Link>
         </div>
@@ -167,7 +167,7 @@ export default function TeacherExercises() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
-              Danh sách Bài Tập
+              Danh sách bài tập
             </CardTitle>
             <CardDescription>Hiển thị tất cả bài tập bạn đang sở hữu</CardDescription>
           </CardHeader>
@@ -180,7 +180,7 @@ export default function TeacherExercises() {
               <div className="py-10 text-center text-gray-500">
                 <FileText className="mx-auto mb-3 h-12 w-12 text-gray-300" />
                 <p className="font-medium">Chưa có bài tập nào.</p>
-                <p className="mt-1 text-sm">Hãy bấm "Tạo Bài Tập Mới" để bắt đầu.</p>
+                <p className="mt-1 text-sm">Hãy bấm "Tạo bài tập mới" để bắt đầu.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
