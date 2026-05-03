@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -54,10 +54,12 @@ function buildExamExportHtml(exam: examApi.ExamItem) {
 export default function TeacherExams() {
   const userName = getFullNameFromToken();
   const navigate = useNavigate();
+  const location = useLocation();
   const [items, setItems] = useState<examApi.ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [notice, setNotice] = useState('');
 
   const loadItems = async () => {
     setLoading(true);
@@ -75,7 +77,19 @@ export default function TeacherExams() {
 
   useEffect(() => {
     void loadItems();
+
+    const routeNotice = (location.state as { notice?: string } | null)?.notice;
+    if (routeNotice) {
+      setNotice(routeNotice);
+      navigate(location.pathname, { replace: true, state: null });
+    }
   }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(''), 3500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const handleDelete = async (id: number) => {
     setDeletingId(id);
@@ -123,6 +137,12 @@ export default function TeacherExams() {
             </Button>
           </Link>
         </div>
+
+        {notice ? (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+            {notice}
+          </div>
+        ) : null}
 
         <Card>
           <CardHeader>

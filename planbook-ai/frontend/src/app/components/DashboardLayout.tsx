@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { UserRole } from '../types';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import axiosClient from '../api/axiosClient';
+import axiosClient, { authStorage } from '../api/axiosClient';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,12 @@ type FirebaseToast = {
   title: string;
   body: string;
   type: FirebaseToastType;
+};
+
+type FirebaseNotificationItem = FirebaseToast & {
+  id: string;
+  receivedAt: string;
+  read: boolean;
 };
 
 const firebaseToastStyles: Record<FirebaseToastType, {
@@ -90,7 +96,9 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
   const [realRole, setRealRole] = React.useState(role);
   const [realAvatar, setRealAvatar] = React.useState<string | null>(null);
   const [firebaseToast, setFirebaseToast] = React.useState<FirebaseToast | null>(null);
+  const [notifications, setNotifications] = React.useState<FirebaseNotificationItem[]>([]);
   const firebaseToastTimer = React.useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const unreadNotificationCount = notifications.filter((item) => !item.read).length;
 
   React.useEffect(() => {
     // 1. Parse token for initial user info.
@@ -156,6 +164,15 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
           };
 
           setFirebaseToast(toast);
+          setNotifications((current) => [
+            {
+              ...toast,
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              receivedAt: new Date().toISOString(),
+              read: false,
+            },
+            ...current,
+          ].slice(0, 20));
           window.dispatchEvent(new CustomEvent('firebaseNotificationReceived', { detail: payload }));
 
           const audio = new Audio('/notification-sound.mp3');
@@ -175,7 +192,24 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
   }, []);
 
   const handleLogout = () => {
+    authStorage.clearTokens();
     navigate('/');
+  };
+
+  const markNotificationsAsRead = () => {
+    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
+
+  const formatNotificationTime = (value: string) => {
+    try {
+      return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
   };
 
   const getRoleDisplay = (roleOutput: string) => {
@@ -209,6 +243,67 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
 
             {/* User Menu */}
             <div className="flex items-center gap-4">
+              <DropdownMenu onOpenChange={(open) => open && markNotificationsAsRead()}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadNotificationCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                        {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                      </span>
+                    ) : null}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 p-0">
+                  <div className="flex items-center justify-between border-b px-3 py-2">
+                    <DropdownMenuLabel className="px-0 py-0">Thong bao</DropdownMenuLabel>
+                    {notifications.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={clearNotifications}
+                        className="rounded px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                      >
+                        Xoa het
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-500">
+                      Chua co thong bao nao.
+                    </div>
+                  ) : (
+                    <div className="max-h-96 overflow-y-auto p-2">
+                      {notifications.map((item) => {
+                        const cfg = firebaseToastStyles[item.type];
+                        const ItemIcon = cfg.Icon;
+                        return (
+                          <div key={item.id} className="rounded-lg p-3 hover:bg-gray-50">
+                            <div className="flex items-start gap-3">
+                              <div className={`mt-0.5 rounded-lg p-2 ${cfg.iconWrap}`}>
+                                <ItemIcon className={`h-4 w-4 ${cfg.iconColor}`} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${cfg.badge}`}>
+                                    {cfg.label}
+                                  </span>
+                                  <span className="shrink-0 text-[11px] text-gray-400">
+                                    {formatNotificationTime(item.receivedAt)}
+                                  </span>
+                                </div>
+                                <p className="mt-1 truncate text-sm font-semibold text-gray-900">{item.title}</p>
+                                <p className="mt-0.5 line-clamp-2 text-xs text-gray-600">{item.body}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-3">

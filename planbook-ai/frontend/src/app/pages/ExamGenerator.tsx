@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -36,6 +36,7 @@ function parseAnswerKey(answerKey: string) {
 
 export default function ExamGenerator() {
   const realName = getNameFromToken();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [chapters, setChapters] = useState<ChapterItem[]>([]);
@@ -182,6 +183,11 @@ export default function ExamGenerator() {
     try {
       await loadSavedExams();
       setSaveMsg(`Đề thi "${selectedExam.title}" đã nằm trong danh sách đề đã lưu.`);
+      navigate('/teacher/exams', {
+        state: {
+          notice: `Đã lưu đề thi "${selectedExam.title}" vào danh sách bài kiểm tra.`,
+        },
+      });
     } finally {
       setIsSavingExam(false);
     }

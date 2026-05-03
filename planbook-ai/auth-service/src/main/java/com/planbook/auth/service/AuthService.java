@@ -148,6 +148,11 @@ public class AuthService {
         User user = userRepository.findById(refreshToken.getUserId())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
+        if (!isUserProfileActive(user.getId())) {
+            refreshTokenRepository.delete(refreshToken);
+            throw new LockedException("Tài khoản đã bị khóa");
+        }
+
         // Xóa refresh token cũ, tạo mới (rotation để bảo mật)
         refreshTokenRepository.delete(refreshToken);
 

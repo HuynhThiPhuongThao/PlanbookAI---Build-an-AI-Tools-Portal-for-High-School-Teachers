@@ -10,6 +10,28 @@ const axiosClient = axios.create({
   timeout: 10000, // 10 seconds timeout
 });
 
+const ACCESS_TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
+
+export const authStorage = {
+  getAccessToken: () => localStorage.getItem(ACCESS_TOKEN_KEY),
+  getRefreshToken: () => localStorage.getItem(REFRESH_TOKEN_KEY),
+  saveTokens: (tokens: { accessToken?: string | null; refreshToken?: string | null }) => {
+    if (tokens.accessToken) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+    }
+    if (tokens.refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    } else if (tokens.refreshToken === null) {
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+    }
+  },
+  clearTokens: () => {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  },
+};
+
 const readErrorMessage = (payload: any) => {
   if (!payload) return '';
   if (typeof payload === 'string') return payload;
@@ -36,6 +58,54 @@ const saveAuthNotice = (notice: { type: 'locked' | 'expired'; title: string; mes
   }
 };
 
+const redirectToLogin = (sourceError?: any) => {
+  const message = readErrorMessage(sourceError?.response?.data);
+  const isLocked = isLockedAccountMessage(message);
+  saveAuthNotice({
+    type: isLocked ? 'locked' : 'expired',
+    title: isLocked ? 'TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a' : 'PhiÃªn Ä‘Äƒng nháº­p Ä‘Ã£ háº¿t háº¡n',
+    message: isLocked
+      ? 'TÃ i khoáº£n nÃ y Ä‘ang bá»‹ khÃ³a. Vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn Ä‘á»ƒ Ä‘Æ°á»£c má»Ÿ láº¡i.'
+      : 'Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i Ä‘á»ƒ tiáº¿p tá»¥c sá»­ dá»¥ng há»‡ thá»‘ng.',
+  });
+  authStorage.clearTokens();
+  window.location.href = '/';
+};
+
+let refreshPromise: Promise<string> | null = null;
+
+const refreshAccessToken = async () => {
+  const refreshToken = authStorage.getRefreshToken();
+  if (!refreshToken) {
+    throw new Error('Missing refresh token');
+  }
+
+  const response = await axios.post('/api/auth/refresh', { refreshToken }, {
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 10000,
+  });
+  const payload = response.data || {};
+  const accessToken = payload.token || payload.accessToken;
+  if (!accessToken) {
+    throw new Error('Refresh response missing access token');
+  }
+
+  authStorage.saveTokens({
+    accessToken,
+    refreshToken: payload.refreshToken || refreshToken,
+  });
+  return accessToken;
+};
+
+const getFreshAccessToken = () => {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+};
+
 // Interceptor: Trước khi gửi request đi
 axiosClient.interceptors.request.use((config) => {
   console.log(`[Axios] Sending ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
@@ -52,7 +122,7 @@ axiosClient.interceptors.request.use((config) => {
   }
 
   // Lấy token từ localStorage (sau khi login xong)
-  const token = localStorage.getItem('access_token');
+  const token = authStorage.getAccessToken();
   if (token) {
     // Nhét token vào Header Authorization để báo danh với BE
     config.headers.Authorization = `Bearer ${token}`;
@@ -72,7 +142,7 @@ axiosClient.interceptors.response.use((response) => {
     return response.data;
   }
   return response;
-}, (error) => {
+}, async (error) => {
   // Xử lý lỗi tập trung ở đây
   console.error('[Axios Response] Error:');
   console.error('  Code:', error.code);
@@ -84,19 +154,27 @@ axiosClient.interceptors.response.use((response) => {
     console.error("Token expired or unauthorized!");
     // Chỉ redirect nếu KHÔNG phải đang ở trang login rồi
     // Tránh vòng lặp: login 401 → redirect về / → lại gọi → 401 → ...
-    const isLoginRequest = error.config?.url?.includes('/auth/login');
-    if (!isLoginRequest) {
-      const message = readErrorMessage(error.response?.data);
-      const isLocked = isLockedAccountMessage(message);
-      saveAuthNotice({
-        type: isLocked ? 'locked' : 'expired',
-        title: isLocked ? 'Tài khoản đã bị khóa' : 'Phiên đăng nhập đã hết hạn',
-        message: isLocked
-          ? 'Tài khoản này đang bị khóa. Vui lòng liên hệ quản trị viên để được mở lại.'
-          : 'Vui lòng đăng nhập lại để tiếp tục sử dụng hệ thống.',
-      });
-      localStorage.removeItem('access_token');
-      window.location.href = '/';
+    const originalRequest: any = error.config || {};
+    const requestUrl = String(originalRequest.url || '');
+    const isLoginRequest = requestUrl.includes('/auth/login');
+    const isRefreshRequest = requestUrl.includes('/auth/refresh');
+    const message = readErrorMessage(error.response?.data);
+
+    if (!isLoginRequest && !isRefreshRequest && !isLockedAccountMessage(message) && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const newAccessToken = await getFreshAccessToken();
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return axiosClient(originalRequest);
+      } catch (refreshError) {
+        redirectToLogin(refreshError);
+        return Promise.reject(refreshError);
+      }
+    }
+
+    if (!isLoginRequest && !isRefreshRequest) {
+      redirectToLogin(error);
     }
   }
   return Promise.reject(error);

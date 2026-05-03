@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { AlertCircle, GraduationCap, Sparkles, Eye, EyeOff, X } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { authApi } from '../api/authApi';
+import { authStorage } from '../api/axiosClient';
 
 type LoginNotice = {
   type: 'locked' | 'expired';
@@ -68,12 +69,16 @@ export default function Login() {
       const response = await authApi.login({ email, password });
 
       const token = (response as any).token || (response as any).accessToken;
+      const refreshToken = (response as any).refreshToken;
       if (!token) {
         setErrorMsg('Đăng nhập thành công nhưng không tìm thấy token!');
         return;
       }
 
-      localStorage.setItem('access_token', token);
+      authStorage.saveTokens({
+        accessToken: token,
+        refreshToken: refreshToken || null,
+      });
 
       // Decode JWT để lấy role THẬT từ backend, không dựa vào dropdown nữa
       try {

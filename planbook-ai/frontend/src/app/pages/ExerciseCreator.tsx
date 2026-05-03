@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -171,6 +171,7 @@ function getCorrectLetter(question: ExerciseQuestion) {
 
 export default function ExerciseCreator() {
   const realName = getFullNameFromToken();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedExercise, setGeneratedExercise] = useState<GeneratedExercise | null>(null);
@@ -328,6 +329,11 @@ export default function ExerciseCreator() {
     setSaveMsg(`Đã lưu bài tập "${generatedExercise.title}" với ${generatedExercise.questions.length} câu.`);
     window.dispatchEvent(new CustomEvent('savedExercisesUpdated', { detail: { count: next.length } }));
     setIsSavingExercise(false);
+    navigate('/teacher/exercises', {
+      state: {
+        notice: `Đã lưu bài tập "${generatedExercise.title}" vào danh sách bài tập.`,
+      },
+    });
   };
 
   const handleDeleteSavedExercise = (id: string) => {
