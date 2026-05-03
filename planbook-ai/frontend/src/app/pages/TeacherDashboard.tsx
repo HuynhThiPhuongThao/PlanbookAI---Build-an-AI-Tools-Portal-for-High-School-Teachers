@@ -117,12 +117,12 @@ export default function TeacherDashboard() {
   ];
 
   const aiTools = [
-    { title: 'Giáo Án Của Tôi',           description: 'Quản lý các giáo án bạn đã tạo hoặc lưu',                   icon: BookOpen,      href: '/teacher/lesson-plans', color: 'bg-indigo-500' },
-    { title: 'Lập kế hoạch bài học AI',   description: 'Tạo giáo án toàn diện với sự hỗ trợ của AI',                icon: Sparkles,      href: '/lesson-planner',       color: 'bg-blue-500'   },
-    { title: 'Người tạo bài tập',          description: 'Tạo bài tập phù hợp với chương trình giảng dạy',            icon: ClipboardCheck, href: '/teacher/exercises',    color: 'bg-green-500'  },
-    { title: 'Trình tạo bài kiểm tra',     description: 'Tạo bài kiểm tra trắc nghiệm nhiều biến thể',              icon: FileText,      href: '/teacher/exams',         color: 'bg-purple-500' },
+    { title: 'Giáo án của tôi',           description: 'Quản lý các giáo án bạn đã tạo hoặc lưu',                   icon: BookOpen,      href: '/teacher/lesson-plans', color: 'bg-indigo-500' },
+    { title: 'AI lập kế hoạch bài học',   description: 'Tạo giáo án toàn diện với sự hỗ trợ của AI',                icon: Sparkles,      href: '/lesson-planner',       color: 'bg-blue-500'   },
+    { title: 'Tạo bài tập',          description: 'Tạo bài tập phù hợp với chương trình giảng dạy',            icon: ClipboardCheck, href: '/teacher/exercises',    color: 'bg-green-500'  },
+    { title: 'Tạo bài kiểm tra',     description: 'Tạo bài kiểm tra trắc nghiệm nhiều biến thể',              icon: FileText,      href: '/teacher/exams',         color: 'bg-purple-500' },
     { title: 'Chấm điểm OCR',              description: 'Tự động chấm điểm bài làm bằng AI nhận dạng hình ảnh',    icon: ScanLine,      href: '/ocr-grading',          color: 'bg-orange-500' },
-    { title: 'Kết quả học sinh',            description: 'Xem phân tích và theo dõi tiến độ học sinh',               icon: BarChart3,     href: '/student-results',      color: 'bg-cyan-500'   },
+    { title: 'Kết quả của học sinh',            description: 'Xem phân tích và theo dõi tiến độ học sinh',               icon: BarChart3,     href: '/student-results',      color: 'bg-cyan-500'   },
     { title: 'Gói dịch vụ',                 description: 'Đăng ký gói và theo dõi trạng thái sử dụng của tài khoản', icon: CreditCard,    href: '/teacher/packages',     color: 'bg-amber-500'  },
   ];
 
@@ -134,7 +134,7 @@ export default function TeacherDashboard() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Chào mừng trở lại, {userName}! 👋
           </h1>
-          <p className="text-gray-600">Đây là những gì đang xảy ra với các lớp học của bạn ngày hôm nay</p>
+          <p className="text-gray-600">Dưới đây là tổng quan tình hình lớp học của bạn hôm nay</p>
         </div>
 
         {/* Stats */}
@@ -214,8 +214,8 @@ export default function TeacherDashboard() {
         {/* Recent Lesson Plans */}
         <Card>
           <CardHeader>
-            <CardTitle>Hoạt Động Gần Đây</CardTitle>
-            <CardDescription>Các giáo án bạn đã soạn gần nhất trên PlanbookAI</CardDescription>
+            <CardTitle>Hoạt động gần đây</CardTitle>
+            <CardDescription>Các giáo án bạn đã soạn gần nhất trên hệ thống PlanbookAI</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (

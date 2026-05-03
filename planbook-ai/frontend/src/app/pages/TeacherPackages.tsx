@@ -47,7 +47,7 @@ function getPackageFeatures(name: string) {
   switch (name.toLowerCase()) {
     case 'plus':
       return [
-        'Tạo giáo án AI tối đa 50 lần/tháng',
+        'Tạo giáo án AI tối đa 50 lần mỗi tháng',
         'Tạo đề thi và bài tập cơ bản',
         'Lưu trữ giáo án và đề thi đã tạo',
       ];
@@ -239,7 +239,7 @@ function PaymentModal({ pkg, onSuccess, onClose }: PaymentModalProps) {
     { label: 'Số tài khoản', value: '0329279225', field: 'acc' },
     { label: 'Chủ tài khoản', value: 'LE VAN KHOI', field: 'name' },
     { label: 'Số tiền demo', value: formatCurrency(DEMO_TRANSFER_AMOUNT), field: 'amount' },
-    { label: 'Nội dung CK ⚠️', value: transferNote,          field: 'note'   },
+    { label: 'Nội dung chuyển khoản ⚠️', value: transferNote,          field: 'note'   },
   ] : [];
 
   return (
@@ -338,7 +338,7 @@ function PaymentModal({ pkg, onSuccess, onClose }: PaymentModalProps) {
 
               {/* note */}
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-xs text-amber-800">
-                ⚠️ <strong>Nhập đúng nội dung CK: <span className="text-blue-700">{transferNote}</span></strong> — SePay dùng mã này để xác nhận đơn hàng tự động.
+                ⚠️ <strong>Nhập đúng nội dung chuyển khoản: <span className="text-blue-700">{transferNote}</span></strong> — SePay dùng mã này để xác nhận đơn hàng tự động.
               </div>
 
               <div className="flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-3 text-sm font-medium text-blue-700">

@@ -104,12 +104,12 @@ export default function AdminSystemConfig() {
       color: 'text-blue-600',
       bg: 'bg-blue-50',
       border: 'border-blue-100',
-      title: 'Cài đặt AI Engine',
-      desc: 'Điều chỉnh model và tham số sinh nội dung',
+      title: 'Cài đặt công cụ AI',
+      desc: 'Điều chỉnh hệ thống và tham số sinh nội dung',
       content: (
         <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Gemini Model</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Mô hình Gemini</label>
             <select
               value={config.aiModel}
               onChange={(e) => update('aiModel', e.target.value)}
@@ -123,7 +123,7 @@ export default function AdminSystemConfig() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Temperature: <span className="font-bold text-purple-600">{config.aiTemperature}</span>
+              Độ sáng tạo: <span className="font-bold text-purple-600">{config.aiTemperature}</span>
             </label>
             <input
               type="range"
@@ -143,10 +143,10 @@ export default function AdminSystemConfig() {
               onChange={(e) => update('aiMaxTokens', Number(e.target.value))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value={1024}>1,024 token</option>
-              <option value={2048}>2,048 token</option>
-              <option value={4096}>4,096 token</option>
-              <option value={8192}>8,192 token</option>
+              <option value={1024}>1,024 đơn vị từ</option>
+              <option value={2048}>2,048 đơn vị từ</option>
+              <option value={4096}>4,096 đơn vị từ</option>
+              <option value={8192}>8,192 đơn vị từ</option>
             </select>
           </div>
         </div>
@@ -164,14 +164,14 @@ export default function AdminSystemConfig() {
           <div className="flex items-center justify-between border-b border-gray-100 py-2">
             <div>
               <p className="text-sm font-medium text-gray-800">Cho phép giáo viên tự đăng ký</p>
-              <p className="text-xs text-gray-400">Tắt nếu chỉ muốn admin tạo tài khoản</p>
+              <p className="text-xs text-gray-400">Nếu bật, cho phép mọi giáo viên tự đăng ký mà không cần phê duyệt</p>
             </div>
             <Toggle checked={config.allowTeacherRegister} onChange={() => update('allowTeacherRegister', !config.allowTeacherRegister)} />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Giáo án AI tối đa / ngày: <span className="font-bold text-purple-600">{config.maxLessonPlansPerDay}</span>
+              Số giáo án AI tối đa mỗi ngày: <span className="font-bold text-purple-600">{config.maxLessonPlansPerDay}</span>
             </label>
             <input
               type="range"
@@ -186,7 +186,7 @@ export default function AdminSystemConfig() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Câu hỏi AI tối đa / ngày: <span className="font-bold text-purple-600">{config.maxQuestionsPerDay}</span>
+              Số câu hỏi AI tối đa mỗi ngày: <span className="font-bold text-purple-600">{config.maxQuestionsPerDay}</span>
             </label>
             <input
               type="range"
@@ -236,7 +236,7 @@ export default function AdminSystemConfig() {
       bg: 'bg-red-50',
       border: 'border-red-100',
       title: 'Bảo trì hệ thống',
-      desc: 'Bật tắt chế độ bảo trì',
+      desc: 'Bật/tắt chế độ bảo trì',
       content: (
         <div className="space-y-4">
           <div className="flex items-center justify-between py-3">
@@ -271,7 +271,7 @@ export default function AdminSystemConfig() {
               </Button>
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Cấu hình hệ thống</h1>
-            <p className="text-gray-600 mt-1">Dữ liệu cấu hình được lưu tập trung ở backend.</p>
+            <p className="text-gray-600 mt-1">Dữ liệu cấu hình được lưu tập trung ở máy chủ</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -281,7 +281,7 @@ export default function AdminSystemConfig() {
               </span>
             ) : null}
             <Button variant="outline" onClick={handleReset} className="gap-1.5" disabled={saving || loading}>
-              <RotateCcw className="w-4 h-4" /> Reset mặc định
+              <RotateCcw className="w-4 h-4" /> Đặt lại chế độ mặc định
             </Button>
             <Button onClick={handleSave} className="gap-1.5 bg-purple-600 text-white hover:bg-purple-700" disabled={saving || loading}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

@@ -110,7 +110,7 @@ export default function StaffPrompts() {
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Quản lý mẫu lời nhắc AI</h1>
                         <p className="text-gray-600 mt-2">
-                            Tạo, chỉnh sửa và xóa mẫu lời nhắc hướng dẫn AI sinh nội dung giáo dục.
+                            Tạo, chỉnh sửa và xóa mẫu lời nhắc hướng dẫn AI để sinh nội dung giáo dục.
                         </p>
                     </div>
                     <Button asChild variant="outline">

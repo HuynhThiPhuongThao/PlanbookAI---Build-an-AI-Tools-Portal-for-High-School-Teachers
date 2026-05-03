@@ -150,7 +150,7 @@ export default function Register() {
             <form onSubmit={handleRegister} className="space-y-4">
               {/* Full Name */}
               <div className="space-y-2">
-                <Label htmlFor="fullName">Họ và Tên *</Label>
+                <Label htmlFor="fullName">Họ và tên *</Label>
                 <Input
                   id="fullName"
                   type="text"
@@ -187,7 +187,7 @@ export default function Register() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="example@planbook.ai"
+                  placeholder="emailcuaban@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
@@ -208,7 +208,7 @@ export default function Register() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Ít nhất 6 ký tự"
+                    placeholder="Nhập mật khẩu ít nhất 6 ký tự"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
@@ -276,7 +276,7 @@ export default function Register() {
                 disabled={isLoading}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold h-10"
               >
-                {isLoading ? 'Đang đăng ký...' : 'Đăng Ký'}
+                {isLoading ? 'Đang đăng ký...' : 'Đăng ký'}
               </Button>
 
 
@@ -302,24 +302,24 @@ export default function Register() {
               🎓 Công cụ AI<br />cho Giáo viên<br />Hiệu Năng
             </h2>
             <p className="text-lg opacity-95 leading-relaxed">
-              Tiết kiệm thời gian lên kế hoạch bài học, tạo đề thi, và chấm điểm tự động.
-              Hãy để AI đảm nhận công việc nhàm chán để mày tập trung vào những điều quan trọng -
-              dạy học sinh hiệu quả.
+              Tiết kiệm thời gian lên kế hoạch bài học, tạo đề thi và chấm điểm tự động.
+              Hãy để AI đảm nhận công việc này để bạn có thể tập trung vào những điều quan trọng -
+              dạy học sinh hiệu quả hơn.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 hover:bg-white/20 transition">
               <div className="text-4xl font-black mb-2">90%</div>
-              <p className="text-sm font-medium opacity-90">Tiết kiệm<br />thời gian chấm</p>
+              <p className="text-sm font-medium opacity-90">Thời gian chấm<br />được tiết kiệm</p>
             </div>
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 hover:bg-white/20 transition">
               <div className="text-4xl font-black mb-2">1000+</div>
-              <p className="text-sm font-medium opacity-90">Câu hỏi<br />trong ngân hàng</p>
+              <p className="text-sm font-medium opacity-90">Câu hỏi<br />trong ngân hàng dữ liệu</p>
             </div>
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 hover:bg-white/20 transition">
               <div className="text-4xl font-black mb-2">50+</div>
-              <p className="text-sm font-medium opacity-90">Kế hoạch<br />bài học mẫu</p>
+              <p className="text-sm font-medium opacity-90">Kế hoạch<br />bài giảng mẫu</p>
             </div>
             <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 hover:bg-white/20 transition">
               <div className="text-4xl font-black mb-2">OCR</div>
@@ -330,9 +330,9 @@ export default function Register() {
           <div className="bg-white/10 backdrop-blur-md p-4 rounded-lg border border-white/20 text-sm">
             <p className="font-semibold mb-2">✨ Tính năng nổi bật:</p>
             <ul className="space-y-1 text-opacity-90 text-white">
-              <li>• Lập kế hoạch bài học tự động với AI Gemini</li>
-              <li>• Tạo đề thi & câu hỏi trong vài giây</li>
-              <li>• Chấm điểm bài tự luận bằng OCR + AI</li>
+              <li>• Lập kế hoạch bài giảng tự động với AI Gemini</li>
+              <li>• Tạo đề thi và câu hỏi trong vài giây</li>
+              <li>• Chấm điểm tự động trắc nghiệm bằng OCR + AI</li>
               <li>• Quản lý lớp học trực tuyến</li>
             </ul>
           </div>

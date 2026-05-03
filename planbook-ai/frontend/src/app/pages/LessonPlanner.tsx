@@ -142,10 +142,10 @@ function parsePlanContent(rawContent: string | undefined, fallback: Partial<Gene
       materials: Array.isArray(parsed.materials) ? parsed.materials : [],
       activities: Array.isArray(parsed.activities)
         ? parsed.activities.map((activity: any) => ({
-            time: typeof activity.time === 'number' ? `${activity.time} phút` : String(activity.time || ''),
-            activity: activity.activity || '',
-            description: activity.description || '',
-          }))
+          time: typeof activity.time === 'number' ? `${activity.time} phút` : String(activity.time || ''),
+          activity: activity.activity || '',
+          description: activity.description || '',
+        }))
         : [],
       assessment: parsed.assessment || '',
       homework: parsed.homework || '',
@@ -476,10 +476,10 @@ export default function LessonPlanner() {
         materials: [],
         activities: Array.isArray(response.activities)
           ? response.activities.map((activity: any) => ({
-              time: typeof activity.time === 'number' ? `${activity.time} phút` : String(activity.time || ''),
-              activity: activity.activity || '',
-              description: activity.description || '',
-            }))
+            time: typeof activity.time === 'number' ? `${activity.time} phút` : String(activity.time || ''),
+            activity: activity.activity || '',
+            description: activity.description || '',
+          }))
           : [],
         assessment: response.assessment || '',
         homework: response.homework || '',
@@ -621,7 +621,7 @@ export default function LessonPlanner() {
       </div>
 
       <div class="section">
-        <h2>V. Bài tập / dặn dò</h2>
+        <h2>V. Bài tập/Dặn dò</h2>
         <p>${escapeHtml(generatedPlan.homework || 'Chưa có nội dung bài tập.')}</p>
       </div>
 
@@ -817,7 +817,7 @@ export default function LessonPlanner() {
                 <Textarea
                   value={teacherNotes}
                   onChange={(event) => setTeacherNotes(event.target.value)}
-                  placeholder="Ví dụ: tập trung hoạt động nhóm, có câu hỏi kiểm tra nhanh cuối tiết..."
+                  placeholder="Ví dụ: Tập trung hoạt động nhóm, có câu hỏi kiểm tra nhanh cuối tiết..."
                   rows={4}
                 />
               </div>
@@ -983,7 +983,7 @@ export default function LessonPlanner() {
                   </div>
 
                   <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
-                    <h3 className="mb-2 text-lg font-bold text-gray-900">Bài tập / dặn dò</h3>
+                    <h3 className="mb-2 text-lg font-bold text-gray-900">Bài tập/Dặn dò</h3>
                     <p className="text-gray-900">{generatedPlan.homework || 'Chưa có nội dung bài tập.'}</p>
                   </div>
 

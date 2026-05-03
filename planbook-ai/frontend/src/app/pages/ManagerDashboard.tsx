@@ -96,8 +96,8 @@ const INITIAL_PACKAGES: ManagerPackage[] = [
     name: "Plus",
     price: 99000,
     duration: 30,
-    description: "Goi ca nhan cho giao vien muon su dung AI hang ngay",
-    features: ["Tao giao an AI 50 lan/thang", "Tao de thi va bai tap co ban", "Luu tru giao an va de thi da tao"],
+    description: "Gói cá nhân cho giáo viên muốn sử dụng AI hàng ngày",
+    features: ["Tạo giáo án AI 50 lần mỗi tháng", "ạo đề thi và bài tập cơ bản", "Lưu trữ giáo án và đề thi đã tạo"],
     usersCount: 128,
     isActive: true,
     highlight: false,
@@ -107,8 +107,8 @@ const INITIAL_PACKAGES: ManagerPackage[] = [
     name: "Team",
     price: 299000,
     duration: 30,
-    description: "Goi cho to chuyen mon hoac nhom giao vien",
-    features: ["Dung chung tai nguyen", "Quan ly thanh vien", "Chia se giao an va de thi", "Bao cao nhom"],
+    description: "Gói cho tổ chuyên môn hoặc nhóm giáo viên",
+    features: ["Dùng chung tài nguyên", "Quản lý thành viên", "Chia sẻ giáo án và đề thi", "Báo cáo nhóm"],
     usersCount: 42,
     isActive: true,
     highlight: true,
@@ -118,8 +118,8 @@ const INITIAL_PACKAGES: ManagerPackage[] = [
     name: "Pro",
     price: 499000,
     duration: 30,
-    description: "Goi nang cao cho giao vien can day du cong cu AI",
-    features: ["AI khong gioi han", "Cham diem OCR nang cao", "Bao cao hoc sinh", "Uu tien xu ly"],
+    description: "Gói nâng cao cho giáo viên cần sử dụng đầy đủ công cụ AI",
+    features: ["AI không giới hạn", "Chấm điểm OCR nâng cao", "Báo cáo học sinh", "Ưu tiên xử lý"],
     usersCount: 12,
     isActive: true,
     highlight: false,
@@ -127,14 +127,14 @@ const INITIAL_PACKAGES: ManagerPackage[] = [
 ];
 
 const RECENT_ORDERS: RecentOrder[] = [
-  { id: "ORD-2026-0421", subscriptionId: 0, user: "Nguyen Thi Lan", pkg: "Plus", amount: 99000, status: "SUCCESS" },
-  { id: "ORD-2026-0420", subscriptionId: 0, user: "Tran Van Minh", pkg: "Pro", amount: 499000, status: "SUCCESS" },
-  { id: "ORD-2026-0419", subscriptionId: 0, user: "Le Thi Hoa", pkg: "Team", amount: 299000, status: "SUCCESS" },
-  { id: "ORD-2026-0418", subscriptionId: 0, user: "Pham Duc Long", pkg: "Plus", amount: 99000, status: "PENDING" },
+  { id: "ORD-2026-0421", subscriptionId: 0, user: "Nguyễn Thị Lan", pkg: "Plus", amount: 99000, status: "SUCCESS" },
+  { id: "ORD-2026-0420", subscriptionId: 0, user: "Trần Văn Minh", pkg: "Pro", amount: 499000, status: "SUCCESS" },
+  { id: "ORD-2026-0419", subscriptionId: 0, user: "Lê Thị Hoa", pkg: "Team", amount: 299000, status: "SUCCESS" },
+  { id: "ORD-2026-0418", subscriptionId: 0, user: "Phạm Đức Long", pkg: "Plus", amount: 99000, status: "PENDING" },
 ];
 
 function formatCurrency(value: number) {
-  if (value === 0) return "Mien phi";
+  if (value === 0) return "Miễn phí";
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
 }
 
@@ -158,7 +158,7 @@ function StatusBadge({ status }: { status?: string }) {
   if (status === "APPROVED") {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
-        <CheckCircle className="w-3 h-3" /> Da duyet
+        <CheckCircle className="w-3 h-3" /> Đã duyệt
       </span>
     );
   }
@@ -166,21 +166,21 @@ function StatusBadge({ status }: { status?: string }) {
   if (status === "REJECTED") {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
-        <XCircle className="w-3 h-3" /> Tu choi
+        <XCircle className="w-3 h-3" /> Từ chối
       </span>
     );
   }
 
   return (
     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">
-      <Clock className="w-3 h-3" /> Cho duyet
+      <Clock className="w-3 h-3" /> Chờ duyệt
     </span>
   );
 }
 
 function formatLessonPlanContent(content?: string) {
   if (!content) {
-    return "Khong co noi dung chi tiet.";
+    return "Không có nội dung chi tiết.";
   }
 
   try {
@@ -196,25 +196,25 @@ function formatLessonPlanContent(content?: string) {
 
     const lines: string[] = [];
 
-    if (parsed.title) lines.push(`Tieu de: ${parsed.title}`);
-    if (parsed.topic) lines.push(`Bai hoc: ${parsed.topic}`);
-    if (parsed.grade) lines.push(`Khoi lop: ${parsed.grade}`);
+    if (parsed.title) lines.push(`Tiêu đề: ${parsed.title}`);
+    if (parsed.topic) lines.push(`Bài học: ${parsed.topic}`);
+    if (parsed.grade) lines.push(`Khối lớp: ${parsed.grade}`);
     if (parsed.duration || parsed.durationMinutes) {
-      lines.push(`Thoi luong: ${parsed.duration || parsed.durationMinutes} phut`);
+      lines.push(`Thời lượng: ${parsed.duration || parsed.durationMinutes} phút`);
     }
 
     if (Array.isArray(parsed.objectives) && parsed.objectives.length > 0) {
       lines.push("");
-      lines.push("Muc tieu:");
+      lines.push("Mục tiêu:");
       parsed.objectives.forEach((item: string, index: number) => lines.push(`${index + 1}. ${item}`));
     }
 
     if (Array.isArray(parsed.activities) && parsed.activities.length > 0) {
       lines.push("");
-      lines.push("Hoat dong day hoc:");
+      lines.push("Hoạt động dạy học:");
       parsed.activities.forEach((item: any, index: number) => {
-        const time = item?.time ? ` (${item.time} phut)` : "";
-        const name = item?.activity || item?.title || `Hoat dong ${index + 1}`;
+        const time = item?.time ? ` (${item.time} phút)` : "";
+        const name = item?.activity || item?.title || `Hoạt động ${index + 1}`;
         lines.push(`${index + 1}. ${name}${time}`);
         if (item?.description) {
           lines.push(`   ${item.description}`);
@@ -349,7 +349,7 @@ export default function ManagerDashboard() {
           rawStatus: order.status,
         })));
     } catch {
-      showPackageToast("Khong tai duoc du lieu goi cuoc, dang dung du lieu tam", "warn");
+      showPackageToast("Không tải được dữ liệu gói cước, đang sử dụng dữ liệu tạm", "warn");
     } finally {
       setLoadingPackages(false);
     }
@@ -367,7 +367,7 @@ export default function ManagerDashboard() {
           if (payload?.notification) {
             setFcmToast({ title: payload.notification.title, body: payload.notification.body });
             const audio = new Audio("/notification-sound.mp3");
-            audio.play().catch(() => {});
+            audio.play().catch(() => { });
             setTimeout(() => setFcmToast(null), 5000);
             fetchPending();
           }
@@ -390,7 +390,7 @@ export default function ManagerDashboard() {
       setHistoryLoaded(false);
       setSelectedPlan(null);
     } catch {
-      setActionMsg("Loi khi duyet");
+      setActionMsg("Lỗi khi duyệt");
     } finally {
       setIsSubmitting(false);
     }
@@ -406,7 +406,7 @@ export default function ManagerDashboard() {
       setHistoryLoaded(false);
       setSelectedPlan(null);
     } catch {
-      setActionMsg("Loi khi tu choi");
+      setActionMsg("Lỗi khi từ chối");
     } finally {
       setIsSubmitting(false);
     }
@@ -415,15 +415,15 @@ export default function ManagerDashboard() {
   const handleReviewPrompt = async (id: number, approved: boolean) => {
     try {
       if (approved) {
-        await promptApi.approve(id, "Duyet mau loi nhac");
+        await promptApi.approve(id, "Duyệt mẫu lời nhác");
       } else {
-        await promptApi.reject(id, "Noi dung prompt can chinh sua");
+        await promptApi.reject(id, "Nội dung prompt cần chỉnh sửa");
       }
-      setActionMsg(approved ? "Da duyet mau loi nhac" : "Da tu choi mau loi nhac");
+      setActionMsg(approved ? "Da duyet mau loi nhac" : "Đã từ chối mẫu lời nhác");
       setTimeout(() => setActionMsg(""), 3000);
       fetchPendingPrompts();
     } catch {
-      setActionMsg("Loi khi duyet mau loi nhac");
+      setActionMsg("Lỗi khi duyệt mẫu lời nhác");
       setTimeout(() => setActionMsg(""), 3000);
     }
   };
@@ -481,7 +481,7 @@ export default function ManagerDashboard() {
     if (!packageEditor) return;
     const normalizedName = packageEditor.pkg.name.trim();
     if (!normalizedName) {
-      showPackageToast("Ten goi khong duoc de trong", "error");
+      showPackageToast("Tên gói không được để trống", "error");
       return;
     }
 
@@ -492,7 +492,7 @@ export default function ManagerDashboard() {
         ...packageEditor.pkg,
         name: normalizedName,
         description: packageEditor.pkg.description.trim(),
-        features: cleanedFeatures.length > 0 ? cleanedFeatures : ["Chua co tinh nang"],
+        features: cleanedFeatures.length > 0 ? cleanedFeatures : ["Chưa có tính năng"],
       };
 
       const payload = {
@@ -509,11 +509,11 @@ export default function ManagerDashboard() {
         await axiosClient.put(`/packages/${normalizedPackage.id}`, payload);
       }
 
-      showPackageToast(packageEditor.isNew ? "Da tao goi moi" : "Da cap nhat goi");
+      showPackageToast(packageEditor.isNew ? "Đã tạo gói mới" : "Đã cập nhật gói");
       setPackageEditor(null);
       await fetchPackageData();
     } catch {
-      showPackageToast("Loi khi luu goi cuoc", "error");
+      showPackageToast("Lỗi khi lưu gói cước", "error");
     } finally {
       setPackageSaving(false);
     }
@@ -531,10 +531,10 @@ export default function ManagerDashboard() {
         description: target.description,
         active: !target.isActive,
       });
-      showPackageToast("Da cap nhat trang thai goi", "warn");
+      showPackageToast("Đã cập nhật trạng thái gói", "warn");
       await fetchPackageData();
     } catch {
-      showPackageToast("Loi khi cap nhat trang thai goi", "error");
+      showPackageToast("Lỗi khi cập nhật trạng thái gói", "error");
     }
   };
 
@@ -542,11 +542,11 @@ export default function ManagerDashboard() {
     if (!packageDeleteTarget) return;
     try {
       await axiosClient.delete(`/packages/${packageDeleteTarget.id}`);
-      showPackageToast(`Da tat goi ${packageDeleteTarget.name}`, "warn");
+      showPackageToast(`Đã tắt gói ${packageDeleteTarget.name}`, "warn");
       setPackageDeleteTarget(null);
       await fetchPackageData();
     } catch {
-      showPackageToast("Loi khi xoa goi", "error");
+      showPackageToast("Lỗi khi xóa gói", "error");
     }
   };
 
@@ -555,10 +555,10 @@ export default function ManagerDashboard() {
 
     try {
       await axiosClient.put(`/subscriptions/${subscriptionId}/${approved ? "approve" : "reject"}`);
-      showPackageToast(approved ? "Da kich hoat dang ky" : "Da tu choi dang ky", approved ? "success" : "warn");
+      showPackageToast(approved ? "Đã kích hoạt đăng ký" : "Đã từ chối đăng ký", approved ? "success" : "warn");
       await fetchPackageData();
     } catch {
-      showPackageToast("Loi khi xu ly dang ky", "error");
+      showPackageToast("Lỗi khi xử lý đăng ký", "error");
     }
   };
 
@@ -566,8 +566,8 @@ export default function ManagerDashboard() {
     <DashboardLayout role="manager" userName={realName}>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bang dieu khien Manager</h1>
-          <p className="text-gray-600">Quan ly goi cuoc, don hang va duyet noi dung</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bảng điều khiển Manager</h1>
+          <p className="text-gray-600">Quản lý gói cước, đơn hàng và duyệt nội dung</p>
         </div>
 
         {selectedPlan && (
@@ -577,8 +577,8 @@ export default function ManagerDashboard() {
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">{selectedPlan.title}</h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    {(selectedPlan.topic?.title || selectedPlan.topic?.name) && `Chu de: ${selectedPlan.topic?.title || selectedPlan.topic?.name} · `}
-                    Nguoi tao (Staff ID): {selectedPlan.staffId}
+                    {(selectedPlan.topic?.title || selectedPlan.topic?.name) && `Chủ đề: ${selectedPlan.topic?.title || selectedPlan.topic?.name} · `}
+                    Người tạo (Staff ID): {selectedPlan.staffId}
                   </p>
                 </div>
                 <button
@@ -591,7 +591,7 @@ export default function ManagerDashboard() {
 
               <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
                 <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                  <h3 className="font-semibold text-gray-800 border-b pb-3 mb-4">Noi dung giao an</h3>
+                  <h3 className="font-semibold text-gray-800 border-b pb-3 mb-4">Nội dung giáo án</h3>
                   <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
                     {formatLessonPlanContent(selectedPlan.content)}
                   </pre>
@@ -600,7 +600,7 @@ export default function ManagerDashboard() {
 
               <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-end gap-3">
                 <Button variant="outline" onClick={() => setSelectedPlan(null)} disabled={isSubmitting}>
-                  Dong
+                  Đóng
                 </Button>
                 <Button
                   variant="outline"
@@ -628,7 +628,7 @@ export default function ManagerDashboard() {
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center">
             <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-gray-900">{packageEditor.isNew ? "Tao goi moi" : "Cap nhat goi"}</h2>
+                <h2 className="text-lg font-bold text-gray-900">{packageEditor.isNew ? "Tạo gói mới" : "Cập nhật gói"}</h2>
                 <button className="p-2 rounded-md hover:bg-gray-100 text-gray-500" onClick={() => setPackageEditor(null)}>
                   <X className="w-4 h-4" />
                 </button>
@@ -637,7 +637,7 @@ export default function ManagerDashboard() {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ten goi</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tên gói</label>
                     <input
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       value={packageEditor.pkg.name}
@@ -646,7 +646,7 @@ export default function ManagerDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gia (VND / 30 ngay)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Giá (VND / 30 ngày)</label>
                     <input
                       type="number"
                       min={0}
@@ -658,20 +658,20 @@ export default function ManagerDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mo ta</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
                   <textarea
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px]"
                     value={packageEditor.pkg.description}
                     onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, description: e.target.value }))}
-                    placeholder="Mo ta ngan cho goi"
+                    placeholder="Mô tả ngắn cho gói"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-gray-700">Tinh nang</label>
+                    <label className="block text-sm font-medium text-gray-700">Tính năng</label>
                     <Button type="button" variant="outline" size="sm" onClick={addPackageFeature}>
-                      <Plus className="w-4 h-4 mr-1" /> Them dong
+                      <Plus className="w-4 h-4 mr-1" /> Thêm dòng
                     </Button>
                   </div>
                   {packageEditor.pkg.features.map((feature, index) => (
@@ -680,7 +680,7 @@ export default function ManagerDashboard() {
                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         value={feature}
                         onChange={(e) => updatePackageFeature(index, e.target.value)}
-                        placeholder="Nhap tinh nang"
+                        placeholder="Nhập tính năng"
                       />
                       <Button type="button" variant="outline" size="icon" onClick={() => removePackageFeature(index)}>
                         <X className="w-4 h-4" />
@@ -704,18 +704,18 @@ export default function ManagerDashboard() {
                       checked={packageEditor.pkg.isActive}
                       onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, isActive: e.target.checked }))}
                     />
-                    Dang kich hoat
+                    Đang kích hoạt
                   </label>
                 </div>
               </div>
 
               <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setPackageEditor(null)} disabled={packageSaving}>
-                  Huy
+                  Hủy
                 </Button>
                 <Button type="button" onClick={savePackage} disabled={packageSaving}>
                   {packageSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Luu goi
+                  Lưu gói
                 </Button>
               </div>
             </div>
@@ -725,16 +725,16 @@ export default function ManagerDashboard() {
         {packageDeleteTarget && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Xoa goi dang ky</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Xóa gói đăng ký</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Ban chac chan muon xoa goi <span className="font-semibold">{packageDeleteTarget.name}</span>?
+                Bạn chắc chắn muốn xóa gói <span className="font-semibold">{packageDeleteTarget.name}</span>?
               </p>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setPackageDeleteTarget(null)}>
-                  Huy
+                  Hủy
                 </Button>
                 <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={deletePackage}>
-                  Xoa
+                  Xóa
                 </Button>
               </div>
             </div>
@@ -745,13 +745,12 @@ export default function ManagerDashboard() {
 
         {packageToast && (
           <div
-            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm shadow-lg border ${
-              packageToast.type === "success"
+            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm shadow-lg border ${packageToast.type === "success"
                 ? "bg-green-50 text-green-700 border-green-200"
                 : packageToast.type === "warn"
                   ? "bg-amber-50 text-amber-700 border-amber-200"
                   : "bg-red-50 text-red-700 border-red-200"
-            }`}
+              }`}
           >
             {packageToast.msg}
           </div>
@@ -771,7 +770,7 @@ export default function ManagerDashboard() {
                 <Package className="w-8 h-8 text-purple-600" />
                 <span className="text-2xl font-bold text-purple-700">{loadingPackages ? "..." : activePackageCount}</span>
               </div>
-              <p className="text-sm text-gray-600">Goi dang kich hoat</p>
+              <p className="text-sm text-gray-600">Gói đang kích hoạt</p>
             </CardContent>
           </Card>
           <Card>
@@ -780,7 +779,7 @@ export default function ManagerDashboard() {
                 <ShoppingCart className="w-8 h-8 text-blue-600" />
                 <span className="text-2xl font-bold text-blue-700">{loadingPackages ? "..." : totalOrders}</span>
               </div>
-              <p className="text-sm text-gray-600">Don hang gan day</p>
+              <p className="text-sm text-gray-600">Đơn hàng gần đây</p>
             </CardContent>
           </Card>
           <Card>
@@ -789,7 +788,7 @@ export default function ManagerDashboard() {
                 <Clock className="w-8 h-8 text-orange-600" />
                 <span className="text-2xl font-bold text-orange-700">{loadingPending ? "..." : pendingPlans.length}</span>
               </div>
-              <p className="text-sm text-gray-600">Giao an cho duyet</p>
+              <p className="text-sm text-gray-600">Giáo án chờ duyệt</p>
             </CardContent>
           </Card>
         </div>
@@ -800,26 +799,25 @@ export default function ManagerDashboard() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <FileCheck className="w-5 h-5 text-orange-600" />
-                  Duyet giao an
+                  Duyệt giáo án
                 </CardTitle>
-                <CardDescription>Xem xet noi dung do staff gui len</CardDescription>
+                <CardDescription>Xem xét nội dung do staff gửi lên</CardDescription>
               </div>
               {!loadingPending && pendingPlans.length > 0 && activeTab === "pending" && (
-                <Badge className="bg-yellow-100 text-yellow-700">{pendingPlans.length} cho duyet</Badge>
+                <Badge className="bg-yellow-100 text-yellow-700">{pendingPlans.length} chờ duyệt</Badge>
               )}
             </div>
 
             <div className="flex gap-1 border-b border-gray-200">
               <button
                 onClick={() => setActiveTab("pending")}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-                  activeTab === "pending"
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${activeTab === "pending"
                     ? "border-orange-500 text-orange-600 bg-orange-50"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <Clock className="w-4 h-4" />
-                Cho duyet
+                Chờ duyệt
                 {!loadingPending && pendingPlans.length > 0 && (
                   <span className="ml-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {pendingPlans.length}
@@ -828,14 +826,13 @@ export default function ManagerDashboard() {
               </button>
               <button
                 onClick={() => setActiveTab("history")}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-                  activeTab === "history"
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${activeTab === "history"
                     ? "border-indigo-500 text-indigo-600 bg-indigo-50"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <History className="w-4 h-4" />
-                Lich su
+                Lịch sử
               </button>
             </div>
           </CardHeader>
@@ -844,12 +841,12 @@ export default function ManagerDashboard() {
             {activeTab === "pending" &&
               (loadingPending ? (
                 <div className="flex items-center justify-center py-10 text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Dang tai...
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải...
                 </div>
               ) : pendingPlans.length === 0 ? (
                 <div className="text-center py-10 text-gray-500">
                   <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Khong co giao an cho duyet</p>
+                  <p className="font-medium">Không có giáo án chờ duyệt</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -876,7 +873,7 @@ export default function ManagerDashboard() {
                           className="bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-0"
                           onClick={() => setSelectedPlan(plan)}
                         >
-                          <Eye className="w-4 h-4 mr-1" /> Xem va duyet
+                          <Eye className="w-4 h-4 mr-1" /> Xem và duyệt
                         </Button>
                       </div>
                     </div>
@@ -887,12 +884,12 @@ export default function ManagerDashboard() {
             {activeTab === "history" &&
               (loadingHistory ? (
                 <div className="flex items-center justify-center py-10 text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Dang tai lich su...
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải lịch sử...
                 </div>
               ) : historyPlans.length === 0 ? (
                 <div className="text-center py-10 text-gray-500">
                   <History className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">Chua co giao an da xu ly</p>
+                  <p className="font-medium">Chưa có giáo án đã xử lý</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -924,18 +921,18 @@ export default function ManagerDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Duyet mau loi nhac AI</CardTitle>
-            <CardDescription>Prompt do Staff tao hoac chinh sua truoc khi duoc dung cho Gemini</CardDescription>
+            <CardTitle>Duyệt mẫu lời nhạc AI</CardTitle>
+            <CardDescription>Prompt do Staff tạo hoặc chỉnh sửa trước khi được dùng cho Gemini</CardDescription>
           </CardHeader>
           <CardContent>
             {loadingPrompts ? (
               <div className="flex items-center justify-center py-10 text-gray-500">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Dang tai...
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Đang tải...
               </div>
             ) : pendingPrompts.length === 0 ? (
               <div className="text-center py-10 text-gray-500">
                 <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="font-medium">Khong co mau loi nhac cho duyet</p>
+                <p className="font-medium">Không có mẫu lời nhạc cho duyệt</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -954,7 +951,7 @@ export default function ManagerDashboard() {
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleReviewPrompt(prompt.id, true)}>
-                          Duyet
+                          Duyệt
                         </Button>
                         <Button
                           size="sm"
@@ -962,7 +959,7 @@ export default function ManagerDashboard() {
                           className="text-red-600 border-red-200 hover:bg-red-50"
                           onClick={() => handleReviewPrompt(prompt.id, false)}
                         >
-                          Tu choi
+                          Từ chối
                         </Button>
                       </div>
                     </div>
@@ -980,13 +977,13 @@ export default function ManagerDashboard() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Package className="w-5 h-5 text-indigo-600" />
-                    Quan ly goi cuoc
+                    Quản lý gói cước
                   </CardTitle>
-                  <CardDescription>Them, sua, bat/tat va xoa goi dang ky</CardDescription>
+                  <CardDescription>Thêm, sửa, bật/tắt và xóa gói đang ký</CardDescription>
                 </div>
                 <Button size="sm" onClick={openCreatePackage}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Tao goi
+                  Tạo gói
                 </Button>
               </div>
             </CardHeader>
@@ -998,12 +995,12 @@ export default function ManagerDashboard() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-gray-900">{pkg.name}</h3>
-                          {pkg.highlight ? <Badge className="bg-indigo-100 text-indigo-700">Noi bat</Badge> : null}
+                          {pkg.highlight ? <Badge className="bg-indigo-100 text-indigo-700">Nổi bật</Badge> : null}
                           <Badge className={pkg.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                            {pkg.isActive ? "Dang kich hoat" : "Tam tat"}
+                            {pkg.isActive ? "Đang kích hoạt" : "Tạm tắt"}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-500 mt-1">{pkg.description || "Khong co mo ta"}</p>
+                        <p className="text-sm text-gray-500 mt-1">{pkg.description || "Không có mô tả"}</p>
                         <p className="text-sm font-medium text-gray-700 mt-2">
                           {formatCurrency(pkg.price)} / {pkg.duration} ngay · {pkg.usersCount} user
                         </p>
@@ -1044,9 +1041,9 @@ export default function ManagerDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-blue-600" />
-                Don hang gan day
+                Đơn hàng gần đây
               </CardTitle>
-              <CardDescription>Danh sach giao dich moi nhat</CardDescription>
+              <CardDescription>Danh sách giao dịch mới nhất</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -1077,7 +1074,7 @@ export default function ManagerDashboard() {
                           className="h-8 bg-green-600 px-3 text-xs text-white hover:bg-green-700"
                           onClick={() => reviewSubscription(order.subscriptionId, true)}
                         >
-                          Duyet thanh toan
+                          Duyệt thanh toán
                         </Button>
                         <Button
                           size="sm"
@@ -1085,7 +1082,7 @@ export default function ManagerDashboard() {
                           className="h-8 px-3 text-xs text-red-600 border-red-200 hover:bg-red-50"
                           onClick={() => reviewSubscription(order.subscriptionId, false)}
                         >
-                          Tu choi
+                          Từ chối
                         </Button>
                       </div>
                     ) : null}

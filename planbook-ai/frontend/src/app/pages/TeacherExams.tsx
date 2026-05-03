@@ -113,13 +113,13 @@ export default function TeacherExams() {
               </Button>
             </Link>
             <div>
-              <h1 className="mb-2 text-3xl font-bold text-gray-900">Bài Kiểm Tra Của Tôi</h1>
+              <h1 className="mb-2 text-3xl font-bold text-gray-900">Bài kiểm tra của tôi</h1>
               <p className="text-gray-600">Quản lý các bài kiểm tra bạn đã tạo</p>
             </div>
           </div>
           <Link to="/exam-generator">
             <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="mr-2 h-4 w-4" /> Tạo Bài Kiểm Tra Mới
+              <Plus className="mr-2 h-4 w-4" /> Tạo bài kiểm tra mới
             </Button>
           </Link>
         </div>
@@ -145,7 +145,7 @@ export default function TeacherExams() {
               <div className="py-10 text-center text-gray-500">
                 <FileText className="mx-auto mb-3 h-12 w-12 text-gray-300" />
                 <p className="font-medium">Chưa có bài kiểm tra nào.</p>
-                <p className="mt-1 text-sm">Hãy bấm "Tạo Bài Kiểm Tra Mới" để bắt đầu.</p>
+                <p className="mt-1 text-sm">Hãy bấm "Tạo bài kiểm tra mới" để bắt đầu.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
