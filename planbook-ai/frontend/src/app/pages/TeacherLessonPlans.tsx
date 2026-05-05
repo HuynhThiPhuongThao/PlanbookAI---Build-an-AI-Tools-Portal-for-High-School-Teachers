@@ -12,6 +12,18 @@ function getNameFromToken(): string {
   return getFullNameFromToken();
 }
 
+function parsePlanContent(content: any) {
+  if (content && typeof content === 'object') return content;
+  if (typeof content !== 'string') return null;
+
+  try {
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function TeacherLessonPlans() {
   const userName = getNameFromToken();
   const [plans, setPlans] = useState<any[]>([]);
@@ -44,7 +56,7 @@ export default function TeacherLessonPlans() {
   };
 
   const getPlanBodyHtml = (plan: any) => {
-    const content = plan.content;
+    const content = parsePlanContent(plan.content);
     if (content && typeof content === 'object') {
       return `
         <h1>${escapeHtml(plan.title || content.title || 'Giáo án')}</h1>
@@ -65,7 +77,7 @@ export default function TeacherLessonPlans() {
       `;
     }
 
-    const rawContent = typeof content === 'string' ? content : JSON.stringify(content || '', null, 2);
+    const rawContent = typeof plan.content === 'string' ? plan.content : JSON.stringify(plan.content || '', null, 2);
     return `
       <h1>${escapeHtml(plan.title || 'Giáo án')}</h1>
       ${plan.topic?.title || plan.topic?.name ? `<p><strong>Bài học:</strong> ${escapeHtml(plan.topic?.title || plan.topic?.name)}</p>` : ''}

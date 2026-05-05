@@ -7,6 +7,7 @@ export interface PackageItem {
   durationDays: number;
   description?: string;
   active?: boolean;
+  highlight?: boolean;
 }
 
 export interface SubscriptionItem {

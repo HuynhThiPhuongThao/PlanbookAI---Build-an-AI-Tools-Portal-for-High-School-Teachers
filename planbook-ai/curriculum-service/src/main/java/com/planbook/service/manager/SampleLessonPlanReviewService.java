@@ -72,8 +72,8 @@ public class SampleLessonPlanReviewService {
             String staffFcmToken = restTemplate.getForObject(tokenUrl, String.class);
             if (staffFcmToken != null && !staffFcmToken.trim().isEmpty()) {
                 firebaseNotificationService.sendNotification(staffFcmToken,
-                    "[DA DUYET] Giao an cua ban",
-                    "Giao an da duoc duyet: " + updated.getTitle(),
+                    "[ĐÃ DUYỆT] Giáo án của bạn",
+                    "Giáo án đã được duyệt: " + updated.getTitle(),
                     com.planbook.service.FirebaseNotificationService.TYPE_CONTENT_APPROVED,
                     Map.of(
                             "lessonPlanId", String.valueOf(updated.getId()),
@@ -112,8 +112,8 @@ public class SampleLessonPlanReviewService {
             String staffFcmToken = restTemplate.getForObject(tokenUrl, String.class);
             if (staffFcmToken != null && !staffFcmToken.trim().isEmpty()) {
                 firebaseNotificationService.sendNotification(staffFcmToken,
-                    "[TU CHOI] Giao an can chinh sua",
-                    "Ly do: " + request.getReviewNote() + " - Bai: " + updated.getTitle(),
+                    "[TỪ CHỐI] Giáo án cần chỉnh sửa",
+                    "Lý do: " + request.getReviewNote() + " - Bài: " + updated.getTitle(),
                     com.planbook.service.FirebaseNotificationService.TYPE_CONTENT_REJECTED,
                     Map.of(
                             "lessonPlanId", String.valueOf(updated.getId()),

@@ -3,6 +3,7 @@ package com.planbook.dto.admin;
 public class SystemConfigPublicResponse {
     private Boolean allowTeacherRegister;
     private String systemBanner;
+    private String bannerAudience;
     private Boolean bannerEnabled;
     private Boolean maintenanceMode;
 
@@ -20,6 +21,14 @@ public class SystemConfigPublicResponse {
 
     public void setSystemBanner(String systemBanner) {
         this.systemBanner = systemBanner;
+    }
+
+    public String getBannerAudience() {
+        return bannerAudience;
+    }
+
+    public void setBannerAudience(String bannerAudience) {
+        this.bannerAudience = bannerAudience;
     }
 
     public Boolean getBannerEnabled() {

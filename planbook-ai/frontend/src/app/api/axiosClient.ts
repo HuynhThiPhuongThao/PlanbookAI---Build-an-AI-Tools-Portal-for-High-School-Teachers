@@ -1,7 +1,7 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
-// Gọi qua API GATEWAY (port 8080)
-// Gateway sẽ route đến services (auth: 8081, user: 8082, ...)
+// Gá»i qua API GATEWAY (port 8080)
+// Gateway sáº½ route Ä‘áº¿n services (auth: 8081, user: 8082, ...)
 const axiosClient = axios.create({
   baseURL: '/api',
   headers: {
@@ -41,16 +41,16 @@ const readErrorMessage = (payload: any) => {
 const isLockedAccountMessage = (message: string) => {
   const text = String(message || '').toLowerCase();
   return (
-    text.includes('khóa') ||
+    text.includes('khÃ³a') ||
     text.includes('khoa') ||
-    text.includes('vô hiệu') ||
+    text.includes('vÃ´ hiá»‡u') ||
     text.includes('vo hieu') ||
     text.includes('locked') ||
     text.includes('disabled')
   );
 };
 
-const saveAuthNotice = (notice: { type: 'locked' | 'expired'; title: string; message: string }) => {
+const saveAuthNotice = (notice: { type: 'locked' | 'expired' | 'maintenance'; title: string; message: string }) => {
   try {
     localStorage.setItem('auth_notice', JSON.stringify(notice));
   } catch {
@@ -60,18 +60,28 @@ const saveAuthNotice = (notice: { type: 'locked' | 'expired'; title: string; mes
 
 const redirectToLogin = (sourceError?: any) => {
   const message = readErrorMessage(sourceError?.response?.data);
+  const normalizedMessage = String(message || '').toLowerCase();
+  if (normalizedMessage.includes('bao tri') || normalizedMessage.includes('bảo trì')) {
+    saveAuthNotice({
+      type: 'maintenance',
+      title: 'Hệ thống đang bảo trì',
+      message: 'Hệ thống đang bảo trì. Giáo viên vui lòng quay lại sau.',
+    });
+    authStorage.clearTokens();
+    window.location.href = '/';
+    return;
+  }
   const isLocked = isLockedAccountMessage(message);
   saveAuthNotice({
     type: isLocked ? 'locked' : 'expired',
-    title: isLocked ? 'TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a' : 'PhiÃªn Ä‘Äƒng nháº­p Ä‘Ã£ háº¿t háº¡n',
+    title: isLocked ? 'Tài khoản đã bị khóa' : 'Phiên đăng nhập đã hết hạn',
     message: isLocked
-      ? 'TÃ i khoáº£n nÃ y Ä‘ang bá»‹ khÃ³a. Vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn Ä‘á»ƒ Ä‘Æ°á»£c má»Ÿ láº¡i.'
-      : 'Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i Ä‘á»ƒ tiáº¿p tá»¥c sá»­ dá»¥ng há»‡ thá»‘ng.',
+      ? 'Tài khoản này đang bị khóa. Vui lòng liên hệ quản trị viên để được mở lại.'
+      : 'Vui lòng đăng nhập lại để tiếp tục sử dụng hệ thống.',
   });
   authStorage.clearTokens();
   window.location.href = '/';
 };
-
 let refreshPromise: Promise<string> | null = null;
 
 const refreshAccessToken = async () => {
@@ -106,7 +116,7 @@ const getFreshAccessToken = () => {
   return refreshPromise;
 };
 
-// Interceptor: Trước khi gửi request đi
+// Interceptor: TrÆ°á»›c khi gá»­i request Ä‘i
 axiosClient.interceptors.request.use((config) => {
   console.log(`[Axios] Sending ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
 
@@ -121,10 +131,10 @@ axiosClient.interceptors.request.use((config) => {
     }
   }
 
-  // Lấy token từ localStorage (sau khi login xong)
+  // Láº¥y token tá»« localStorage (sau khi login xong)
   const token = authStorage.getAccessToken();
   if (token) {
-    // Nhét token vào Header Authorization để báo danh với BE
+    // NhÃ©t token vÃ o Header Authorization Ä‘á»ƒ bÃ¡o danh vá»›i BE
     config.headers.Authorization = `Bearer ${token}`;
     console.log('[Axios] Added Authorization header');
   }
@@ -134,16 +144,16 @@ axiosClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Interceptor: Sau khi nhận response từ BE về
+// Interceptor: Sau khi nháº­n response tá»« BE vá»
 axiosClient.interceptors.response.use((response) => {
   console.log('[Axios Response] Success:', response.status, response.data);
-  // Nếu request thành công, trả về data luôn cho gọn
+  // Náº¿u request thÃ nh cÃ´ng, tráº£ vá» data luÃ´n cho gá»n
   if (response && response.data) {
     return response.data;
   }
   return response;
 }, async (error) => {
-  // Xử lý lỗi tập trung ở đây
+  // Xá»­ lÃ½ lá»—i táº­p trung á»Ÿ Ä‘Ã¢y
   console.error('[Axios Response] Error:');
   console.error('  Code:', error.code);
   console.error('  Status:', error.response?.status);
@@ -152,8 +162,8 @@ axiosClient.interceptors.response.use((response) => {
 
   if (error.response && error.response.status === 401) {
     console.error("Token expired or unauthorized!");
-    // Chỉ redirect nếu KHÔNG phải đang ở trang login rồi
-    // Tránh vòng lặp: login 401 → redirect về / → lại gọi → 401 → ...
+    // Chá»‰ redirect náº¿u KHÃ”NG pháº£i Ä‘ang á»Ÿ trang login rá»“i
+    // TrÃ¡nh vÃ²ng láº·p: login 401 â†’ redirect vá» / â†’ láº¡i gá»i â†’ 401 â†’ ...
     const originalRequest: any = error.config || {};
     const requestUrl = String(originalRequest.url || '');
     const isLoginRequest = requestUrl.includes('/auth/login');

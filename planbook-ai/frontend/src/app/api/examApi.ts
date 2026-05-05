@@ -31,6 +31,11 @@ export interface CreateExamPayload {
   numVersions?: number;
 }
 
+export interface UpdateExamPayload {
+  title?: string;
+  questions?: ExamQuestion[];
+}
+
 export interface SubmissionResult {
   submissionId: number;
   studentName: string;
@@ -60,6 +65,9 @@ export const getExams = () => axiosClient.get('/exams') as unknown as Promise<Ex
 
 export const createExam = (payload: CreateExamPayload) =>
   axiosClient.post('/exams', payload) as unknown as Promise<ExamItem>;
+
+export const updateExam = (examId: number, payload: UpdateExamPayload) =>
+  axiosClient.put(`/exams/${examId}`, payload) as unknown as Promise<ExamItem>;
 
 export const deleteExam = (examId: number) =>
   axiosClient.delete(`/exams/${examId}`) as unknown as Promise<void>;

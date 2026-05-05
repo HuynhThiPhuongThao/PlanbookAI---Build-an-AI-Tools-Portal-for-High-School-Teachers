@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, ArrowLeft } from 'lucide-react';
 import * as api from '../api/curriculumApi';
 import { getFullNameFromToken } from '../utils/jwt';
 
@@ -20,6 +21,7 @@ function toList(value: any): any[] {
 }
 
 export default function StaffCurriculum() {
+  const navigate = useNavigate();
   const userName = getNameFromToken();
 
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -128,9 +130,16 @@ export default function StaffCurriculum() {
   return (
     <DashboardLayout role="staff" userName={userName}>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Cấu Trúc Môn Học</h1>
-          <p className="text-gray-600">Quản lý hệ thống Môn học – Chương – Bài học</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/staff')} className="gap-1">
+                <ArrowLeft className="w-4 h-4" /> Quay lại trang nhân viên
+              </Button>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Cấu Trúc Môn Học</h1>
+            <p className="text-gray-600">Quản lý hệ thống Môn học – Chương – Bài học</p>
+          </div>
         </div>
 
         <Card>

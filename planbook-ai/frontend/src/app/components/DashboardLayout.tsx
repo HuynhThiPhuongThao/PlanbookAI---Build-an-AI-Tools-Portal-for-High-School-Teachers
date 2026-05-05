@@ -20,7 +20,7 @@ interface DashboardLayoutProps {
   userName: string;
 }
 
-type FirebaseToastType = 'CONTENT_SUBMITTED' | 'CONTENT_APPROVED' | 'CONTENT_REJECTED' | 'GENERAL';
+type FirebaseToastType = 'CONTENT_SUBMITTED' | 'CONTENT_APPROVED' | 'CONTENT_REJECTED' | 'SYSTEM_CONFIG_UPDATED' | 'GENERAL';
 
 type FirebaseToast = {
   title: string;
@@ -37,6 +37,7 @@ type FirebaseNotificationItem = FirebaseToast & {
 type SystemPublicConfig = {
   allowTeacherRegister: boolean;
   systemBanner: string;
+  bannerAudience: 'ALL' | 'INTERNAL';
   bannerEnabled: boolean;
   maintenanceMode: boolean;
 };
@@ -50,7 +51,7 @@ const firebaseToastStyles: Record<FirebaseToastType, {
   Icon: React.ComponentType<{ className?: string }>;
 }> = {
   CONTENT_SUBMITTED: {
-    label: 'Can duyet',
+    label: 'Cần duyệt',
     border: 'border-l-amber-500',
     badge: 'bg-amber-100 text-amber-700',
     iconWrap: 'bg-amber-100',
@@ -58,7 +59,7 @@ const firebaseToastStyles: Record<FirebaseToastType, {
     Icon: Clock,
   },
   CONTENT_APPROVED: {
-    label: 'Da duyet',
+    label: 'Đã duyệt',
     border: 'border-l-green-500',
     badge: 'bg-green-100 text-green-700',
     iconWrap: 'bg-green-100',
@@ -66,7 +67,7 @@ const firebaseToastStyles: Record<FirebaseToastType, {
     Icon: CheckCircle,
   },
   CONTENT_REJECTED: {
-    label: 'Tu choi',
+    label: 'Từ chối',
     border: 'border-l-red-500',
     badge: 'bg-red-100 text-red-700',
     iconWrap: 'bg-red-100',
@@ -74,27 +75,40 @@ const firebaseToastStyles: Record<FirebaseToastType, {
     Icon: XCircle,
   },
   GENERAL: {
-    label: 'Thong bao',
+    label: 'Thông báo',
     border: 'border-l-blue-500',
     badge: 'bg-blue-100 text-blue-700',
     iconWrap: 'bg-blue-100',
     iconColor: 'text-blue-600',
     Icon: Bell,
   },
+  SYSTEM_CONFIG_UPDATED: {
+    label: 'Hệ thống',
+    border: 'border-l-amber-500',
+    badge: 'bg-amber-100 text-amber-700',
+    iconWrap: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    Icon: Bell,
+  },
 };
 
 function normalizeFirebaseToastType(type?: string): FirebaseToastType {
-  if (type === 'CONTENT_SUBMITTED' || type === 'CONTENT_APPROVED' || type === 'CONTENT_REJECTED') {
+  if (type === 'CONTENT_SUBMITTED' || type === 'CONTENT_APPROVED' || type === 'CONTENT_REJECTED' || type === 'SYSTEM_CONFIG_UPDATED') {
     return type;
   }
   return 'GENERAL';
 }
 
 function getFirebaseFallbackTitle(type: FirebaseToastType) {
-  if (type === 'CONTENT_SUBMITTED') return 'Co noi dung can duyet';
-  if (type === 'CONTENT_APPROVED') return 'Noi dung da duoc duyet';
-  if (type === 'CONTENT_REJECTED') return 'Noi dung bi tu choi';
-  return 'Thong bao PlanbookAI';
+  if (type === 'CONTENT_SUBMITTED') return 'Có nội dung cần duyệt';
+  if (type === 'CONTENT_APPROVED') return 'Nội dung đã được duyệt';
+  if (type === 'CONTENT_REJECTED') return 'Nội dung bị từ chối';
+  if (type === 'SYSTEM_CONFIG_UPDATED') return 'Thông báo hệ thống';
+  return 'Thông báo PlanbookAI';
+}
+
+function parseFirebaseBoolean(value: unknown) {
+  return String(value || '').toLowerCase() === 'true';
 }
 
 export default function DashboardLayout({ children, role, userName: defaultUserName }: DashboardLayoutProps) {
@@ -107,6 +121,11 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
   const [systemConfig, setSystemConfig] = React.useState<SystemPublicConfig | null>(null);
   const firebaseToastTimer = React.useRef<ReturnType<typeof window.setTimeout> | null>(null);
   const unreadNotificationCount = notifications.filter((item) => !item.read).length;
+  const shouldShowSystemBanner = Boolean(
+    systemConfig?.bannerEnabled &&
+    systemConfig.systemBanner?.trim() &&
+    (systemConfig.bannerAudience !== 'INTERNAL' || realRole !== 'teacher')
+  );
 
   React.useEffect(() => {
     // 1. Parse token for initial user info.
@@ -165,10 +184,26 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
 
         unsubscribeFirebase = listenForMessage((payload: any) => {
           const type = normalizeFirebaseToastType(payload?.data?.type);
+          if (type === 'SYSTEM_CONFIG_UPDATED') {
+            const nextConfig: SystemPublicConfig = {
+              allowTeacherRegister: parseFirebaseBoolean(payload?.data?.allowTeacherRegister ?? systemConfig?.allowTeacherRegister),
+              systemBanner: payload?.data?.systemBanner ?? systemConfig?.systemBanner ?? '',
+              bannerAudience: payload?.data?.bannerAudience === 'INTERNAL' ? 'INTERNAL' : 'ALL',
+              bannerEnabled: parseFirebaseBoolean(payload?.data?.bannerEnabled ?? systemConfig?.bannerEnabled),
+              maintenanceMode: parseFirebaseBoolean(payload?.data?.maintenanceMode ?? systemConfig?.maintenanceMode),
+            };
+            setSystemConfig(nextConfig);
+
+            const canSeeBanner = nextConfig.bannerAudience !== 'INTERNAL' || role !== 'teacher';
+            if (!nextConfig.bannerEnabled || !nextConfig.systemBanner.trim() || !canSeeBanner) {
+              window.dispatchEvent(new CustomEvent('firebaseNotificationReceived', { detail: payload }));
+              return;
+            }
+          }
           const toast: FirebaseToast = {
             type,
             title: payload?.notification?.title || getFirebaseFallbackTitle(type),
-            body: payload?.notification?.body || payload?.data?.lessonPlanTitle || 'Co thong bao moi tu PlanbookAI.',
+            body: payload?.notification?.body || payload?.data?.lessonPlanTitle || payload?.data?.promptTitle || 'Có thông báo mới từ PlanbookAI.',
           };
 
           setFirebaseToast(toast);
@@ -200,9 +235,25 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
   }, []);
 
   React.useEffect(() => {
-    axiosClient.get('/system-config/public')
-      .then((config: any) => setSystemConfig(config as SystemPublicConfig))
-      .catch(() => setSystemConfig(null));
+    let mounted = true;
+
+    const loadSystemConfig = () => {
+      axiosClient.get('/system-config/public')
+        .then((config: any) => {
+          if (mounted) setSystemConfig(config as SystemPublicConfig);
+        })
+        .catch(() => {
+          if (mounted) setSystemConfig(null);
+        });
+    };
+
+    loadSystemConfig();
+    const intervalId = window.setInterval(loadSystemConfig, 5000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -270,21 +321,21 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80 p-0">
                   <div className="flex items-center justify-between border-b px-3 py-2">
-                    <DropdownMenuLabel className="px-0 py-0">Thong bao</DropdownMenuLabel>
+                    <DropdownMenuLabel className="px-0 py-0">Thông báo</DropdownMenuLabel>
                     {notifications.length > 0 ? (
                       <button
                         type="button"
                         onClick={clearNotifications}
                         className="rounded px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
                       >
-                        Xoa het
+                        Xóa hết
                       </button>
                     ) : null}
                   </div>
 
                   {notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center text-sm text-gray-500">
-                      Chua co thong bao nao.
+                      Chưa có thông báo nào.
                     </div>
                   ) : (
                     <div className="max-h-96 overflow-y-auto p-2">
@@ -361,11 +412,15 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
         </div>
       </nav>
 
-      {systemConfig?.bannerEnabled && systemConfig.systemBanner?.trim() ? (
+      {shouldShowSystemBanner ? (
         <div className="border-b border-amber-200 bg-amber-50">
-          <div className="mx-auto flex max-w-7xl items-start gap-2 px-4 py-3 text-sm font-medium text-amber-800 sm:px-6 lg:px-8">
-            <Bell className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{systemConfig.systemBanner}</span>
+          <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-hidden px-4 py-3 text-sm font-medium text-amber-800 sm:px-6 lg:px-8">
+            <Bell className="h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+              <span className="inline-block min-w-full animate-system-banner pr-10">
+                {systemConfig?.systemBanner}
+              </span>
+            </div>
           </div>
         </div>
       ) : null}
@@ -399,7 +454,7 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
                 type="button"
                 onClick={() => setFirebaseToast(null)}
                 className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-                aria-label="Dong thong bao"
+                aria-label="Đóng thông báo"
               >
                 <XCircle className="h-4 w-4" />
               </button>

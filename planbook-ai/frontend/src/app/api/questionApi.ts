@@ -7,6 +7,7 @@ export interface QuestionParams {
   chapterId?: number;
   topicId?: number;
   difficultyLevel?: string;
+  status?: string;
   keyword?: string;
   page?: number;
   size?: number;

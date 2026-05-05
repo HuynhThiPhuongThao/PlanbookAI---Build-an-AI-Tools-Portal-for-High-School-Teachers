@@ -37,4 +37,6 @@ public class Package {
 
     @Column(nullable = false)
     private Boolean active = true;    // MANAGER có thể ẩn gói
+    @Column(nullable = false)
+    private Boolean highlight = false;
 }

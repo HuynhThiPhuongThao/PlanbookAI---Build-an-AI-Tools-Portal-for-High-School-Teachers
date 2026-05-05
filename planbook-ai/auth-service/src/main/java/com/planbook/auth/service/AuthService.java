@@ -137,6 +137,8 @@ public class AuthService {
             throw new LockedException("Tài khoản đã bị khóa");
         }
 
+        blockTeacherDuringMaintenance(user);
+
         return generateAuthResponse(user);
     }
 
@@ -161,6 +163,13 @@ public class AuthService {
         }
 
         // Xóa refresh token cũ, tạo mới (rotation để bảo mật)
+        try {
+            blockTeacherDuringMaintenance(user);
+        } catch (LockedException e) {
+            refreshTokenRepository.delete(refreshToken);
+            throw e;
+        }
+
         refreshTokenRepository.delete(refreshToken);
 
         return generateAuthResponse(user);
@@ -203,6 +212,24 @@ public class AuthService {
         } catch (Exception e) {
             log.warn("Không thể đọc cấu hình đăng ký giáo viên từ curriculum-service: {}", e.getMessage());
             return true;
+        }
+    }
+
+    private void blockTeacherDuringMaintenance(User user) {
+        if (user.getRole() == Role.TEACHER && isMaintenanceModeEnabled()) {
+            throw new LockedException("Hệ thống đang bảo trì. Giáo viên vui lòng quay lại sau.");
+        }
+    }
+
+    private boolean isMaintenanceModeEnabled() {
+        try {
+            String configUrl = curriculumServiceUrl + "/api/system-config/public";
+            Map<?, ?> config = restTemplate.getForObject(configUrl, Map.class);
+            Object maintenanceMode = config == null ? null : config.get("maintenanceMode");
+            return maintenanceMode != null && Boolean.parseBoolean(String.valueOf(maintenanceMode));
+        } catch (Exception e) {
+            log.warn("Khong the doc trang thai bao tri tu curriculum-service: {}", e.getMessage());
+            return false;
         }
     }
 

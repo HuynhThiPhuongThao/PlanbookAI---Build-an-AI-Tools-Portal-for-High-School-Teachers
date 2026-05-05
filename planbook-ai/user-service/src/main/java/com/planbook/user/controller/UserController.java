@@ -70,6 +70,16 @@ public class UserController {
     }
 
     // GET /api/users/internal/{userId}/active → Auth Service kiểm tra trước khi cấp token
+    @GetMapping("/internal/fcm-tokens")
+    public ResponseEntity<List<String>> getAllFcmTokensInternal() {
+        return ResponseEntity.ok(userService.getActiveFcmTokens());
+    }
+
+    @GetMapping("/internal/internal-users/fcm-tokens")
+    public ResponseEntity<List<String>> getInternalUserFcmTokensInternal() {
+        return ResponseEntity.ok(userService.getActiveInternalFcmTokens());
+    }
+
     @GetMapping("/internal/{userId}/active")
     public ResponseEntity<Map<String, Boolean>> isUserActiveInternal(@PathVariable Long userId) {
         return ResponseEntity.ok(Map.of("active", userService.isUserActive(userId)));

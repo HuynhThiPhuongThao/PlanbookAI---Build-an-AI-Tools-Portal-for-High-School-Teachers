@@ -37,6 +37,9 @@ public class SystemConfig {
     @Column(name = "system_banner", columnDefinition = "TEXT")
     private String systemBanner = "";
 
+    @Column(name = "banner_audience")
+    private String bannerAudience = "ALL";
+
     @Column(name = "banner_enabled")
     private Boolean bannerEnabled = false;
 
@@ -119,6 +122,14 @@ public class SystemConfig {
 
     public void setSystemBanner(String systemBanner) {
         this.systemBanner = systemBanner;
+    }
+
+    public String getBannerAudience() {
+        return bannerAudience;
+    }
+
+    public void setBannerAudience(String bannerAudience) {
+        this.bannerAudience = bannerAudience;
     }
 
     public Boolean getBannerEnabled() {

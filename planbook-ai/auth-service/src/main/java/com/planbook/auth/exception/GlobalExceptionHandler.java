@@ -16,19 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Global Exception Handler - Bắt tất cả exception và trả về JSON chuẩn.
- *
- * Thay vì để Spring trả về trang HTML lỗi mặc định,
- * tao trả về JSON format thống nhất để frontend dễ xử lý.
- *
- * Response format:
- * {
- *   "timestamp": "...",
- *   "status": 400,
- *   "error": "Bad Request",
- *   "message": "...",
- *   "path": (optional)
- * }
+ * Global Exception Handler - Bat tat ca exception va tra ve JSON chuan.
  */
 @RestControllerAdvice
 @Slf4j
@@ -62,18 +50,21 @@ public class GlobalExceptionHandler {
         ));
     }
 
-    // Tài khoản bị vô hiệu hóa
+    // Tai khoan bi vo hieu hoa hoac bi chan tam thoi.
     @ExceptionHandler({DisabledException.class, LockedException.class})
     public ResponseEntity<Map<String, Object>> handleDisabled(Exception ex) {
+        String message = ex.getMessage() == null || ex.getMessage().isBlank()
+                ? "Tài khoản đã bị khóa"
+                : ex.getMessage();
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                 "timestamp", LocalDateTime.now().toString(),
                 "status", 403,
                 "error", "Forbidden",
-                "message", "Tài khoản đã bị khóa"
+                "message", message
         ));
     }
 
-    // Business logic errors (ví dụ email đã tồn tại, refresh token hết hạn)
+    // Business logic errors.
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
         log.error("Runtime error: {}", ex.getMessage());

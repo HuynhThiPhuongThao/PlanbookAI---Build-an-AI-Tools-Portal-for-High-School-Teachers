@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from ai_service.app.dependencies import get_db
@@ -11,6 +11,10 @@ from ai_service.app.schemas.prompt_schema import (
     PromptReview,
     PromptUpdate,
 )
+from ai_service.app.services.firebase_notification_service import (
+    notify_managers_prompt_submitted,
+    notify_staff_prompt_reviewed,
+)
 
 router = APIRouter(prefix="/api/ai/prompts", tags=["Prompts"])
 
@@ -20,7 +24,8 @@ REJECTED = "REJECTED"
 
 
 @router.post("", response_model=PromptResponse, status_code=status.HTTP_201_CREATED)
-def create_prompt(payload: PromptCreate, db: Session = Depends(get_db)):
+def create_prompt(payload: PromptCreate, request: Request, db: Session = Depends(get_db)):
+    staff_id = request.headers.get("X-User-Id") or "staff"
     prompt = Prompt(
         name=payload.name,
         type=payload.type,
@@ -28,12 +33,13 @@ def create_prompt(payload: PromptCreate, db: Session = Depends(get_db)):
         version=_next_version(db, payload.name),
         is_active=False,
         approval_status=PENDING_REVIEW,
-        created_by="staff",
+        created_by=str(staff_id),
     )
 
     db.add(prompt)
     db.commit()
     db.refresh(prompt)
+    notify_managers_prompt_submitted(prompt.id, prompt.name)
     return prompt
 
 
@@ -67,7 +73,7 @@ def get_active_prompt(name: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{prompt_id}", response_model=PromptResponse)
-def update_prompt(prompt_id: int, payload: PromptUpdate, db: Session = Depends(get_db)):
+def update_prompt(prompt_id: int, payload: PromptUpdate, request: Request, db: Session = Depends(get_db)):
     prompt = _get_prompt_or_404(db, prompt_id)
     update_data = payload.model_dump(exclude_unset=True)
 
@@ -78,6 +84,7 @@ def update_prompt(prompt_id: int, payload: PromptUpdate, db: Session = Depends(g
         )
 
     if "content" in update_data:
+        staff_id = request.headers.get("X-User-Id") or prompt.created_by
         new_prompt = Prompt(
             name=prompt.name,
             type=prompt.type,
@@ -85,12 +92,13 @@ def update_prompt(prompt_id: int, payload: PromptUpdate, db: Session = Depends(g
             version=_next_version(db, prompt.name),
             is_active=False,
             approval_status=PENDING_REVIEW,
-            created_by=prompt.created_by,
-            updated_by="staff",
+            created_by=str(staff_id),
+            updated_by=str(staff_id),
         )
         db.add(new_prompt)
         db.commit()
         db.refresh(new_prompt)
+        notify_managers_prompt_submitted(new_prompt.id, new_prompt.name)
         return new_prompt
 
     if "is_active" in update_data and update_data["is_active"]:
@@ -108,6 +116,7 @@ def update_prompt(prompt_id: int, payload: PromptUpdate, db: Session = Depends(g
 
     db.commit()
     db.refresh(prompt)
+    notify_staff_prompt_reviewed(prompt.created_by, prompt.id, prompt.name, True, prompt.review_note or "")
     return prompt
 
 
@@ -128,6 +137,7 @@ def approve_prompt(prompt_id: int, payload: PromptReview | None = None, db: Sess
 
     db.commit()
     db.refresh(prompt)
+    notify_staff_prompt_reviewed(prompt.created_by, prompt.id, prompt.name, False, prompt.review_note or "")
     return prompt
 
 

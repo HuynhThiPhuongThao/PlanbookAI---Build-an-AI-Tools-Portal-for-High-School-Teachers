@@ -150,8 +150,8 @@ public class SampleLessonPlanService {
 
             firebaseNotificationService.sendNotificationToMany(
                     List.of(managerTokens),
-                    "[CAN DUYET] Giao an mau moi",
-                    "Staff vua gui duyet giao an: " + sampleLessonPlan.getTitle(),
+                    "[CẦN DUYỆT] Giáo án mẫu mới",
+                    "Staff vừa gửi duyệt giáo án: " + sampleLessonPlan.getTitle(),
                     com.planbook.service.FirebaseNotificationService.TYPE_CONTENT_SUBMITTED,
                     Map.of(
                             "lessonPlanId", String.valueOf(sampleLessonPlan.getId()),

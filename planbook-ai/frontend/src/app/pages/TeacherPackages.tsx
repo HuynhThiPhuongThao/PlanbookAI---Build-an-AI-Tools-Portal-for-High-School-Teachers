@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import {
   ArrowLeft, CheckCircle, CreditCard, Loader2, Package,
   ReceiptText, X, Copy, Check, Banknote, ShieldCheck, RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import * as packageApi from '../api/packageApi';
 import { getFullNameFromToken } from '../utils/jwt';
@@ -41,6 +42,10 @@ function getStatusLabel(status: string) {
 
 function isPaidPackage(pkg: packageApi.PackageItem) {
   return pkg.active !== false && pkg.name?.toLowerCase() !== 'free' && Number(pkg.price || 0) > 0;
+}
+
+function isHighlightedPackage(pkg: packageApi.PackageItem) {
+  return pkg.highlight === true;
 }
 
 function getPackageFeatures(name: string) {
@@ -524,17 +529,26 @@ export default function TeacherPackages() {
                           (s) => s.packageId === pkg.id && (s.status === 'ACTIVE' || s.status === 'PENDING'),
                         );
                         const features = getPackageFeatures(pkg.name);
+                        const highlighted = isHighlightedPackage(pkg);
                         return (
                           <div
                             key={pkg.id}
-                            className={`rounded-2xl border-2 p-5 transition-all ${
+                            className={`relative overflow-hidden rounded-2xl border-2 p-5 transition-all ${
                               subscribed
                                 ? 'border-green-300 bg-green-50'
-                                : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                                : highlighted
+                                  ? 'border-amber-300 bg-gradient-to-br from-amber-50 via-white to-purple-50 shadow-lg ring-2 ring-amber-100'
+                                  : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
                             }`}
                           >
+                            {highlighted && !subscribed ? (
+                              <div className="absolute right-4 top-4 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                                <Sparkles className="mr-1 inline h-3 w-3" />
+                                Nổi bật
+                              </div>
+                            ) : null}
                             <div className="mb-2 flex items-start justify-between gap-2">
-                              <div>
+                              <div className={highlighted && !subscribed ? 'pr-24' : ''}>
                                 <h3 className="text-lg font-bold text-gray-900">{pkg.name}</h3>
                                 <p className="text-sm text-gray-500">{pkg.description || 'Không có mô tả'}</p>
                               </div>
@@ -546,7 +560,9 @@ export default function TeacherPackages() {
                             </div>
 
                             <div className="mb-3">
-                              <span className="text-2xl font-bold text-purple-700">{formatCurrency(pkg.price)}</span>
+                              <span className={`text-2xl font-bold ${highlighted && !subscribed ? 'text-amber-700' : 'text-purple-700'}`}>
+                                {formatCurrency(pkg.price)}
+                              </span>
                               <span className="ml-1 text-sm text-gray-500">/ {pkg.durationDays} ngày</span>
                             </div>
 

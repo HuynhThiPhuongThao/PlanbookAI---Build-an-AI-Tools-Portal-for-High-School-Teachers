@@ -204,6 +204,9 @@ public class PackageServiceImpl implements PackageService {
         if (request.getActive() != null) {
             pkg.setActive(request.getActive());
         }
+        if (request.getHighlight() != null) {
+            pkg.setHighlight(request.getHighlight());
+        }
     }
 
     private PackageDto toDto(Package pkg) {
@@ -214,6 +217,7 @@ public class PackageServiceImpl implements PackageService {
         dto.setDurationDays(pkg.getDurationDays());
         dto.setDescription(pkg.getDescription());
         dto.setActive(pkg.getActive());
+        dto.setHighlight(pkg.getHighlight());
         return dto;
     }
 

@@ -15,6 +15,7 @@ interface SystemConfig {
   maxLessonPlansPerDay: number;
   maxQuestionsPerDay: number;
   systemBanner: string;
+  bannerAudience: 'ALL' | 'INTERNAL';
   bannerEnabled: boolean;
   maintenanceMode: boolean;
 }
@@ -27,6 +28,7 @@ const DEFAULT_CONFIG: SystemConfig = {
   maxLessonPlansPerDay: 10,
   maxQuestionsPerDay: 50,
   systemBanner: '',
+  bannerAudience: 'ALL',
   bannerEnabled: false,
   maintenanceMode: false,
 };
@@ -193,9 +195,37 @@ export default function AdminSystemConfig() {
             <textarea
               value={config.systemBanner}
               onChange={(e) => update('systemBanner', e.target.value)}
-              disabled={!config.bannerEnabled}
-              className="min-h-[80px] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 disabled:text-gray-400"
+              className="min-h-[80px] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Phạm vi hiển thị</label>
+            <select
+              value={config.bannerAudience}
+              onChange={(e) => update('bannerAudience', e.target.value as SystemConfig['bannerAudience'])}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="ALL">Tất cả vai trò</option>
+              <option value="INTERNAL">Chỉ nội bộ (Admin, Manager, Staff)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            {saved ? (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-green-600">
+                <CheckCircle2 className="h-4 w-4" /> Đã lưu thông báo
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="gap-1.5 bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Lưu thông báo
+            </Button>
           </div>
         </div>
       ),
@@ -290,13 +320,6 @@ export default function AdminSystemConfig() {
               ))}
             </div>
 
-            <Card className="border-dashed border-gray-300 bg-gray-50">
-              <CardContent className="pb-4 pt-4">
-                <p className="text-center text-xs text-gray-500">
-                  Cấu hình này đang được đọc/ghi qua API `GET/PUT /api/system-config` của `curriculum-service`.
-                </p>
-              </CardContent>
-            </Card>
           </>
         )}
       </div>

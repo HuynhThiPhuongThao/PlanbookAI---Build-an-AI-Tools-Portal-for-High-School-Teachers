@@ -297,9 +297,9 @@ export default function StaffDashboard() {
                           <FileText className="w-5 h-5 text-gray-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{plan.title || 'Giao an chua dat ten'}</p>
+                          <p className="font-semibold text-gray-900 truncate">{plan.title || 'Giáo án chưa đặt tên'}</p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {(plan.topic?.title || plan.topic?.name) && `Bai: ${plan.topic?.title || plan.topic?.name}`}
+                            {(plan.topic?.title || plan.topic?.name) && `Bài: ${plan.topic?.title || plan.topic?.name}`}
                             {plan.createdAt && ` · ${new Date(plan.createdAt).toLocaleDateString('vi-VN')}`}
                           </p>
                         </div>

@@ -15,6 +15,7 @@ public class FirebaseNotificationService {
     public static final String TYPE_CONTENT_SUBMITTED = "CONTENT_SUBMITTED";
     public static final String TYPE_CONTENT_APPROVED = "CONTENT_APPROVED";
     public static final String TYPE_CONTENT_REJECTED = "CONTENT_REJECTED";
+    public static final String TYPE_SYSTEM_CONFIG_UPDATED = "SYSTEM_CONFIG_UPDATED";
 
     public void sendNotification(String targetToken, String title, String body) {
         sendNotification(targetToken, title, body, "GENERAL", Map.of());

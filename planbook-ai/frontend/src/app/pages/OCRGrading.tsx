@@ -33,6 +33,18 @@ function scoreToPercent(score?: number) {
   return score ? Math.round((score / 10) * 100) : 0;
 }
 
+function formatFeedback(feedback?: string) {
+  const value = String(feedback || '').trim();
+  const wrongAnswerMatch = value.match(/^Dung\s+(\d+)\/(\d+)\s+cau\.\s+Sai cac cau:\s*(.+)\.$/i);
+  if (wrongAnswerMatch) {
+    return `Đúng ${wrongAnswerMatch[1]}/${wrongAnswerMatch[2]} câu. Sai các câu: ${wrongAnswerMatch[3]}.`;
+  }
+  if (/^Lam bai rat tot\. Khong co cau nao sai\.$/i.test(value)) {
+    return 'Làm bài rất tốt. Không có câu nào sai.';
+  }
+  return value;
+}
+
 function stringifyDetail(value: unknown): string | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') return value;
@@ -345,7 +357,7 @@ export default function OCRGrading() {
               </div>
               <div className="rounded-lg border bg-slate-50 p-4">
                 <div className="text-sm text-gray-500">Nhận xét</div>
-                <div className="text-sm font-medium text-gray-800">{lastSubmission.feedback}</div>
+                <div className="text-sm font-medium text-gray-800">{formatFeedback(lastSubmission.feedback)}</div>
               </div>
             </CardContent>
           </Card>
@@ -393,7 +405,7 @@ export default function OCRGrading() {
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div>
                         <p className="font-semibold text-gray-900">{result.studentName}</p>
-                        <p className="text-sm text-gray-500">{result.feedback}</p>
+                        <p className="text-sm text-gray-500">{formatFeedback(result.feedback)}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <Badge className="bg-blue-100 text-blue-700">{scoreToPercent(result.score)}%</Badge>

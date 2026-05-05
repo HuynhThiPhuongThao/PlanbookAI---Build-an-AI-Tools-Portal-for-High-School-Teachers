@@ -10,6 +10,7 @@ public class SystemConfigResponse {
     private Integer maxLessonPlansPerDay;
     private Integer maxQuestionsPerDay;
     private String systemBanner;
+    private String bannerAudience;
     private Boolean bannerEnabled;
     private Boolean maintenanceMode;
     private Long updatedBy;
@@ -69,6 +70,14 @@ public class SystemConfigResponse {
 
     public void setSystemBanner(String systemBanner) {
         this.systemBanner = systemBanner;
+    }
+
+    public String getBannerAudience() {
+        return bannerAudience;
+    }
+
+    public void setBannerAudience(String bannerAudience) {
+        this.bannerAudience = bannerAudience;
     }
 
     public Boolean getBannerEnabled() {

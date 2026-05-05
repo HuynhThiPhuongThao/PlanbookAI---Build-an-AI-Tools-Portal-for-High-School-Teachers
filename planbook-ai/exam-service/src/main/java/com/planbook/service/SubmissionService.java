@@ -138,11 +138,11 @@ public class SubmissionService {
 
     private String buildFeedback(OcrGradeResponse ocrResult) {
         if (ocrResult.getWrongQuestionIds() == null || ocrResult.getWrongQuestionIds().isEmpty()) {
-            return "Lam bai rat tot. Khong co cau nao sai.";
+            return "Làm bài rất tốt. Không có câu nào sai.";
         }
 
         return String.format(
-                "Dung %d/%d cau. Sai cac cau: %s.",
+                "Đúng %d/%d câu. Sai các câu: %s.",
                 ocrResult.getCorrectCount(),
                 ocrResult.getTotalQuestions(),
                 formatWrongQuestionIds(ocrResult.getWrongQuestionIds())

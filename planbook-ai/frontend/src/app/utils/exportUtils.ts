@@ -7,7 +7,7 @@ export function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
-function buildHtmlDocument(title: string, bodyHtml: string) {
+function buildHtmlDocument(title: string, bodyHtml: string, autoPrint = false) {
   return `<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -83,6 +83,14 @@ function buildHtmlDocument(title: string, bodyHtml: string) {
       }
     }
   </style>
+  ${autoPrint ? `<script>
+    window.addEventListener('load', function () {
+      window.setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 250);
+    });
+  </script>` : ''}
 </head>
 <body>
   ${bodyHtml}
@@ -119,60 +127,21 @@ export function exportWordDocument(filename: string, title: string, bodyHtml: st
 }
 
 export function openPrintPreview(title: string, bodyHtml: string) {
-  const html = buildHtmlDocument(title, bodyHtml);
-  const previewWindow = window.open('', '_blank', 'noopener,noreferrer,width=1024,height=768');
+  const html = buildHtmlDocument(title, bodyHtml, true);
+  const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  const previewWindow = window.open(blobUrl, '_blank', 'width=1024,height=768');
 
   if (!previewWindow) {
+    URL.revokeObjectURL(blobUrl);
     alert('Trình duyệt đang chặn cửa sổ in. Hãy cho phép pop-up để xuất PDF.');
     return;
   }
 
-  previewWindow.document.open();
-  previewWindow.document.write(html);
-  previewWindow.document.close();
-  previewWindow.focus();
-
-  previewWindow.onload = () => {
-    previewWindow.print();
-  };
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 }
 
 export function exportPdfDocument(title: string, bodyHtml: string) {
-  const html = buildHtmlDocument(title, bodyHtml);
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  iframe.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(iframe);
-
-  const frameDocument = iframe.contentWindow?.document;
-  if (!frameDocument) {
-    document.body.removeChild(iframe);
-    openPrintPreview(title, bodyHtml);
-    return;
-  }
-
-  frameDocument.open();
-  frameDocument.write(html);
-  frameDocument.close();
-
-  const cleanup = () => {
-    setTimeout(() => {
-      if (iframe.parentNode) {
-        iframe.parentNode.removeChild(iframe);
-      }
-    }, 1000);
-  };
-
-  iframe.onload = () => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
-    cleanup();
-  };
+  openPrintPreview(title, bodyHtml);
 }
 
 export function exportCsv(filename: string, rows: string[][]) {
