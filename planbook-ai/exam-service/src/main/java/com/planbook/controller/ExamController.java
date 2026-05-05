@@ -4,6 +4,7 @@ import com.planbook.dto.CreateExamRequest;
 import com.planbook.dto.ExamResponse;
 import com.planbook.dto.ResultResponse;
 import com.planbook.dto.SubmissionResponse;
+import com.planbook.dto.UpdateExamRequest;
 import com.planbook.security.CustomUserPrincipal;
 import com.planbook.service.ExamService;
 import com.planbook.service.ResultService;
@@ -43,6 +44,14 @@ public class ExamController {
     public ResponseEntity<List<ExamResponse>> getExams(
             @AuthenticationPrincipal CustomUserPrincipal principal) {
         return ResponseEntity.ok(examService.getExamsByTeacher(principal.getUserId()));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ExamResponse> updateExam(
+            @PathVariable Long id,
+            @RequestBody UpdateExamRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal) {
+        return ResponseEntity.ok(examService.updateExam(id, request, principal.getUserId()));
     }
 
     @DeleteMapping("/{id}")

@@ -185,6 +185,7 @@ export default function LessonPlanner() {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
+  const [refinementRequest, setRefinementRequest] = useState('');
 
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [chapters, setChapters] = useState<ChapterItem[]>([]);
@@ -448,6 +449,28 @@ export default function LessonPlanner() {
     return chunks.join('\n\n');
   };
 
+  const mergeGeneratedPlanResponse = (response: any, base?: GeneratedPlan | null): GeneratedPlan => ({
+    title: title.trim() || response.title || base?.title || `${selectedTopic?.title || 'Bài học'} - Giáo án`,
+    subject: selectedSubject?.name || base?.subject || 'Hóa học',
+    grade,
+    topic: response.topic || selectedTopic?.title || base?.topic || '',
+    duration: response.durationMinutes ?? response.duration ?? Number(duration),
+    objectives: Array.isArray(response.objectives) ? response.objectives : base?.objectives || [],
+    materials: Array.isArray(response.materials) ? response.materials : base?.materials || [],
+    activities: Array.isArray(response.activities)
+      ? response.activities.map((activity: any) => ({
+        time: typeof activity.time === 'number' ? `${activity.time} phút` : String(activity.time || ''),
+        activity: activity.activity || '',
+        description: activity.description || '',
+      }))
+      : base?.activities || [],
+    assessment: response.assessment || base?.assessment || '',
+    homework: response.homework || base?.homework || '',
+    notes: teacherNotes.trim() || base?.notes || '',
+    templateName: selectedTemplate?.name || base?.templateName,
+    sampleTitle: selectedSample?.title || base?.sampleTitle,
+  });
+
   const handleGenerate = async () => {
     if (!selectedTopic || !selectedTemplate) {
       setErrorMsg('Cần chọn bài học và mẫu trình bày trước khi tạo.');
@@ -466,27 +489,7 @@ export default function LessonPlanner() {
         additionalContext: buildAdditionalContext(),
       });
 
-      const nextPlan: GeneratedPlan = {
-        title: title.trim() || response.title || `${selectedTopic.title} - Giáo án`,
-        subject: selectedSubject?.name || 'Hóa học',
-        grade,
-        topic: response.topic || selectedTopic.title,
-        duration: response.durationMinutes ?? Number(duration),
-        objectives: Array.isArray(response.objectives) ? response.objectives : [],
-        materials: [],
-        activities: Array.isArray(response.activities)
-          ? response.activities.map((activity: any) => ({
-            time: typeof activity.time === 'number' ? `${activity.time} phút` : String(activity.time || ''),
-            activity: activity.activity || '',
-            description: activity.description || '',
-          }))
-          : [],
-        assessment: response.assessment || '',
-        homework: response.homework || '',
-        notes: teacherNotes.trim(),
-        templateName: selectedTemplate.name,
-        sampleTitle: selectedSample?.title,
-      };
+      const nextPlan = mergeGeneratedPlanResponse(response, null);
 
       setGeneratedPlan(nextPlan);
       if (!title.trim()) {
@@ -538,6 +541,78 @@ export default function LessonPlanner() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleRefinePlan = async () => {
+    if (!generatedPlan) return;
+    if (!refinementRequest.trim()) {
+      setErrorMsg('Nhập yêu cầu tinh chỉnh trước khi gửi lại cho AI.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setErrorMsg(null);
+    try {
+      const response: any = await api.aiGenerateLessonPlan({
+        topic: generatedPlan.topic || selectedTopic?.title || '',
+        subject: generatedPlan.subject || selectedSubject?.name || 'Hóa học',
+        grade: generatedPlan.grade || grade,
+        durationMinutes: generatedPlan.duration || Number(duration),
+        additionalContext: [
+          buildAdditionalContext(),
+          `Bản giáo án hiện tại cần chỉnh:\n${JSON.stringify(generatedPlan, null, 2)}`,
+          `Yêu cầu tinh chỉnh của giáo viên:\n${refinementRequest.trim()}`,
+          'Hãy trả về lại toàn bộ giáo án đã tinh chỉnh, giữ cấu trúc JSON như lần tạo trước.',
+        ].filter(Boolean).join('\n\n'),
+      });
+      const nextPlan = mergeGeneratedPlanResponse(response, generatedPlan);
+      setGeneratedPlan(nextPlan);
+      setTitle(nextPlan.title);
+      setRefinementRequest('');
+    } catch (error: any) {
+      setErrorMsg(error?.response?.data?.message || error?.message || 'Không tinh chỉnh được giáo án bằng AI.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const updatePlanField = <K extends keyof GeneratedPlan>(field: K, value: GeneratedPlan[K]) => {
+    setGeneratedPlan((current) => current ? { ...current, [field]: value } : current);
+  };
+
+  const updateObjective = (index: number, value: string) => {
+    setGeneratedPlan((current) => current ? {
+      ...current,
+      objectives: current.objectives.map((item, idx) => idx === index ? value : item),
+    } : current);
+  };
+
+  const updateMaterial = (index: number, value: string) => {
+    setGeneratedPlan((current) => current ? {
+      ...current,
+      materials: current.materials.map((item, idx) => idx === index ? value : item),
+    } : current);
+  };
+
+  const addActivity = () => {
+    setGeneratedPlan((current) => current ? {
+      ...current,
+      activities: [...current.activities, { time: '', activity: '', description: '' }],
+    } : current);
+  };
+
+  const updateActivity = (index: number, field: keyof LessonActivity, value: string) => {
+    setGeneratedPlan((current) => current ? {
+      ...current,
+      activities: current.activities.map((item, idx) => idx === index ? { ...item, [field]: value } : item),
+    } : current);
+  };
+
+  const removeActivity = (index: number) => {
+    setGeneratedPlan((current) => current ? {
+      ...current,
+      activities: current.activities.filter((_, idx) => idx !== index),
+    } : current);
   };
 
   const addObjective = () => {
@@ -841,22 +916,6 @@ export default function LessonPlanner() {
                   {errorMsg}
                 </div>
               ) : null}
-
-              <div className="rounded-lg border bg-slate-50 p-3 text-xs text-slate-600">
-                {selectedTemplate ? (
-                  <>
-                    <p className="font-medium text-slate-800 mb-1">Mẫu đang áp dụng</p>
-                    <p>{selectedTemplate.name}</p>
-                    {selectedTemplate.structureJson ? (
-                      <pre className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap rounded border bg-white p-2 font-sans text-[11px] text-slate-600">
-                        {formatTemplateStructure(selectedTemplate.structureJson)}
-                      </pre>
-                    ) : null}
-                  </>
-                ) : (
-                  <p>Chọn mẫu trình bày để AI bám theo cấu trúc mong muốn.</p>
-                )}
-              </div>
             </CardContent>
           </Card>
 
@@ -899,7 +958,15 @@ export default function LessonPlanner() {
               ) : (
                 <div className="space-y-6">
                   <div className="border-b-2 pb-4">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-3">{generatedPlan.title}</h2>
+                    <Label className="mb-2 block">Tiêu đề bản nháp</Label>
+                    <Input
+                      className="mb-3 text-lg font-semibold"
+                      value={title || generatedPlan.title}
+                      onChange={(event) => {
+                        setTitle(event.target.value);
+                        updatePlanField('title', event.target.value);
+                      }}
+                    />
                     <div className="flex flex-wrap gap-2 mb-3">
                       <Badge variant="outline">{generatedPlan.subject}</Badge>
                       <Badge variant="outline">Khối {generatedPlan.grade}</Badge>
@@ -912,6 +979,22 @@ export default function LessonPlanner() {
                     </p>
                   </div>
 
+                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                    <Label className="mb-2 block">Yêu cầu tinh chỉnh sau khi AI tạo</Label>
+                    <Textarea
+                      value={refinementRequest}
+                      onChange={(event) => setRefinementRequest(event.target.value)}
+                      placeholder="Ví dụ: rút gọn hoạt động khởi động còn 5 phút, thêm câu hỏi vận dụng, viết phần dặn dò cụ thể hơn..."
+                      rows={3}
+                    />
+                    <div className="mt-3 flex justify-end">
+                      <Button type="button" onClick={handleRefinePlan} disabled={isGenerating || !refinementRequest.trim()}>
+                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        Tinh chỉnh bằng AI
+                      </Button>
+                    </div>
+                  </div>
+
                   <div>
                     <div className="mb-3 flex items-center justify-between">
                       <h3 className="text-lg font-bold text-gray-900">Mục tiêu bài học</h3>
@@ -922,9 +1005,13 @@ export default function LessonPlanner() {
                     </div>
                     <div className="space-y-2">
                       {generatedPlan.objectives.map((objective, index) => (
-                        <div key={`${objective}-${index}`} className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                          <span className="mt-0.5 font-semibold text-blue-700">{index + 1}.</span>
-                          <p className="flex-1 text-gray-900">{objective}</p>
+                        <div key={index} className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                          <span className="mt-2 font-semibold text-blue-700">{index + 1}.</span>
+                          <Textarea
+                            className="min-h-10 flex-1 bg-white"
+                            value={objective}
+                            onChange={(event) => updateObjective(index, event.target.value)}
+                          />
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeObjective(index)}>
                             <Trash2 className="w-3 h-3 text-gray-500" />
                           </Button>
@@ -946,8 +1033,12 @@ export default function LessonPlanner() {
                         <div className="rounded border border-dashed p-3 text-sm text-gray-500">Chưa có học liệu riêng.</div>
                       ) : (
                         generatedPlan.materials.map((material, index) => (
-                          <div key={`${material}-${index}`} className="flex items-center justify-between rounded border bg-gray-50 p-3">
-                            <span>{material}</span>
+                          <div key={index} className="flex items-center justify-between gap-2 rounded border bg-gray-50 p-3">
+                            <Input
+                              className="bg-white"
+                              value={material}
+                              onChange={(event) => updateMaterial(index, event.target.value)}
+                            />
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeMaterial(index)}>
                               <Trash2 className="w-3 h-3 text-gray-500" />
                             </Button>
@@ -958,19 +1049,41 @@ export default function LessonPlanner() {
                   </div>
 
                   <div>
-                    <h3 className="mb-3 text-lg font-bold text-gray-900">Tiến trình dạy học</h3>
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-gray-900">Tiến trình dạy học</h3>
+                      <Button variant="outline" size="sm" onClick={addActivity}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Thêm hoạt động
+                      </Button>
+                    </div>
                     <div className="space-y-4">
                       {generatedPlan.activities.map((activity, index) => (
-                        <div key={`${activity.activity}-${index}`} className="relative border-l-2 border-purple-300 pl-8 pb-4 last:border-l-0">
+                        <div key={index} className="relative border-l-2 border-purple-300 pl-8 pb-4 last:border-l-0">
                           <div className="absolute left-[-9px] top-0 h-4 w-4 rounded-full bg-purple-600" />
                           <div className="rounded-lg border bg-white p-4 shadow-sm">
-                            <div className="mb-2 flex items-center gap-2">
-                              <Badge className="shrink-0 bg-purple-100 text-purple-700">{activity.time}</Badge>
-                              <h4 className="font-bold text-gray-900">{activity.activity}</h4>
+                            <div className="mb-3 flex items-start gap-2">
+                              <Input
+                                className="w-28 shrink-0"
+                                placeholder="10 phút"
+                                value={activity.time}
+                                onChange={(event) => updateActivity(index, 'time', event.target.value)}
+                              />
+                              <Input
+                                className="flex-1 font-semibold"
+                                placeholder="Tên hoạt động"
+                                value={activity.activity}
+                                onChange={(event) => updateActivity(index, 'activity', event.target.value)}
+                              />
+                              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeActivity(index)}>
+                                <Trash2 className="w-4 h-4 text-gray-500" />
+                              </Button>
                             </div>
-                            {activity.description ? (
-                              <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{activity.description}</p>
-                            ) : null}
+                            <Textarea
+                              value={activity.description || ''}
+                              onChange={(event) => updateActivity(index, 'description', event.target.value)}
+                              placeholder="Mô tả cách tổ chức hoạt động..."
+                              rows={3}
+                            />
                           </div>
                         </div>
                       ))}
@@ -979,19 +1092,38 @@ export default function LessonPlanner() {
 
                   <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                     <h3 className="mb-2 text-lg font-bold text-gray-900">Đánh giá</h3>
-                    <p className="text-gray-900">{generatedPlan.assessment || 'Chưa có nội dung đánh giá.'}</p>
+                    <Textarea
+                      className="bg-white"
+                      value={generatedPlan.assessment}
+                      onChange={(event) => updatePlanField('assessment', event.target.value)}
+                      placeholder="Nội dung đánh giá..."
+                      rows={3}
+                    />
                   </div>
 
                   <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
                     <h3 className="mb-2 text-lg font-bold text-gray-900">Bài tập/Dặn dò</h3>
-                    <p className="text-gray-900">{generatedPlan.homework || 'Chưa có nội dung bài tập.'}</p>
+                    <Textarea
+                      className="bg-white"
+                      value={generatedPlan.homework}
+                      onChange={(event) => updatePlanField('homework', event.target.value)}
+                      placeholder="Bài tập, dặn dò..."
+                      rows={3}
+                    />
                   </div>
 
                   <div className="rounded-lg border bg-gray-50 p-4">
                     <h3 className="mb-2 text-lg font-bold text-gray-900">Ghi chú giáo viên</h3>
-                    <p className="whitespace-pre-line text-sm text-gray-700">
-                      {teacherNotes.trim() || 'Không có ghi chú bổ sung.'}
-                    </p>
+                    <Textarea
+                      className="bg-white"
+                      value={teacherNotes}
+                      onChange={(event) => {
+                        setTeacherNotes(event.target.value);
+                        updatePlanField('notes', event.target.value);
+                      }}
+                      placeholder="Ghi chú của giáo viên..."
+                      rows={3}
+                    />
                   </div>
                 </div>
               )}

@@ -64,6 +64,14 @@ export default function StaffDashboard() {
   const [submittingPlanId, setSubmittingPlanId] = useState<number | null>(null);
   const [notice, setNotice] = useState<{ message: string; type: 'ok' | 'err' } | null>(null);
 
+  const loadPlans = () => {
+    setLoadingPlans(true);
+    axiosClient.get('/sample-lesson-plans/my')
+      .then((data: any) => setPlans(Array.isArray(data) ? data : []))
+      .catch(() => setPlans([]))
+      .finally(() => setLoadingPlans(false));
+  };
+
   useEffect(() => {
     const state = location.state as { notice?: string } | null;
     if (state?.notice) {
@@ -71,10 +79,7 @@ export default function StaffDashboard() {
       navigate(location.pathname, { replace: true, state: null });
     }
 
-    axiosClient.get('/sample-lesson-plans/my')
-      .then((data: any) => setPlans(Array.isArray(data) ? data : []))
-      .catch(() => setPlans([]))
-      .finally(() => setLoadingPlans(false));
+    loadPlans();
 
     questionApi.getQuestions({ size: 200 })
       .then((data: any) => {
@@ -83,6 +88,17 @@ export default function StaffDashboard() {
         setQuestionCount(mine.length);
       })
       .catch(() => setQuestionCount(0));
+
+    const handleFirebaseNotification = (event: Event) => {
+      const payload = (event as CustomEvent<any>).detail;
+      const type = payload?.data?.type;
+      if (type === 'CONTENT_APPROVED' || type === 'CONTENT_REJECTED') {
+        loadPlans();
+      }
+    };
+
+    window.addEventListener('firebaseNotificationReceived', handleFirebaseNotification as EventListener);
+    return () => window.removeEventListener('firebaseNotificationReceived', handleFirebaseNotification as EventListener);
   }, []);
 
   useEffect(() => {
@@ -281,9 +297,9 @@ export default function StaffDashboard() {
                           <FileText className="w-5 h-5 text-gray-500" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{plan.title || 'Giao an chua dat ten'}</p>
+                          <p className="font-semibold text-gray-900 truncate">{plan.title || 'Giáo án chưa đặt tên'}</p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            {(plan.topic?.title || plan.topic?.name) && `Bai: ${plan.topic?.title || plan.topic?.name}`}
+                            {(plan.topic?.title || plan.topic?.name) && `Bài: ${plan.topic?.title || plan.topic?.name}`}
                             {plan.createdAt && ` · ${new Date(plan.createdAt).toLocaleDateString('vi-VN')}`}
                           </p>
                         </div>

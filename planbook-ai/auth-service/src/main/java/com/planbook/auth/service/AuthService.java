@@ -51,6 +51,9 @@ public class AuthService {
     @Value("${user-service.internal-url:http://user-service:8082}")
     private String userServiceUrl;
 
+    @Value("${curriculum-service.internal-url:http://curriculum-service:8083}")
+    private String curriculumServiceUrl;
+
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
@@ -61,6 +64,10 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        if (!isTeacherRegistrationAllowed()) {
+            throw new RuntimeException("Hệ thống đang tắt đăng ký giáo viên mới. Vui lòng liên hệ quản trị viên.");
+        }
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email đã tồn tại: " + request.getEmail());
         }
@@ -130,6 +137,8 @@ public class AuthService {
             throw new LockedException("Tài khoản đã bị khóa");
         }
 
+        blockTeacherDuringMaintenance(user);
+
         return generateAuthResponse(user);
     }
 
@@ -148,7 +157,19 @@ public class AuthService {
         User user = userRepository.findById(refreshToken.getUserId())
                 .orElseThrow(() -> new RuntimeException("User không tồn tại"));
 
+        if (!isUserProfileActive(user.getId())) {
+            refreshTokenRepository.delete(refreshToken);
+            throw new LockedException("Tài khoản đã bị khóa");
+        }
+
         // Xóa refresh token cũ, tạo mới (rotation để bảo mật)
+        try {
+            blockTeacherDuringMaintenance(user);
+        } catch (LockedException e) {
+            refreshTokenRepository.delete(refreshToken);
+            throw e;
+        }
+
         refreshTokenRepository.delete(refreshToken);
 
         return generateAuthResponse(user);
@@ -179,6 +200,36 @@ public class AuthService {
         } catch (Exception e) {
             log.warn("Không thể kiểm tra trạng thái khóa của userId={}: {}", userId, e.getMessage());
             return true;
+        }
+    }
+
+    private boolean isTeacherRegistrationAllowed() {
+        try {
+            String configUrl = curriculumServiceUrl + "/api/system-config/public";
+            Map<?, ?> config = restTemplate.getForObject(configUrl, Map.class);
+            Object allowed = config == null ? null : config.get("allowTeacherRegister");
+            return allowed == null || Boolean.parseBoolean(String.valueOf(allowed));
+        } catch (Exception e) {
+            log.warn("Không thể đọc cấu hình đăng ký giáo viên từ curriculum-service: {}", e.getMessage());
+            return true;
+        }
+    }
+
+    private void blockTeacherDuringMaintenance(User user) {
+        if (user.getRole() == Role.TEACHER && isMaintenanceModeEnabled()) {
+            throw new LockedException("Hệ thống đang bảo trì. Giáo viên vui lòng quay lại sau.");
+        }
+    }
+
+    private boolean isMaintenanceModeEnabled() {
+        try {
+            String configUrl = curriculumServiceUrl + "/api/system-config/public";
+            Map<?, ?> config = restTemplate.getForObject(configUrl, Map.class);
+            Object maintenanceMode = config == null ? null : config.get("maintenanceMode");
+            return maintenanceMode != null && Boolean.parseBoolean(String.valueOf(maintenanceMode));
+        } catch (Exception e) {
+            log.warn("Khong the doc trang thai bao tri tu curriculum-service: {}", e.getMessage());
+            return false;
         }
     }
 

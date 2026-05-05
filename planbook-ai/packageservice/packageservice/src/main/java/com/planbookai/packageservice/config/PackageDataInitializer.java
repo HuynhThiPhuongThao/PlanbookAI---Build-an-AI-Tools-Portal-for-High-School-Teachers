@@ -25,26 +25,33 @@ public class PackageDataInitializer implements CommandLineRunner {
                         "Plus",
                         BigDecimal.valueOf(99000),
                         30,
-                        "Goi ca nhan cho giao vien muon su dung AI hang ngay voi cac tinh nang cot loi."),
+                        "Goi ca nhan cho giao vien muon su dung AI hang ngay voi cac tinh nang cot loi.",
+                        false),
                 upsertPackage(
                         "Team",
                         BigDecimal.valueOf(299000),
                         30,
-                        "Goi cho to chuyen mon hoac nhom giao vien can chia se tai nguyen va lam viec chung."),
+                        "Goi cho to chuyen mon hoac nhom giao vien can chia se tai nguyen va lam viec chung.",
+                        true),
                 upsertPackage(
                         "Pro",
                         BigDecimal.valueOf(499000),
                         30,
-                        "Goi nang cao cho giao vien can day du cong cu AI, OCR va bao cao hoc tap.")));
+                        "Goi nang cao cho giao vien can day du cong cu AI, OCR va bao cao hoc tap.",
+                        false)));
     }
 
-    private Package upsertPackage(String name, BigDecimal price, Integer durationDays, String description) {
-        Package pkg = packageRepository.findByName(name).orElseGet(Package::new);
+    private Package upsertPackage(String name, BigDecimal price, Integer durationDays, String description, boolean highlight) {
+        var existing = packageRepository.findByName(name);
+        Package pkg = existing.orElseGet(Package::new);
         pkg.setName(name);
         pkg.setPrice(price);
         pkg.setDurationDays(durationDays);
         pkg.setDescription(description);
         pkg.setActive(true);
+        if (existing.isEmpty() || pkg.getHighlight() == null) {
+            pkg.setHighlight(highlight);
+        }
         return pkg;
     }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -89,8 +89,10 @@ function buildExerciseExportHtml(exercise: SavedExercise) {
 export default function TeacherExercises() {
   const userName = getFullNameFromToken();
   const navigate = useNavigate();
+  const location = useLocation();
   const [items, setItems] = useState<SavedExercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState('');
 
   const loadItems = () => {
     setLoading(true);
@@ -100,7 +102,19 @@ export default function TeacherExercises() {
 
   useEffect(() => {
     loadItems();
+
+    const routeNotice = (location.state as { notice?: string } | null)?.notice;
+    if (routeNotice) {
+      setNotice(routeNotice);
+      navigate(location.pathname, { replace: true, state: null });
+    }
   }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(''), 3500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   const handleDelete = (id: string) => {
     const next = items.filter((item) => item.id !== id);
@@ -142,6 +156,12 @@ export default function TeacherExercises() {
             </Button>
           </Link>
         </div>
+
+        {notice ? (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+            {notice}
+          </div>
+        ) : null}
 
         <Card>
           <CardHeader>

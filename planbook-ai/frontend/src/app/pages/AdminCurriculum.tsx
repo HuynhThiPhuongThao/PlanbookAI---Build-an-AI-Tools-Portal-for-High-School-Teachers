@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -6,7 +7,7 @@ import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { ChevronDown, ChevronUp, FileText, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, FileText, Plus, Trash2 } from 'lucide-react';
 import * as api from '../api/curriculumApi';
 import { getFullNameFromToken } from '../utils/jwt';
 
@@ -16,7 +17,7 @@ type Subject = { id: number; name: string };
 const DEFAULT_SECTIONS: Section[] = [
   { title: 'I. Thông tin bài học', fields: ['Môn học', 'Lớp', 'Chủ đề / Bài học', 'Thời lượng'] },
   { title: 'II. Mục tiêu bài học', fields: ['Kiến thức', 'Năng lực', 'Phẩm chất'] },
-  { title: 'III. Hoc liệu', fields: ['Giáo viên chuẩn bị', 'Học sinh chuẩn bị'] },
+  { title: 'III. Học liệu', fields: ['Giáo viên chuẩn bị', 'Học sinh chuẩn bị'] },
   { title: 'IV. Tiến trình dạy học', fields: ['Khởi động', 'Hình thành kiến thức', 'Luyện tập', 'Vận dụng'] },
   { title: 'V. Đánh giá', fields: ['Câu hỏi đánh giá', 'Tiêu chí', 'Hình thức'] },
   { title: 'VI. Phụ lục', fields: ['Phiếu học tập', 'Bài tập', 'Đáp án / Gợi ý'] },
@@ -194,7 +195,7 @@ function CreateTemplateDialog({
               onValueChange={(value) => setSubjectId(value === '__shared' ? '' : value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Chon pham vi" />
+                <SelectValue placeholder="Chọn phạm vi" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__shared">Dùng chung cho Hóa 10, 11, 12</SelectItem>
@@ -236,7 +237,7 @@ function CreateTemplateDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>
-            Huy
+            Hủy
           </Button>
           <Button onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700">
             {saving ? 'Đang lưu...' : 'Lưu mẫu'}
@@ -248,6 +249,7 @@ function CreateTemplateDialog({
 }
 
 export default function AdminCurriculum() {
+  const navigate = useNavigate();
   const userName = getNameFromToken();
   const [templates, setTemplates] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -292,6 +294,11 @@ export default function AdminCurriculum() {
     <DashboardLayout role="admin" userName={userName}>
       <div className="space-y-6">
         <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="gap-1">
+              <ArrowLeft className="w-4 h-4" /> Về lại bảng điều khiển
+            </Button>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Mẫu Giáo Án</h1>
           <p className="text-gray-600">Admin tạo khung, Staff đưa vào để soạn giáo án mẫu</p>
         </div>

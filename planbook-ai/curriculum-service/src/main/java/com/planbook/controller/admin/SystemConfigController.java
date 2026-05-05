@@ -1,6 +1,7 @@
 package com.planbook.controller.admin;
 
 import com.planbook.dto.admin.SystemConfigRequest;
+import com.planbook.dto.admin.SystemConfigPublicResponse;
 import com.planbook.dto.admin.SystemConfigResponse;
 import com.planbook.security.AuthUtil;
 import com.planbook.service.admin.SystemConfigService;
@@ -27,6 +28,11 @@ public class SystemConfigController {
     @GetMapping
     public ResponseEntity<SystemConfigResponse> getConfig() {
         return ResponseEntity.ok(systemConfigService.getConfig());
+    }
+
+    @GetMapping("/public")
+    public ResponseEntity<SystemConfigPublicResponse> getPublicConfig() {
+        return ResponseEntity.ok(systemConfigService.getPublicConfig());
     }
 
     @PutMapping

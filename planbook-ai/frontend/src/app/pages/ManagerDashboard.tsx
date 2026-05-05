@@ -3,6 +3,7 @@ import DashboardLayout from "../components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { Textarea } from "../components/ui/textarea";
 import {
   Package,
   ShoppingCart,
@@ -16,6 +17,7 @@ import {
   X,
   Plus,
   Pencil,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import axiosClient from "../api/axiosClient";
@@ -79,6 +81,7 @@ type PackageApiDto = {
   durationDays: number;
   description?: string;
   active?: boolean;
+  highlight?: boolean;
 };
 
 type SubscriptionApiDto = {
@@ -97,7 +100,7 @@ const INITIAL_PACKAGES: ManagerPackage[] = [
     price: 99000,
     duration: 30,
     description: "Gói cá nhân cho giáo viên muốn sử dụng AI hàng ngày",
-    features: ["Tạo giáo án AI 50 lần mỗi tháng", "ạo đề thi và bài tập cơ bản", "Lưu trữ giáo án và đề thi đã tạo"],
+    features: ["Tạo giáo án AI 50 lần mỗi tháng", "Tạo đề thi và bài tập cơ bản", "Lưu trữ giáo án và đề thi đã tạo"],
     usersCount: 128,
     isActive: true,
     highlight: false,
@@ -252,13 +255,15 @@ export default function ManagerDashboard() {
   const [actionMsg, setActionMsg] = useState("");
 
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
+  const [rejectingPlan, setRejectingPlan] = useState<LessonPlan | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectReasonError, setRejectReasonError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [historyPlans, setHistoryPlans] = useState<LessonPlan[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
-  const [fcmToast, setFcmToast] = useState<{ title: string; body: string } | null>(null);
   const [pendingPrompts, setPendingPrompts] = useState<PromptTemplate[]>([]);
   const [loadingPrompts, setLoadingPrompts] = useState(true);
 
@@ -278,22 +283,26 @@ export default function ManagerDashboard() {
     setTimeout(() => setPackageToast(null), 3000);
   };
 
-  const fetchPending = () => {
-    setLoadingPending(true);
+  const fetchPending = (showLoading = true) => {
+    if (showLoading) setLoadingPending(true);
     axiosClient
       .get("/sample-lesson-plans/review/pending")
       .then((data: any) => setPendingPlans(Array.isArray(data) ? data : []))
       .catch(() => setPendingPlans([]))
-      .finally(() => setLoadingPending(false));
+      .finally(() => {
+        if (showLoading) setLoadingPending(false);
+      });
   };
 
-  const fetchPendingPrompts = () => {
-    setLoadingPrompts(true);
+  const fetchPendingPrompts = (showLoading = true) => {
+    if (showLoading) setLoadingPrompts(true);
     promptApi
       .getPending()
       .then((items) => setPendingPrompts(Array.isArray(items) ? items : []))
       .catch(() => setPendingPrompts([]))
-      .finally(() => setLoadingPrompts(false));
+      .finally(() => {
+        if (showLoading) setLoadingPrompts(false);
+      });
   };
 
   const fetchHistory = () => {
@@ -331,7 +340,7 @@ export default function ManagerDashboard() {
           features: description ? [description] : ["Chua co mo ta"],
           usersCount,
           isActive: pkg.active !== false,
-          highlight: false,
+          highlight: pkg.highlight === true,
         };
       }));
 
@@ -360,20 +369,28 @@ export default function ManagerDashboard() {
     fetchPendingPrompts();
     fetchPackageData();
 
-    import("../firebase")
-      .then(({ requestPermission, listenForMessage }) => {
-        requestPermission();
-        listenForMessage((payload: any) => {
-          if (payload?.notification) {
-            setFcmToast({ title: payload.notification.title, body: payload.notification.body });
-            const audio = new Audio("/notification-sound.mp3");
-            audio.play().catch(() => { });
-            setTimeout(() => setFcmToast(null), 5000);
-            fetchPending();
-          }
-        });
-      })
-      .catch((e) => console.error("Failed to load firebase:", e));
+    const handleFirebaseNotification = (event: Event) => {
+      const payload = (event as CustomEvent<any>).detail;
+      const type = payload?.data?.type;
+      const contentKind = payload?.data?.contentKind;
+      if (type === "CONTENT_SUBMITTED") {
+        if (!contentKind || contentKind === "LESSON_PLAN") fetchPending(false);
+        if (!contentKind || contentKind === "PROMPT") fetchPendingPrompts(false);
+      }
+    };
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchPending(false);
+        fetchPendingPrompts(false);
+      }
+    }, 5000);
+
+    window.addEventListener("firebaseNotificationReceived", handleFirebaseNotification as EventListener);
+    return () => {
+      window.removeEventListener("firebaseNotificationReceived", handleFirebaseNotification as EventListener);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   useEffect(() => {
@@ -383,9 +400,9 @@ export default function ManagerDashboard() {
   const handleApprove = async (id: number) => {
     setIsSubmitting(true);
     try {
-      await axiosClient.put(`/sample-lesson-plans/review/${id}/approve`, { reviewNote: "Duyet bai" });
+      await axiosClient.put(`/sample-lesson-plans/review/${id}/approve`, { reviewNote: "Duyệt bài" });
       setPendingPlans((prev) => prev.filter((item) => item.id !== id));
-      setActionMsg("Da duyet giao an");
+      setActionMsg("Đã duyệt giáo án");
       setTimeout(() => setActionMsg(""), 3000);
       setHistoryLoaded(false);
       setSelectedPlan(null);
@@ -396,15 +413,38 @@ export default function ManagerDashboard() {
     }
   };
 
-  const handleReject = async (id: number) => {
+  const openRejectDialog = (plan: LessonPlan) => {
+    setRejectingPlan(plan);
+    setRejectReason("");
+    setRejectReasonError("");
+  };
+
+  const closeRejectDialog = () => {
+    if (isSubmitting) return;
+    setRejectingPlan(null);
+    setRejectReason("");
+    setRejectReasonError("");
+  };
+
+  const handleReject = async () => {
+    if (!rejectingPlan) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setRejectReasonError("Cần nhập lý do từ chối để Staff biết cần sửa gì.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await axiosClient.put(`/sample-lesson-plans/review/${id}/reject`, { reviewNote: "Tu choi bai" });
-      setPendingPlans((prev) => prev.filter((item) => item.id !== id));
-      setActionMsg("Da tu choi giao an");
+      await axiosClient.put(`/sample-lesson-plans/review/${rejectingPlan.id}/reject`, { reviewNote: reason });
+      setPendingPlans((prev) => prev.filter((item) => item.id !== rejectingPlan.id));
+      setActionMsg("Đã từ chối giáo án");
       setTimeout(() => setActionMsg(""), 3000);
       setHistoryLoaded(false);
       setSelectedPlan(null);
+      setRejectingPlan(null);
+      setRejectReason("");
+      setRejectReasonError("");
     } catch {
       setActionMsg("Lỗi khi từ chối");
     } finally {
@@ -415,15 +455,15 @@ export default function ManagerDashboard() {
   const handleReviewPrompt = async (id: number, approved: boolean) => {
     try {
       if (approved) {
-        await promptApi.approve(id, "Duyệt mẫu lời nhác");
+        await promptApi.approve(id, "Duyệt mẫu lời nhắc");
       } else {
         await promptApi.reject(id, "Nội dung prompt cần chỉnh sửa");
       }
-      setActionMsg(approved ? "Da duyet mau loi nhac" : "Đã từ chối mẫu lời nhác");
+      setActionMsg(approved ? "Đã duyệt mẫu lời nhắc" : "Đã từ chối mẫu lời nhắc");
       setTimeout(() => setActionMsg(""), 3000);
       fetchPendingPrompts();
     } catch {
-      setActionMsg("Lỗi khi duyệt mẫu lời nhác");
+      setActionMsg("Lỗi khi duyệt mẫu lời nhắc");
       setTimeout(() => setActionMsg(""), 3000);
     }
   };
@@ -501,6 +541,7 @@ export default function ManagerDashboard() {
         durationDays: normalizedPackage.duration,
         description: normalizedPackage.description || normalizedPackage.features.join("; "),
         active: normalizedPackage.isActive,
+        highlight: normalizedPackage.highlight,
       };
 
       if (packageEditor.isNew) {
@@ -530,6 +571,7 @@ export default function ManagerDashboard() {
         durationDays: target.duration,
         description: target.description,
         active: !target.isActive,
+        highlight: target.highlight,
       });
       showPackageToast("Đã cập nhật trạng thái gói", "warn");
       await fetchPackageData();
@@ -605,11 +647,11 @@ export default function ManagerDashboard() {
                 <Button
                   variant="outline"
                   className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                  onClick={() => handleReject(selectedPlan.id)}
+                  onClick={() => openRejectDialog(selectedPlan)}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
-                  Tu choi
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Từ chối
                 </Button>
                 <Button
                   className="bg-green-600 hover:bg-green-700 text-white"
@@ -617,7 +659,42 @@ export default function ManagerDashboard() {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-                  Duyet bai
+                  Duyệt bài
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {rejectingPlan && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 px-4">
+            <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+              <div className="border-b px-6 py-4">
+                <h3 className="text-lg font-bold text-gray-900">Lý do từ chối</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Gửi phản hồi để Staff biết cần chỉnh sửa giáo án "{rejectingPlan.title}".
+                </p>
+              </div>
+              <div className="space-y-2 px-6 py-4">
+                <Textarea
+                  value={rejectReason}
+                  onChange={(event) => {
+                    setRejectReason(event.target.value);
+                    if (rejectReasonError) setRejectReasonError("");
+                  }}
+                  placeholder="Ví dụ: Nội dung hoạt động chưa rõ, cần bổ sung mục tiêu và cách đánh giá..."
+                  className="min-h-32"
+                  disabled={isSubmitting}
+                />
+                {rejectReasonError ? <p className="text-sm text-red-600">{rejectReasonError}</p> : null}
+              </div>
+              <div className="flex justify-end gap-2 border-t px-6 py-4">
+                <Button variant="outline" onClick={closeRejectDialog} disabled={isSubmitting}>
+                  Hủy
+                </Button>
+                <Button className="bg-red-600 text-white hover:bg-red-700" onClick={handleReject} disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                  Xác nhận từ chối
                 </Button>
               </div>
             </div>
@@ -696,7 +773,7 @@ export default function ManagerDashboard() {
                       checked={packageEditor.pkg.highlight}
                       onChange={(e) => updatePackageEditor((pkg) => ({ ...pkg, highlight: e.target.checked }))}
                     />
-                    Danh dau noi bat
+                    Đánh dấu nổi bật
                   </label>
                   <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                     <input
@@ -746,20 +823,13 @@ export default function ManagerDashboard() {
         {packageToast && (
           <div
             className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm shadow-lg border ${packageToast.type === "success"
-                ? "bg-green-50 text-green-700 border-green-200"
-                : packageToast.type === "warn"
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-red-50 text-red-700 border-red-200"
+              ? "bg-green-50 text-green-700 border-green-200"
+              : packageToast.type === "warn"
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-red-50 text-red-700 border-red-200"
               }`}
           >
             {packageToast.msg}
-          </div>
-        )}
-
-        {fcmToast && (
-          <div className="fixed top-20 right-4 z-50 bg-white border-l-4 border-orange-500 shadow-xl rounded-lg p-4">
-            <h3 className="font-bold text-orange-700">{fcmToast.title}</h3>
-            <p className="text-gray-600 text-sm mt-1">{fcmToast.body}</p>
           </div>
         )}
 
@@ -812,8 +882,8 @@ export default function ManagerDashboard() {
               <button
                 onClick={() => setActiveTab("pending")}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${activeTab === "pending"
-                    ? "border-orange-500 text-orange-600 bg-orange-50"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  ? "border-orange-500 text-orange-600 bg-orange-50"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <Clock className="w-4 h-4" />
@@ -827,8 +897,8 @@ export default function ManagerDashboard() {
               <button
                 onClick={() => setActiveTab("history")}
                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${activeTab === "history"
-                    ? "border-indigo-500 text-indigo-600 bg-indigo-50"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                  ? "border-indigo-500 text-indigo-600 bg-indigo-50"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                   }`}
               >
                 <History className="w-4 h-4" />
@@ -921,7 +991,7 @@ export default function ManagerDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Duyệt mẫu lời nhạc AI</CardTitle>
+            <CardTitle>Duyệt mẫu giáo án AI</CardTitle>
             <CardDescription>Prompt do Staff tạo hoặc chỉnh sửa trước khi được dùng cho Gemini</CardDescription>
           </CardHeader>
           <CardContent>
@@ -932,7 +1002,7 @@ export default function ManagerDashboard() {
             ) : pendingPrompts.length === 0 ? (
               <div className="text-center py-10 text-gray-500">
                 <FileCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="font-medium">Không có mẫu lời nhạc cho duyệt</p>
+                <p className="font-medium">Không có mẫu giáo án chờ duyệt</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -979,7 +1049,7 @@ export default function ManagerDashboard() {
                     <Package className="w-5 h-5 text-indigo-600" />
                     Quản lý gói cước
                   </CardTitle>
-                  <CardDescription>Thêm, sửa, bật/tắt và xóa gói đang ký</CardDescription>
+                  <CardDescription>Thêm, sửa, bật/tắt và xóa gói đăng ký</CardDescription>
                 </div>
                 <Button size="sm" onClick={openCreatePackage}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -990,19 +1060,30 @@ export default function ManagerDashboard() {
             <CardContent>
               <div className="space-y-3">
                 {packages.map((pkg) => (
-                  <div key={pkg.id} className="rounded-xl border border-gray-200 p-4 bg-white">
+                  <div
+                    key={pkg.id}
+                    className={`relative overflow-hidden rounded-xl border p-4 transition-all ${pkg.highlight
+                        ? "border-amber-300 bg-gradient-to-br from-amber-50 via-white to-purple-50 shadow-lg ring-2 ring-amber-100"
+                        : "border-gray-200 bg-white"
+                      }`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-gray-900">{pkg.name}</h3>
-                          {pkg.highlight ? <Badge className="bg-indigo-100 text-indigo-700">Nổi bật</Badge> : null}
+                          {pkg.highlight ? (
+                            <Badge className="bg-amber-500 text-white shadow-sm">
+                              <Sparkles className="mr-1 h-3 w-3" />
+                              Nổi bật
+                            </Badge>
+                          ) : null}
                           <Badge className={pkg.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
                             {pkg.isActive ? "Đang kích hoạt" : "Tạm tắt"}
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{pkg.description || "Không có mô tả"}</p>
                         <p className="text-sm font-medium text-gray-700 mt-2">
-                          {formatCurrency(pkg.price)} / {pkg.duration} ngay · {pkg.usersCount} user
+                          {formatCurrency(pkg.price)} / {pkg.duration} ngày · {pkg.usersCount} user
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {pkg.features.map((feature, idx) => (
@@ -1015,10 +1096,10 @@ export default function ManagerDashboard() {
                       <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEditPackage(pkg)}>
                           <Pencil className="w-4 h-4 mr-1" />
-                          Sua
+                          Sửa
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => togglePackageActive(pkg.id)}>
-                          {pkg.isActive ? "Tat" : "Bat"}
+                          {pkg.isActive ? "Tắt" : "Bật"}
                         </Button>
                         <Button
                           variant="outline"
@@ -1027,7 +1108,7 @@ export default function ManagerDashboard() {
                           onClick={() => setPackageDeleteTarget(pkg)}
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
-                          Xoa
+                          Xóa
                         </Button>
                       </div>
                     </div>

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Textarea } from '../components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -16,12 +17,14 @@ import { Badge } from '../components/ui/badge';
 import { ArrowLeft, Sparkles, Download, Loader2, FileText, ListChecks, Save, Trash2 } from 'lucide-react';
 import * as curriculumApi from '../api/curriculumApi';
 import * as examApi from '../api/examApi';
+import * as questionApi from '../api/questionApi';
 import { escapeHtml, exportWordDocument, openPrintPreview } from '../utils/exportUtils';
 import { getFullNameFromToken } from '../utils/jwt';
 
 type SubjectItem = { id: number; name: string };
 type ChapterItem = { id: number; name: string };
 type TopicItem = { id: number; title: string };
+const QUESTION_COUNT_OPTIONS = [5, 10, 15, 20];
 
 function getNameFromToken(): string {
   return getFullNameFromToken();
@@ -34,8 +37,38 @@ function parseAnswerKey(answerKey: string) {
     .filter(Boolean);
 }
 
+function stripAnswerPrefix(value: string) {
+  return value.replace(/^\s*[A-Fa-f1-6][.)]\s*/, '').trim();
+}
+
+function getQuestionAnswerLetter(question: examApi.ExamQuestion) {
+  const answer = question.correctAnswer?.trim() || '';
+  const exactAnswerLetter = answer.match(/^[A-D]$/i)?.[0];
+  if (exactAnswerLetter) return exactAnswerLetter.toUpperCase();
+
+  const normalizedAnswer = stripAnswerPrefix(answer).toLowerCase();
+  const optionIndex = (question.options || []).findIndex((option) =>
+    option.trim().toLowerCase() === answer.toLowerCase()
+    || stripAnswerPrefix(option).toLowerCase() === normalizedAnswer,
+  );
+  if (optionIndex >= 0) return String.fromCharCode(65 + optionIndex);
+
+  const prefixedAnswerLetter = answer.match(/^\s*([A-D])[.)]/i)?.[1];
+  return prefixedAnswerLetter ? prefixedAnswerLetter.toUpperCase() : '';
+}
+
+function getTotalQuestionCount(payload: any) {
+  const data = payload?.data ?? payload;
+  const total = data?.totalElements ?? data?.total;
+  if (Number.isFinite(Number(total))) return Number(total);
+  if (Array.isArray(data?.content)) return data.content.length;
+  if (Array.isArray(data)) return data.length;
+  return null;
+}
+
 export default function ExamGenerator() {
   const realName = getNameFromToken();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [chapters, setChapters] = useState<ChapterItem[]>([]);
@@ -51,6 +84,7 @@ export default function ExamGenerator() {
   const [pendingDeleteExam, setPendingDeleteExam] = useState<examApi.ExamItem | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [availableQuestionCount, setAvailableQuestionCount] = useState<number | null>(null);
 
   const [examTitle, setExamTitle] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
@@ -86,6 +120,22 @@ export default function ExamGenerator() {
     }
     void loadTopics(Number(selectedChapterId));
   }, [selectedChapterId]);
+
+  useEffect(() => {
+    if (!selectedTopicId) {
+      setAvailableQuestionCount(null);
+      return;
+    }
+    void loadAvailableQuestionCount(Number(selectedTopicId));
+  }, [selectedTopicId]);
+
+  useEffect(() => {
+    if (availableQuestionCount === null || Number(questionCount) <= availableQuestionCount) return;
+    const nextOption = QUESTION_COUNT_OPTIONS.filter((count) => count <= availableQuestionCount).pop();
+    if (nextOption) {
+      setQuestionCount(String(nextOption));
+    }
+  }, [availableQuestionCount, questionCount]);
 
   const loadReferenceData = async () => {
     setLoading(true);
@@ -124,6 +174,20 @@ export default function ExamGenerator() {
     } catch {
       setTopics([]);
       setSelectedTopicId('');
+    }
+  };
+
+  const loadAvailableQuestionCount = async (topicId: number) => {
+    try {
+      const response: any = await questionApi.getQuestions({
+        topicId,
+        status: 'APPROVED',
+        page: 0,
+        size: 1,
+      });
+      setAvailableQuestionCount(getTotalQuestionCount(response));
+    } catch {
+      setAvailableQuestionCount(null);
     }
   };
 
@@ -180,11 +244,55 @@ export default function ExamGenerator() {
     setIsSavingExam(true);
     setErrorMsg(null);
     try {
-      await loadSavedExams();
-      setSaveMsg(`Đề thi "${selectedExam.title}" đã nằm trong danh sách đề đã lưu.`);
+      const saved = await examApi.updateExam(selectedExam.id, {
+        title: examTitle.trim() || selectedExam.title,
+        questions: selectedExam.questions || [],
+      });
+      setSelectedExam(saved);
+      setSavedExams((current) => current.map((exam) => exam.id === saved.id ? saved : exam));
+      setSaveMsg(`Đã lưu cập nhật đề thi "${saved.title}".`);
+      navigate('/teacher/exams', {
+        state: {
+          notice: `Đã lưu đề thi "${saved.title}" vào danh sách bài kiểm tra.`,
+        },
+      });
+    } catch (error: any) {
+      setErrorMsg(error?.response?.data?.message || error?.message || 'Không lưu được đề thi.');
     } finally {
       setIsSavingExam(false);
     }
+  };
+
+  const updateSelectedExam = (patch: Partial<examApi.ExamItem>) => {
+    setSelectedExam((current) => current ? { ...current, ...patch } : current);
+  };
+
+  const updateExamQuestion = (index: number, patch: Partial<examApi.ExamQuestion>) => {
+    setSelectedExam((current) => {
+      if (!current) return current;
+      const questions = current.questions.map((question, idx) => idx === index ? { ...question, ...patch } : question);
+      return {
+        ...current,
+        questions,
+        questionCount: questions.length,
+        answerKey: questions.map(getQuestionAnswerLetter).join(','),
+      };
+    });
+  };
+
+  const updateExamOption = (questionIndex: number, optionIndex: number, value: string) => {
+    setSelectedExam((current) => {
+      if (!current) return current;
+      const questions = current.questions.map((question, idx) => idx === questionIndex ? {
+        ...question,
+        options: question.options.map((option, optIdx) => optIdx === optionIndex ? value : option),
+      } : question);
+      return {
+        ...current,
+        questions,
+        answerKey: questions.map(getQuestionAnswerLetter).join(','),
+      };
+    });
   };
 
   const handleDeleteExam = async (exam: examApi.ExamItem) => {
@@ -206,7 +314,12 @@ export default function ExamGenerator() {
     }
   };
 
-  const activeAnswerKey = selectedExam ? parseAnswerKey(selectedExam.answerKey) : [];
+  const activeAnswerKey = selectedExam?.questions?.length
+    ? selectedExam.questions.map(getQuestionAnswerLetter)
+    : selectedExam ? parseAnswerKey(selectedExam.answerKey) : [];
+  const selectedQuestionCount = Number(questionCount);
+  const hasEnoughApprovedQuestions =
+    availableQuestionCount === null || availableQuestionCount >= selectedQuestionCount;
 
   const buildExamExportHtml = () => {
     if (!selectedExam) return '';
@@ -391,16 +504,27 @@ export default function ExamGenerator() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="5">5 câu</SelectItem>
-                      <SelectItem value="10">10 câu</SelectItem>
-                      <SelectItem value="15">15 câu</SelectItem>
-                      <SelectItem value="20">20 câu</SelectItem>
+                      {QUESTION_COUNT_OPTIONS.map((count) => (
+                        <SelectItem
+                          key={count}
+                          value={String(count)}
+                          disabled={availableQuestionCount !== null && count > availableQuestionCount}
+                        >
+                          {count} câu
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={handleGenerate} disabled={isGenerating}>
+              {availableQuestionCount !== null ? (
+                <div className="rounded-lg border bg-slate-50 p-3 text-sm text-gray-600">
+                  Bài này hiện có {availableQuestionCount} câu hỏi đã duyệt trong ngân hàng câu hỏi.
+                </div>
+              ) : null}
+
+              <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" onClick={handleGenerate} disabled={isGenerating || !hasEnoughApprovedQuestions}>
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -498,7 +622,10 @@ export default function ExamGenerator() {
                       >
                         <button
                           type="button"
-                          onClick={() => setSelectedExam(exam)}
+                          onClick={() => {
+                            setSelectedExam(exam);
+                            setExamTitle(exam.title || '');
+                          }}
                           className="min-w-0 flex-1 text-left"
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -527,7 +654,15 @@ export default function ExamGenerator() {
                   {selectedExam ? (
                     <div className="space-y-6">
                       <div className="border-b-2 border-gray-300 pb-6 text-center">
-                        <h2 className="mb-3 text-2xl font-bold text-gray-900">{selectedExam.title}</h2>
+                        <Label className="mb-2 block text-left">Tiêu đề đề thi</Label>
+                        <Input
+                          className="mx-auto mb-3 max-w-2xl text-center text-lg font-semibold"
+                          value={examTitle || selectedExam.title}
+                          onChange={(event) => {
+                            setExamTitle(event.target.value);
+                            updateSelectedExam({ title: event.target.value });
+                          }}
+                        />
                         <div className="flex justify-center gap-2 flex-wrap">
                           <Badge variant="outline">{selectedExam.questions?.length || 0} câu hỏi</Badge>
                           <Badge className="bg-blue-100 text-blue-700">{difficulty}</Badge>
@@ -538,19 +673,56 @@ export default function ExamGenerator() {
                         {selectedExam.questions?.map((question, index) => (
                           <div key={`${question.id}-${index}`} className="rounded-lg border-2 bg-white p-5">
                             <div className="mb-3 flex items-start justify-between gap-3">
-                              <div className="flex-1">
-                                <span className="text-lg font-bold text-gray-900">{index + 1}.</span>
-                                <span className="ml-2 text-gray-900">{question.content}</span>
+                              <div className="flex flex-1 items-start gap-2">
+                                <span className="mt-2 text-lg font-bold text-gray-900">{index + 1}.</span>
+                                <Textarea
+                                  value={question.content}
+                                  onChange={(event) => updateExamQuestion(index, { content: event.target.value })}
+                                  placeholder="Nội dung câu hỏi..."
+                                  rows={2}
+                                />
                               </div>
                               {question.difficultyLevel ? <Badge>{question.difficultyLevel}</Badge> : null}
                             </div>
                             <div className="ml-6 mt-3 space-y-2">
                               {question.options?.map((option, optionIndex) => (
-                                <div key={`${question.id}-${optionIndex}`} className="flex items-start gap-3 rounded p-2 hover:bg-gray-50">
+                                <div key={`${question.id}-${optionIndex}`} className="flex items-center gap-3 rounded p-2 hover:bg-gray-50">
                                   <span className="min-w-[24px] font-medium">{String.fromCharCode(65 + optionIndex)}.</span>
-                                  <span>{option}</span>
+                                  <Input
+                                    value={option}
+                                    onChange={(event) => updateExamOption(index, optionIndex, event.target.value)}
+                                  />
                                 </div>
                               ))}
+                              <div className="grid gap-3 pt-2 md:grid-cols-[180px_1fr]">
+                                <div className="space-y-2">
+                                  <Label>Đáp án đúng</Label>
+                                  <Select
+                                    value={getQuestionAnswerLetter(question) || question.correctAnswer || 'A'}
+                                    onValueChange={(value) => updateExamQuestion(index, { correctAnswer: value })}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {(question.options || []).map((_, optionIndex) => (
+                                        <SelectItem key={optionIndex} value={String.fromCharCode(65 + optionIndex)}>
+                                          {String.fromCharCode(65 + optionIndex)}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Giải thích</Label>
+                                  <Textarea
+                                    value={question.explanation || ''}
+                                    onChange={(event) => updateExamQuestion(index, { explanation: event.target.value })}
+                                    placeholder="Giải thích ngắn..."
+                                    rows={2}
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))}

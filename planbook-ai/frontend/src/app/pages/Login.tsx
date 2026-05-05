@@ -7,9 +7,10 @@ import { Label } from '../components/ui/label';
 import { AlertCircle, GraduationCap, Sparkles, Eye, EyeOff, X } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { authApi } from '../api/authApi';
+import { authStorage } from '../api/axiosClient';
 
 type LoginNotice = {
-  type: 'locked' | 'expired';
+  type: 'locked' | 'expired' | 'maintenance';
   title: string;
   message: string;
 };
@@ -18,6 +19,17 @@ const defaultLockedNotice: LoginNotice = {
   type: 'locked',
   title: 'Tài khoản đã bị khóa',
   message: 'Tài khoản này đang bị khóa. Vui lòng liên hệ quản trị viên để được mở lại.',
+};
+
+const defaultMaintenanceNotice: LoginNotice = {
+  type: 'maintenance',
+  title: 'Hệ thống đang bảo trì',
+  message: 'Hệ thống đang bảo trì. Giáo viên vui lòng quay lại sau.',
+};
+
+const isMaintenanceLoginError = (message: string) => {
+  const text = String(message || '').toLowerCase();
+  return text.includes('bao tri') || text.includes('bảo trì') || text.includes('maintenance');
 };
 
 const isLockedLoginError = (message: string, status?: number) => {
@@ -49,7 +61,7 @@ export default function Login() {
       if (!rawNotice) return;
       const parsed = JSON.parse(rawNotice);
       setLoginNotice({
-        type: parsed.type === 'expired' ? 'expired' : 'locked',
+        type: parsed.type === 'maintenance' ? 'maintenance' : parsed.type === 'expired' ? 'expired' : 'locked',
         title: parsed.title || defaultLockedNotice.title,
         message: parsed.message || defaultLockedNotice.message,
       });
@@ -68,12 +80,16 @@ export default function Login() {
       const response = await authApi.login({ email, password });
 
       const token = (response as any).token || (response as any).accessToken;
+      const refreshToken = (response as any).refreshToken;
       if (!token) {
         setErrorMsg('Đăng nhập thành công nhưng không tìm thấy token!');
         return;
       }
 
-      localStorage.setItem('access_token', token);
+      authStorage.saveTokens({
+        accessToken: token,
+        refreshToken: refreshToken || null,
+      });
 
       // Decode JWT để lấy role THẬT từ backend, không dựa vào dropdown nữa
       try {
@@ -92,7 +108,10 @@ export default function Login() {
     } catch (error: any) {
       console.error('Lỗi đăng nhập:', error);
       const serverMessage = error.response?.data?.message || error.response?.data?.error || '';
-      if (isLockedLoginError(serverMessage, error.response?.status)) {
+      if (isMaintenanceLoginError(serverMessage)) {
+        setLoginNotice(defaultMaintenanceNotice);
+        setErrorMsg('Hệ thống đang bảo trì.');
+      } else if (isLockedLoginError(serverMessage, error.response?.status)) {
         setLoginNotice(defaultLockedNotice);
         setErrorMsg('Tài khoản đã bị khóa.');
       } else {

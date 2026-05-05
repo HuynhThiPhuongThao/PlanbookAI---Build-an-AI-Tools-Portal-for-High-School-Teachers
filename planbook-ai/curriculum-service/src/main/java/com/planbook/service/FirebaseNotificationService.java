@@ -6,38 +6,60 @@ import com.google.firebase.messaging.Notification;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
 public class FirebaseNotificationService {
 
-    // Hàm gửi tin nhắn notification chung
+    public static final String TYPE_CONTENT_SUBMITTED = "CONTENT_SUBMITTED";
+    public static final String TYPE_CONTENT_APPROVED = "CONTENT_APPROVED";
+    public static final String TYPE_CONTENT_REJECTED = "CONTENT_REJECTED";
+    public static final String TYPE_SYSTEM_CONFIG_UPDATED = "SYSTEM_CONFIG_UPDATED";
+
     public void sendNotification(String targetToken, String title, String body) {
+        sendNotification(targetToken, title, body, "GENERAL", Map.of());
+    }
+
+    public void sendNotification(String targetToken, String title, String body, String type, Map<String, String> data) {
+        if (targetToken == null || targetToken.trim().isEmpty()) {
+            return;
+        }
+
         try {
-            // Đóng gói nội dung thông báo
             Notification notification = Notification.builder()
                     .setTitle(title)
                     .setBody(body)
                     .build();
 
-            // Đóng gói địa chỉ gửi tới (targetToken)
-            Message message = Message.builder()
-                    .setToken(targetToken)
+            Message.Builder messageBuilder = Message.builder()
+                    .setToken(targetToken.trim())
                     .setNotification(notification)
-                    .build();
+                    .putData("type", type == null || type.isBlank() ? "GENERAL" : type)
+                    .putData("source", "curriculum-service");
 
-            // Giao cho Firebase xử lý
-            String response = FirebaseMessaging.getInstance().send(message);
-            System.out.println("🔥 [Firebase FCM] Thông báo thành công: " + response);
+            if (data != null) {
+                data.forEach((key, value) -> {
+                    if (key != null && value != null) {
+                        messageBuilder.putData(key, value);
+                    }
+                });
+            }
+
+            String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
+            System.out.println("[Firebase FCM] Notification sent: " + response);
         } catch (Exception e) {
-            System.err.println("❌ [Firebase FCM] Lỗi khi gửi thông báo: " + e.getMessage());
-            // e.printStackTrace();
+            System.err.println("[Firebase FCM] Send failed: " + e.getMessage());
         }
     }
 
     public void sendNotificationToMany(Collection<String> targetTokens, String title, String body) {
+        sendNotificationToMany(targetTokens, title, body, "GENERAL", Map.of());
+    }
+
+    public void sendNotificationToMany(Collection<String> targetTokens, String title, String body, String type, Map<String, String> data) {
         if (targetTokens == null || targetTokens.isEmpty()) {
-            System.out.println("🔥 [Firebase FCM] Không có token nhận thông báo.");
+            System.out.println("[Firebase FCM] No recipient token.");
             return;
         }
 
@@ -46,6 +68,6 @@ public class FirebaseNotificationService {
                 .map(String::trim)
                 .filter(token -> !token.isEmpty())
                 .distinct()
-                .forEach(token -> sendNotification(token, title, body));
+                .forEach(token -> sendNotification(token, title, body, type, data));
     }
 }

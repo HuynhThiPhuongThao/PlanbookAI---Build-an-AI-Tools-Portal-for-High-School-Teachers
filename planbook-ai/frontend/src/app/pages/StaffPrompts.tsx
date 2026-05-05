@@ -6,7 +6,7 @@ import PromptForm from '../components/prompts/PromptForm';
 import PromptList from '../components/prompts/PromptList';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
-import { Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 
 import {
     promptApi,
@@ -36,21 +36,42 @@ export default function StaffPrompts() {
         return [...prompts].sort((a, b) => b.id - a.id);
     }, [prompts]);
 
-    const loadPrompts = async () => {
-        setLoading(true);
-        setError('');
+    const loadPrompts = async (showLoading = true) => {
+        if (showLoading) {
+            setLoading(true);
+            setError('');
+        }
         try {
             const data = await promptApi.getAll();
             setPrompts(data);
         } catch (err: any) {
-            setError(getErrorMessage(err, 'Không tải được danh sách mẫu lời nhắc.'));
+            if (showLoading) setError(getErrorMessage(err, 'Không tải được danh sách mẫu lời nhắc.'));
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
     useEffect(() => {
         void loadPrompts();
+
+        const handleFirebaseNotification = (event: Event) => {
+            const payload = (event as CustomEvent<any>).detail;
+            const type = payload?.data?.type;
+            const contentKind = payload?.data?.contentKind;
+            if ((type === 'CONTENT_APPROVED' || type === 'CONTENT_REJECTED') && (!contentKind || contentKind === 'PROMPT')) {
+                void loadPrompts(false);
+            }
+        };
+
+        const intervalId = window.setInterval(() => {
+            if (document.visibilityState === 'visible') void loadPrompts(false);
+        }, 5000);
+
+        window.addEventListener('firebaseNotificationReceived', handleFirebaseNotification as EventListener);
+        return () => {
+            window.removeEventListener('firebaseNotificationReceived', handleFirebaseNotification as EventListener);
+            window.clearInterval(intervalId);
+        };
     }, []);
 
     const handleCreate = async (payload: CreatePromptPayload) => {
@@ -106,16 +127,21 @@ export default function StaffPrompts() {
     return (
         <DashboardLayout role="staff" userName={userName || 'Nhân viên'}>
             <div className="space-y-6">
-                <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
                     <div>
+                        <div className="mb-2 flex items-center gap-2">
+                            <Button asChild variant="outline" size="sm" className="gap-1">
+                                <Link to="/staff">
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Quay lại trang nhân viên
+                                </Link>
+                            </Button>
+                        </div>
                         <h1 className="text-3xl font-bold text-gray-900">Quản lý mẫu lời nhắc AI</h1>
                         <p className="text-gray-600 mt-2">
                             Tạo, chỉnh sửa và xóa mẫu lời nhắc hướng dẫn AI để sinh nội dung giáo dục.
                         </p>
                     </div>
-                    <Button asChild variant="outline">
-                        <Link to="/staff">Quay lại trang nhân viên</Link>
-                    </Button>
                 </div>
 
                 {error && (

@@ -124,6 +124,28 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    public List<String> getActiveFcmTokens() {
+        return userProfileRepository.findByActiveTrue()
+                .stream()
+                .map(UserProfile::getFcmToken)
+                .filter(token -> token != null && !token.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    public List<String> getActiveInternalFcmTokens() {
+        return userProfileRepository.findByRoleInAndActiveTrue(List.of(
+                        com.planbook.user.entity.Role.ADMIN,
+                        com.planbook.user.entity.Role.MANAGER,
+                        com.planbook.user.entity.Role.STAFF
+                ))
+                .stream()
+                .map(UserProfile::getFcmToken)
+                .filter(token -> token != null && !token.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
     public boolean isUserActive(Long userId) {
         return userProfileRepository.findById(userId)
                 .map(UserProfile::isActive)

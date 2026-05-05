@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import DashboardLayout from '../components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -15,7 +15,7 @@ import {
 } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
-import { ArrowLeft, Sparkles, Download, Eye, Loader2, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Download, Eye, Loader2, Save, Trash2, Plus } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { escapeHtml, exportWordDocument, openPrintPreview } from '../utils/exportUtils';
 import { getFullNameFromToken } from '../utils/jwt';
@@ -171,6 +171,7 @@ function getCorrectLetter(question: ExerciseQuestion) {
 
 export default function ExerciseCreator() {
   const realName = getFullNameFromToken();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedExercise, setGeneratedExercise] = useState<GeneratedExercise | null>(null);
@@ -184,6 +185,7 @@ export default function ExerciseCreator() {
   const [difficulty, setDifficulty] = useState('medium');
   const [learningObjectives, setLearningObjectives] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [refinementRequest, setRefinementRequest] = useState('');
 
   const handleGenerate = async () => {
     if (!topic.trim()) {
@@ -220,6 +222,110 @@ export default function ExerciseCreator() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleRefineExercise = async () => {
+    if (!generatedExercise) return;
+    if (!refinementRequest.trim()) {
+      setErrorMsg('Nhập yêu cầu tinh chỉnh trước khi gửi lại cho AI.');
+      return;
+    }
+
+    setIsGenerating(true);
+    setErrorMsg(null);
+    setSaveMsg(null);
+    try {
+      const response: any = await axiosClient.post('/ai/generate-exercise', {
+        topic: [
+          `${generatedExercise.subject} - ${topic || generatedExercise.title}`,
+          `Bài tập hiện tại:\n${JSON.stringify(generatedExercise, null, 2)}`,
+          `Yêu cầu tinh chỉnh của giáo viên:\n${refinementRequest.trim()}`,
+          'Hãy trả về lại toàn bộ danh sách câu hỏi sau khi tinh chỉnh, gồm câu hỏi, lựa chọn, đáp án đúng và giải thích.',
+        ].join('\n\n'),
+        grade: generatedExercise.grade || grade,
+        difficulty: generatedExercise.difficulty || difficulty,
+        numberOfQuestions: generatedExercise.questions.length || Number(questionCount),
+      }, { timeout: 60000 });
+
+      const questions = Array.isArray(response?.questions)
+        ? response.questions.map((question: RawExerciseQuestion, index: number) => normalizeExerciseQuestion(question, index))
+        : generatedExercise.questions;
+
+      setGeneratedExercise({
+        ...generatedExercise,
+        questions,
+      });
+      setQuestionCount(String(questions.length || questionCount));
+      setRefinementRequest('');
+    } catch (error: any) {
+      setErrorMsg(getExerciseErrorMessage(error));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const updateExerciseField = <K extends keyof GeneratedExercise>(field: K, value: GeneratedExercise[K]) => {
+    setGeneratedExercise((current) => current ? { ...current, [field]: value } : current);
+  };
+
+  const updateQuestion = (index: number, patch: Partial<ExerciseQuestion>) => {
+    setGeneratedExercise((current) => current ? {
+      ...current,
+      questions: current.questions.map((question, idx) => idx === index ? { ...question, ...patch } : question),
+    } : current);
+  };
+
+  const updateQuestionOption = (questionIndex: number, optionIndex: number, value: string) => {
+    setGeneratedExercise((current) => current ? {
+      ...current,
+      questions: current.questions.map((question, idx) => idx === questionIndex ? {
+        ...question,
+        options: question.options.map((option, optIdx) => optIdx === optionIndex ? value : option),
+      } : question),
+    } : current);
+  };
+
+  const addQuestion = () => {
+    setGeneratedExercise((current) => current ? {
+      ...current,
+      questions: [
+        ...current.questions,
+        {
+          id: `manual-${Date.now()}`,
+          question: '',
+          options: ['', '', '', ''],
+          correctAnswer: 'A',
+          explanation: '',
+        },
+      ],
+    } : current);
+  };
+
+  const removeQuestion = (index: number) => {
+    setGeneratedExercise((current) => current ? {
+      ...current,
+      questions: current.questions.filter((_, idx) => idx !== index),
+    } : current);
+  };
+
+  const addOption = (questionIndex: number) => {
+    setGeneratedExercise((current) => current ? {
+      ...current,
+      questions: current.questions.map((question, idx) => idx === questionIndex ? {
+        ...question,
+        options: [...question.options, ''],
+      } : question),
+    } : current);
+  };
+
+  const removeOption = (questionIndex: number, optionIndex: number) => {
+    setGeneratedExercise((current) => current ? {
+      ...current,
+      questions: current.questions.map((question, idx) => idx === questionIndex ? {
+        ...question,
+        options: question.options.filter((_, optIdx) => optIdx !== optionIndex),
+      } : question),
+    } : current);
   };
 
   const normalizeCorrectAnswer = (question: ExerciseQuestion) => {
@@ -328,6 +434,11 @@ export default function ExerciseCreator() {
     setSaveMsg(`Đã lưu bài tập "${generatedExercise.title}" với ${generatedExercise.questions.length} câu.`);
     window.dispatchEvent(new CustomEvent('savedExercisesUpdated', { detail: { count: next.length } }));
     setIsSavingExercise(false);
+    navigate('/teacher/exercises', {
+      state: {
+        notice: `Đã lưu bài tập "${generatedExercise.title}" vào danh sách bài tập.`,
+      },
+    });
   };
 
   const handleDeleteSavedExercise = (id: string) => {
@@ -589,7 +700,12 @@ export default function ExerciseCreator() {
               ) : (
                 <div className="space-y-6">
                   <div className="border-b pb-4">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">{generatedExercise.title}</h2>
+                    <Label className="mb-2 block">Tiêu đề bài tập</Label>
+                    <Input
+                      className="mb-3 text-lg font-semibold"
+                      value={generatedExercise.title}
+                      onChange={(event) => updateExerciseField('title', event.target.value)}
+                    />
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline">{generatedExercise.subject}</Badge>
                       <Badge variant="outline">Khối {generatedExercise.grade}</Badge>
@@ -603,6 +719,22 @@ export default function ExerciseCreator() {
                     ) : null}
                   </div>
 
+                  <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
+                    <Label className="mb-2 block">Yêu cầu tinh chỉnh sau khi AI tạo</Label>
+                    <Textarea
+                      value={refinementRequest}
+                      onChange={(event) => setRefinementRequest(event.target.value)}
+                      placeholder="Ví dụ: đổi câu 2 thành mức vận dụng, thêm giải thích chi tiết hơn, tránh đáp án quá dễ đoán..."
+                      rows={3}
+                    />
+                    <div className="mt-3 flex justify-end">
+                      <Button type="button" onClick={handleRefineExercise} disabled={isGenerating || !refinementRequest.trim()}>
+                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        Tinh chỉnh bằng AI
+                      </Button>
+                    </div>
+                  </div>
+
                   <Tabs defaultValue="questions" className="w-full">
                     <TabsList>
                       <TabsTrigger value="questions">Câu hỏi</TabsTrigger>
@@ -610,19 +742,81 @@ export default function ExerciseCreator() {
                     </TabsList>
 
                     <TabsContent value="questions" className="space-y-6 mt-6">
+                      <div className="flex justify-end">
+                        <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Thêm câu hỏi
+                        </Button>
+                      </div>
                       {generatedExercise.questions.map((question, index) => (
                         <div key={question.id || index} className="rounded-lg border bg-white p-4">
-                          <div className="mb-3">
-                            <span className="font-bold text-gray-900">Câu {index + 1}.</span>
-                            <span className="ml-2 text-gray-900">{question.question}</span>
+                          <div className="mb-3 flex items-start gap-2">
+                            <span className="mt-2 font-bold text-gray-900">Câu {index + 1}.</span>
+                            <Textarea
+                              className="flex-1"
+                              value={question.question}
+                              onChange={(event) => updateQuestion(index, { question: event.target.value })}
+                              placeholder="Nội dung câu hỏi..."
+                              rows={2}
+                            />
+                            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeQuestion(index)}>
+                              <Trash2 className="h-4 w-4 text-gray-500" />
+                            </Button>
                           </div>
                           <div className="ml-4 space-y-2">
                             {question.options.map((option, optionIndex) => (
-                              <div key={`${question.id}-${optionIndex}`} className="flex gap-3 rounded p-2 hover:bg-gray-50">
+                              <div key={`${question.id}-${optionIndex}`} className="flex items-center gap-2 rounded p-2 hover:bg-gray-50">
                                 <span className="min-w-6 font-medium">{String.fromCharCode(65 + optionIndex)}.</span>
-                                <span>{option}</span>
+                                <Input
+                                  value={option}
+                                  onChange={(event) => updateQuestionOption(index, optionIndex, event.target.value)}
+                                  placeholder={`Lựa chọn ${String.fromCharCode(65 + optionIndex)}`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0"
+                                  onClick={() => removeOption(index, optionIndex)}
+                                  disabled={question.options.length <= 2}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-gray-500" />
+                                </Button>
                               </div>
                             ))}
+                            <Button type="button" variant="outline" size="sm" className="ml-8" onClick={() => addOption(index)}>
+                              <Plus className="mr-2 h-4 w-4" />
+                              Thêm lựa chọn
+                            </Button>
+                            <div className="ml-8 grid gap-3 md:grid-cols-[160px_1fr]">
+                              <div className="space-y-2">
+                                <Label>Đáp án đúng</Label>
+                                <Select
+                                  value={getCorrectLetter(question) || question.correctAnswer || 'A'}
+                                  onValueChange={(value) => updateQuestion(index, { correctAnswer: value })}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {question.options.map((_, optionIndex) => (
+                                      <SelectItem key={optionIndex} value={String.fromCharCode(65 + optionIndex)}>
+                                        {String.fromCharCode(65 + optionIndex)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Giải thích</Label>
+                                <Textarea
+                                  value={question.explanation || ''}
+                                  onChange={(event) => updateQuestion(index, { explanation: event.target.value })}
+                                  placeholder="Giải thích ngắn..."
+                                  rows={2}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))}

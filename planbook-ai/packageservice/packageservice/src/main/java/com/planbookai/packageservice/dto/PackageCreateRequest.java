@@ -11,4 +11,5 @@ public class PackageCreateRequest {
     private Integer durationDays;
     private String description;
     private Boolean active;
+    private Boolean highlight;
 }

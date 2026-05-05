@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SampleLessonPlanService {
@@ -143,17 +144,22 @@ public class SampleLessonPlanService {
             String[] managerTokens = restTemplate.getForObject(tokenUrl, String[].class);
 
             if (managerTokens == null || managerTokens.length == 0) {
-                System.out.println("🔥 [Firebase] Chưa có Manager nào đăng ký FCM token.");
+                System.out.println("[Firebase] No manager FCM token registered.");
                 return;
             }
 
             firebaseNotificationService.sendNotificationToMany(
                     List.of(managerTokens),
-                    "Có giáo án mẫu mới cần duyệt",
-                    "Staff vừa gửi duyệt giáo án: " + sampleLessonPlan.getTitle()
+                    "[CẦN DUYỆT] Giáo án mẫu mới",
+                    "Staff vừa gửi duyệt giáo án: " + sampleLessonPlan.getTitle(),
+                    com.planbook.service.FirebaseNotificationService.TYPE_CONTENT_SUBMITTED,
+                    Map.of(
+                            "lessonPlanId", String.valueOf(sampleLessonPlan.getId()),
+                            "lessonPlanTitle", sampleLessonPlan.getTitle() == null ? "" : sampleLessonPlan.getTitle()
+                    )
             );
         } catch (Exception e) {
-            System.err.println("❌ Không thể lấy danh sách FCM Token của Manager: " + e.getMessage());
+            System.err.println("[Firebase] Could not get manager FCM token list: " + e.getMessage());
         }
     }
 
@@ -204,3 +210,4 @@ public class SampleLessonPlanService {
         return response;
     }
 }
+

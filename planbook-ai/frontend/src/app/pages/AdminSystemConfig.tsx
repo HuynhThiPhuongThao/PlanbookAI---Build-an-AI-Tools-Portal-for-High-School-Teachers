@@ -15,6 +15,7 @@ interface SystemConfig {
   maxLessonPlansPerDay: number;
   maxQuestionsPerDay: number;
   systemBanner: string;
+  bannerAudience: 'ALL' | 'INTERNAL';
   bannerEnabled: boolean;
   maintenanceMode: boolean;
 }
@@ -27,6 +28,7 @@ const DEFAULT_CONFIG: SystemConfig = {
   maxLessonPlansPerDay: 10,
   maxQuestionsPerDay: 50,
   systemBanner: '',
+  bannerAudience: 'ALL',
   bannerEnabled: false,
   maintenanceMode: false,
 };
@@ -157,8 +159,8 @@ export default function AdminSystemConfig() {
       color: 'text-green-600',
       bg: 'bg-green-50',
       border: 'border-green-100',
-      title: 'Giới hạn người dùng',
-      desc: 'Kiểm soát mức sử dụng và đăng ký',
+      title: 'Đăng ký người dùng',
+      desc: 'Kiểm soát luồng đăng ký giáo viên',
       content: (
         <div className="space-y-5">
           <div className="flex items-center justify-between border-b border-gray-100 py-2">
@@ -167,36 +169,6 @@ export default function AdminSystemConfig() {
               <p className="text-xs text-gray-400">Nếu bật, cho phép mọi giáo viên tự đăng ký mà không cần phê duyệt</p>
             </div>
             <Toggle checked={config.allowTeacherRegister} onChange={() => update('allowTeacherRegister', !config.allowTeacherRegister)} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Số giáo án AI tối đa mỗi ngày: <span className="font-bold text-purple-600">{config.maxLessonPlansPerDay}</span>
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={50}
-              step={1}
-              value={config.maxLessonPlansPerDay}
-              onChange={(e) => update('maxLessonPlansPerDay', Number(e.target.value))}
-              className="w-full accent-purple-600"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Số câu hỏi AI tối đa mỗi ngày: <span className="font-bold text-purple-600">{config.maxQuestionsPerDay}</span>
-            </label>
-            <input
-              type="range"
-              min={5}
-              max={200}
-              step={5}
-              value={config.maxQuestionsPerDay}
-              onChange={(e) => update('maxQuestionsPerDay', Number(e.target.value))}
-              className="w-full accent-purple-600"
-            />
           </div>
         </div>
       ),
@@ -223,9 +195,37 @@ export default function AdminSystemConfig() {
             <textarea
               value={config.systemBanner}
               onChange={(e) => update('systemBanner', e.target.value)}
-              disabled={!config.bannerEnabled}
-              className="min-h-[80px] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-50 disabled:text-gray-400"
+              className="min-h-[80px] w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Phạm vi hiển thị</label>
+            <select
+              value={config.bannerAudience}
+              onChange={(e) => update('bannerAudience', e.target.value as SystemConfig['bannerAudience'])}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="ALL">Tất cả vai trò</option>
+              <option value="INTERNAL">Chỉ nội bộ (Admin, Manager, Staff)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            {saved ? (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-green-600">
+                <CheckCircle2 className="h-4 w-4" /> Đã lưu thông báo
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="gap-1.5 bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Lưu thông báo
+            </Button>
           </div>
         </div>
       ),
@@ -267,7 +267,7 @@ export default function AdminSystemConfig() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="gap-1">
-                <ArrowLeft className="w-4 h-4" /> Về Dashboard
+                <ArrowLeft className="w-4 h-4" /> Về lại bảng điều khiển
               </Button>
             </div>
             <h1 className="text-3xl font-bold text-gray-900">Cấu hình hệ thống</h1>
@@ -320,13 +320,6 @@ export default function AdminSystemConfig() {
               ))}
             </div>
 
-            <Card className="border-dashed border-gray-300 bg-gray-50">
-              <CardContent className="pb-4 pt-4">
-                <p className="text-center text-xs text-gray-500">
-                  Cấu hình này đang được đọc/ghi qua API `GET/PUT /api/system-config` của `curriculum-service`.
-                </p>
-              </CardContent>
-            </Card>
           </>
         )}
       </div>

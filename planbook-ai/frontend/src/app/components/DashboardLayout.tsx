@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { UserRole } from '../types';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import axiosClient from '../api/axiosClient';
+import axiosClient, { authStorage } from '../api/axiosClient';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import { GraduationCap, LogOut, Settings, User } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle, Clock, GraduationCap, LogOut, Settings, User, XCircle } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,18 +20,119 @@ interface DashboardLayoutProps {
   userName: string;
 }
 
+type FirebaseToastType = 'CONTENT_SUBMITTED' | 'CONTENT_APPROVED' | 'CONTENT_REJECTED' | 'SYSTEM_CONFIG_UPDATED' | 'GENERAL';
+
+type FirebaseToast = {
+  title: string;
+  body: string;
+  type: FirebaseToastType;
+};
+
+type FirebaseNotificationItem = FirebaseToast & {
+  id: string;
+  receivedAt: string;
+  read: boolean;
+};
+
+type SystemPublicConfig = {
+  allowTeacherRegister: boolean;
+  systemBanner: string;
+  bannerAudience: 'ALL' | 'INTERNAL';
+  bannerEnabled: boolean;
+  maintenanceMode: boolean;
+};
+
+const firebaseToastStyles: Record<FirebaseToastType, {
+  label: string;
+  border: string;
+  badge: string;
+  iconWrap: string;
+  iconColor: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}> = {
+  CONTENT_SUBMITTED: {
+    label: 'Cần duyệt',
+    border: 'border-l-amber-500',
+    badge: 'bg-amber-100 text-amber-700',
+    iconWrap: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    Icon: Clock,
+  },
+  CONTENT_APPROVED: {
+    label: 'Đã duyệt',
+    border: 'border-l-green-500',
+    badge: 'bg-green-100 text-green-700',
+    iconWrap: 'bg-green-100',
+    iconColor: 'text-green-600',
+    Icon: CheckCircle,
+  },
+  CONTENT_REJECTED: {
+    label: 'Từ chối',
+    border: 'border-l-red-500',
+    badge: 'bg-red-100 text-red-700',
+    iconWrap: 'bg-red-100',
+    iconColor: 'text-red-600',
+    Icon: XCircle,
+  },
+  GENERAL: {
+    label: 'Thông báo',
+    border: 'border-l-blue-500',
+    badge: 'bg-blue-100 text-blue-700',
+    iconWrap: 'bg-blue-100',
+    iconColor: 'text-blue-600',
+    Icon: Bell,
+  },
+  SYSTEM_CONFIG_UPDATED: {
+    label: 'Hệ thống',
+    border: 'border-l-amber-500',
+    badge: 'bg-amber-100 text-amber-700',
+    iconWrap: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    Icon: Bell,
+  },
+};
+
+function normalizeFirebaseToastType(type?: string): FirebaseToastType {
+  if (type === 'CONTENT_SUBMITTED' || type === 'CONTENT_APPROVED' || type === 'CONTENT_REJECTED' || type === 'SYSTEM_CONFIG_UPDATED') {
+    return type;
+  }
+  return 'GENERAL';
+}
+
+function getFirebaseFallbackTitle(type: FirebaseToastType) {
+  if (type === 'CONTENT_SUBMITTED') return 'Có nội dung cần duyệt';
+  if (type === 'CONTENT_APPROVED') return 'Nội dung đã được duyệt';
+  if (type === 'CONTENT_REJECTED') return 'Nội dung bị từ chối';
+  if (type === 'SYSTEM_CONFIG_UPDATED') return 'Thông báo hệ thống';
+  return 'Thông báo PlanbookAI';
+}
+
+function parseFirebaseBoolean(value: unknown) {
+  return String(value || '').toLowerCase() === 'true';
+}
+
 export default function DashboardLayout({ children, role, userName: defaultUserName }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const [realName, setRealName] = React.useState(defaultUserName);
   const [realRole, setRealRole] = React.useState(role);
   const [realAvatar, setRealAvatar] = React.useState<string | null>(null);
+  const [firebaseToast, setFirebaseToast] = React.useState<FirebaseToast | null>(null);
+  const [notifications, setNotifications] = React.useState<FirebaseNotificationItem[]>([]);
+  const [systemConfig, setSystemConfig] = React.useState<SystemPublicConfig | null>(null);
+  const firebaseToastTimer = React.useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const unreadNotificationCount = notifications.filter((item) => !item.read).length;
+  const shouldShowSystemBanner = Boolean(
+    systemConfig?.bannerEnabled &&
+    systemConfig.systemBanner?.trim() &&
+    (systemConfig.bannerAudience !== 'INTERNAL' || realRole !== 'teacher')
+  );
 
   React.useEffect(() => {
-    // 1. Phân tích token để lấy tên mặc định lúc mới đăng nhập
+    // 1. Parse token for initial user info.
     try {
       const token = localStorage.getItem('access_token');
       if (token) {
-        // Tách phần payload của JWT (nằm giữa 2 dấu chấm)
+        // Decode the JWT payload.
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
@@ -46,21 +147,21 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
       console.warn("Could not parse JWT token for user info", e);
     }
     
-    // 2. Tự động kéo avatar từ DB ngay khi header mount
-    //    → tránh trường hợp user đã đổi ảnh từ session trước mà header vẫn hiện chữ initials
+    // 2. Load profile details when the header mounts.
+    // Keep the header synced after profile changes.
     const fetchAvatar = async () => {
       try {
         const token = localStorage.getItem('access_token');
         if (!token) return;
-        // axiosClient interceptor đã unwrap response.data rồi → res chính là data object luôn
+        // axiosClient unwraps response.data.
         const res: any = await axiosClient.get('/users/me');
         if (res?.avatarUrl) setRealAvatar(res.avatarUrl);
         if (res?.fullName) setRealName(res.fullName);
-      } catch (_) { /* silent fail — không ảnh hưởng UI */ }
+      } catch (_) { /* silent fail */ }
     };
     fetchAvatar();
 
-    // 3. Lắng nghe tín hiệu cập nhật realtime từ trang UserProfile (khi user vừa bấm Lưu)
+    // 3. Listen for profile updates from the profile page.
     const handleProfileUpdate = (e: any) => {
       if (e.detail?.fullName) setRealName(e.detail.fullName);
       if (e.detail?.avatarUrl !== undefined) setRealAvatar(e.detail.avatarUrl);
@@ -68,27 +169,112 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
     
     window.addEventListener('profileUpdated', handleProfileUpdate);
 
-    // 4. Firebase: Đăng ký Token thiết bị và gửi lên Backend (để nhận thông báo)
+    // 4. Register the FCM token and listen for foreground notifications.
     const token = localStorage.getItem('access_token');
+    let unsubscribeFirebase: undefined | (() => void);
     if (token) {
-      import('../firebase').then(({ requestPermission }) => {
+      import('../firebase').then(({ requestPermission, listenForMessage }) => {
         requestPermission().then((fcmToken) => {
           if (fcmToken) {
             axiosClient.put('/users/me/fcm-token', { token: fcmToken })
-              .then(() => console.log('Đã lưu FCM Token lên server thành công!'))
-              .catch(err => console.error('Lỗi lưu FCM Token', err));
+              .then(() => console.log('Da luu FCM Token len server thanh cong!'))
+              .catch(err => console.error('Loi luu FCM Token', err));
           }
-        }).catch(err => console.error("Lỗi xin quyền Firebase: ", err));
-      }).catch(err => console.error("Lỗi import firebase: ", err));
+        }).catch(err => console.error('Loi xin quyen Firebase: ', err));
+
+        unsubscribeFirebase = listenForMessage((payload: any) => {
+          const type = normalizeFirebaseToastType(payload?.data?.type);
+          if (type === 'SYSTEM_CONFIG_UPDATED') {
+            const nextConfig: SystemPublicConfig = {
+              allowTeacherRegister: parseFirebaseBoolean(payload?.data?.allowTeacherRegister ?? systemConfig?.allowTeacherRegister),
+              systemBanner: payload?.data?.systemBanner ?? systemConfig?.systemBanner ?? '',
+              bannerAudience: payload?.data?.bannerAudience === 'INTERNAL' ? 'INTERNAL' : 'ALL',
+              bannerEnabled: parseFirebaseBoolean(payload?.data?.bannerEnabled ?? systemConfig?.bannerEnabled),
+              maintenanceMode: parseFirebaseBoolean(payload?.data?.maintenanceMode ?? systemConfig?.maintenanceMode),
+            };
+            setSystemConfig(nextConfig);
+
+            const canSeeBanner = nextConfig.bannerAudience !== 'INTERNAL' || role !== 'teacher';
+            if (!nextConfig.bannerEnabled || !nextConfig.systemBanner.trim() || !canSeeBanner) {
+              window.dispatchEvent(new CustomEvent('firebaseNotificationReceived', { detail: payload }));
+              return;
+            }
+          }
+          const toast: FirebaseToast = {
+            type,
+            title: payload?.notification?.title || getFirebaseFallbackTitle(type),
+            body: payload?.notification?.body || payload?.data?.lessonPlanTitle || payload?.data?.promptTitle || 'Có thông báo mới từ PlanbookAI.',
+          };
+
+          setFirebaseToast(toast);
+          setNotifications((current) => [
+            {
+              ...toast,
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              receivedAt: new Date().toISOString(),
+              read: false,
+            },
+            ...current,
+          ].slice(0, 20));
+          window.dispatchEvent(new CustomEvent('firebaseNotificationReceived', { detail: payload }));
+
+          const audio = new Audio('/notification-sound.mp3');
+          audio.play().catch(() => {});
+
+          if (firebaseToastTimer.current) window.clearTimeout(firebaseToastTimer.current);
+          firebaseToastTimer.current = window.setTimeout(() => setFirebaseToast(null), 6000);
+        });
+      }).catch(err => console.error('Loi import firebase: ', err));
     }
 
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+      unsubscribeFirebase?.();
+      if (firebaseToastTimer.current) window.clearTimeout(firebaseToastTimer.current);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const loadSystemConfig = () => {
+      axiosClient.get('/system-config/public')
+        .then((config: any) => {
+          if (mounted) setSystemConfig(config as SystemPublicConfig);
+        })
+        .catch(() => {
+          if (mounted) setSystemConfig(null);
+        });
+    };
+
+    loadSystemConfig();
+    const intervalId = window.setInterval(loadSystemConfig, 5000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
     };
   }, []);
 
   const handleLogout = () => {
+    authStorage.clearTokens();
     navigate('/');
+  };
+
+  const markNotificationsAsRead = () => {
+    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
+
+  const formatNotificationTime = (value: string) => {
+    try {
+      return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
   };
 
   const getRoleDisplay = (roleOutput: string) => {
@@ -122,6 +308,67 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
 
             {/* User Menu */}
             <div className="flex items-center gap-4">
+              <DropdownMenu onOpenChange={(open) => open && markNotificationsAsRead()}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadNotificationCount > 0 ? (
+                      <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                        {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                      </span>
+                    ) : null}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 p-0">
+                  <div className="flex items-center justify-between border-b px-3 py-2">
+                    <DropdownMenuLabel className="px-0 py-0">Thông báo</DropdownMenuLabel>
+                    {notifications.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={clearNotifications}
+                        className="rounded px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                      >
+                        Xóa hết
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-gray-500">
+                      Chưa có thông báo nào.
+                    </div>
+                  ) : (
+                    <div className="max-h-96 overflow-y-auto p-2">
+                      {notifications.map((item) => {
+                        const cfg = firebaseToastStyles[item.type];
+                        const ItemIcon = cfg.Icon;
+                        return (
+                          <div key={item.id} className="rounded-lg p-3 hover:bg-gray-50">
+                            <div className="flex items-start gap-3">
+                              <div className={`mt-0.5 rounded-lg p-2 ${cfg.iconWrap}`}>
+                                <ItemIcon className={`h-4 w-4 ${cfg.iconColor}`} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${cfg.badge}`}>
+                                    {cfg.label}
+                                  </span>
+                                  <span className="shrink-0 text-[11px] text-gray-400">
+                                    {formatNotificationTime(item.receivedAt)}
+                                  </span>
+                                </div>
+                                <p className="mt-1 truncate text-sm font-semibold text-gray-900">{item.title}</p>
+                                <p className="mt-0.5 line-clamp-2 text-xs text-gray-600">{item.body}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-3">
@@ -164,6 +411,57 @@ export default function DashboardLayout({ children, role, userName: defaultUserN
           </div>
         </div>
       </nav>
+
+      {shouldShowSystemBanner ? (
+        <div className="border-b border-amber-200 bg-amber-50">
+          <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-hidden px-4 py-3 text-sm font-medium text-amber-800 sm:px-6 lg:px-8">
+            <Bell className="h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+              <span className="inline-block min-w-full animate-system-banner pr-10">
+                {systemConfig?.systemBanner}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {systemConfig?.maintenanceMode ? (
+        <div className="border-b border-red-200 bg-red-50">
+          <div className="mx-auto flex max-w-7xl items-start gap-2 px-4 py-3 text-sm font-medium text-red-700 sm:px-6 lg:px-8">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Hệ thống đang ở chế độ bảo trì. Một số chức năng có thể tạm thời bị giới hạn.</span>
+          </div>
+        </div>
+      ) : null}
+
+      {firebaseToast && (() => {
+        const cfg = firebaseToastStyles[firebaseToast.type];
+        const ToastIcon = cfg.Icon;
+        return (
+          <div className={`fixed top-20 right-4 z-[60] w-[min(360px,calc(100vw-2rem))] rounded-xl border border-gray-200 border-l-4 ${cfg.border} bg-white p-4 shadow-xl`}>
+            <div className="flex items-start gap-3">
+              <div className={`rounded-lg p-2 ${cfg.iconWrap}`}>
+                <ToastIcon className={`h-5 w-5 ${cfg.iconColor}`} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${cfg.badge}`}>
+                  {cfg.label}
+                </span>
+                <h3 className="mt-1 text-sm font-semibold text-gray-900">{firebaseToast.title}</h3>
+                <p className="mt-1 text-sm text-gray-600">{firebaseToast.body}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFirebaseToast(null)}
+                className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                aria-label="Đóng thông báo"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

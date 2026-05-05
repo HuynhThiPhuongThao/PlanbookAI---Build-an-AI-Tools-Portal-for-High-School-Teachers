@@ -6,6 +6,7 @@ import com.planbook.dto.CreateExamRequest;
 import com.planbook.dto.ExamResponse;
 import com.planbook.dto.PromptDTO;
 import com.planbook.dto.QuestionDTO;
+import com.planbook.dto.UpdateExamRequest;
 import com.planbook.entity.Exam;
 import com.planbook.repository.ExamRepository;
 import com.planbook.repository.ResultRepository;
@@ -63,7 +64,7 @@ public class ExamService {
                 .filter(this::isUsableMultipleChoiceQuestion)
                 .collect(Collectors.toList());
         if (questions.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Khong tim thay cau hoi da duyet phu hop de tao de");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không tìm thấy câu hỏi đã duyệt phù hợp để tạo đề");
         }
 
         Collections.shuffle(questions);
@@ -83,9 +84,9 @@ public class ExamService {
         if (questions.size() < requestedQuestionCount) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Chi co " + questions.size()
-                            + " cau hoi da duyet phu hop, chua du de tao de "
-                            + requestedQuestionCount + " cau. Hay duyet/them cau hoi trong ngan hang cau hoi."
+                    "Chỉ có " + questions.size()
+                            + " câu hỏi đã duyệt phù hợp, chưa đủ để tạo đề "
+                            + requestedQuestionCount + " câu. Hãy duyệt/thêm câu hỏi trong ngân hàng câu hỏi."
             );
         }
 
@@ -115,6 +116,37 @@ public class ExamService {
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    public ExamResponse updateExam(Long examId, UpdateExamRequest request, Long teacherId) {
+        Exam exam = examRepository.findByIdAndTeacherId(examId, teacherId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Khong tim thay de thi hoac ban khong co quyen cap nhat"
+                ));
+
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            exam.setTitle(request.getTitle().trim());
+        }
+
+        if (request.getQuestions() != null) {
+            List<QuestionDTO> questions = request.getQuestions()
+                    .stream()
+                    .filter(this::isUsableMultipleChoiceQuestion)
+                    .toList();
+            if (questions.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "De thi can co it nhat mot cau hoi hop le");
+            }
+            exam.setQuestionIds(questions.stream()
+                    .map(question -> question.getId() == null ? "0" : question.getId().toString())
+                    .collect(Collectors.joining(",")));
+            exam.setAnswerKey(questions.stream()
+                    .map(this::toAnswerLetter)
+                    .collect(Collectors.joining(",")));
+            exam.setQuestionsJson(serializeQuestions(questions));
+        }
+
+        return mapToResponse(examRepository.save(exam));
     }
 
     public Exam getOwnedExamOrThrow(Long examId, Long teacherId) {
@@ -185,13 +217,19 @@ public class ExamService {
             }
         }
 
+        String strippedCorrect = stripAnswerPrefix(normalizedCorrect);
         for (int i = 0; i < question.getOptions().size(); i++) {
             String option = question.getOptions().get(i);
-            if (option != null && option.trim().equalsIgnoreCase(normalizedCorrect)) {
+            if (option != null && (option.trim().equalsIgnoreCase(normalizedCorrect)
+                    || stripAnswerPrefix(option).equalsIgnoreCase(strippedCorrect))) {
                 return i;
             }
         }
         return -1;
+    }
+
+    private String stripAnswerPrefix(String value) {
+        return value == null ? "" : value.replaceFirst("^\\s*[A-Da-d1-4][.)]\\s*", "").trim();
     }
 
     private String serializeQuestions(List<QuestionDTO> questions) {
